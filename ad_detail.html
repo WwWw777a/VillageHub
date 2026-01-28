@@ -38,7 +38,7 @@
     </div>
 
     <div class="footer-btns">
-        <a id="callBtn" class="btn btn-call">Позвонить продавцу</a>
+        <a id="callBtn" class="btn btn-call" href="javascript:void(0)">Позвонить продавцу</a>
         <a id="chatBtn" class="btn btn-chat">Написать сообщение</a>
     </div>
 
@@ -66,10 +66,8 @@
                     return;
                 }
 
-                // Обработка Base64 картинок из массива imageUrls
                 let mainImg = "https://via.placeholder.com/600?text=Нет+фото";
                 if (ad.imageUrls) {
-                    // Проверяем, массив это или объект (Firebase иногда меняет тип)
                     const imgData = Array.isArray(ad.imageUrls) ? ad.imageUrls[0] : Object.values(ad.imageUrls)[0];
                     if (imgData) {
                         mainImg = "data:image/jpeg;base64," + imgData;
@@ -84,7 +82,16 @@
                 document.getElementById('adMeta').innerText = "Продавец: " + (ad.author || "Житель") + " • Опубликовано: " + dateStr;
                 document.getElementById('adDesc').innerText = ad.description || "Описание отсутствует";
                 
-                document.getElementById('callBtn').href = "tel:" + ad.phone;
+                // --- ЛОГИКА ЗВОНКА (КАК В ТАКСИ) ---
+                if (ad.phone) {
+                    // Очищаем номер от всего кроме цифр и плюса
+                    const cleanPhone = ad.phone.replace(/[^\d+]/g, '');
+                    document.getElementById('callBtn').href = "tel:" + cleanPhone;
+                } else {
+                    document.getElementById('callBtn').onclick = () => alert("Номер не указан");
+                }
+                // ------------------------------------
+
                 document.getElementById('chatBtn').onclick = () => {
                     alert("Личные сообщения в разработке. Используйте звонок.");
                 };
