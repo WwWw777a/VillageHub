@@ -13,11 +13,12 @@
             align-items: center;
             padding: 30px 20px;
             margin: 0;
+            user-select: none;
         }
 
         .map-icon { font-size: 70px; margin-bottom: 10px; }
-        h2 { margin: 0; color: #333; font-size: 24px; }
-        .subtitle { color: #666; margin-bottom: 25px; font-size: 14px; }
+        h2 { margin: 0; color: #333; font-size: 24px; text-align: center; }
+        .subtitle { color: #666; margin-bottom: 25px; font-size: 14px; text-align: center; }
 
         .input-group {
             width: 100%;
@@ -34,7 +35,10 @@
             font-size: 16px;
             box-sizing: border-box;
             color: #333;
+            outline: none;
         }
+
+        input:focus { border-color: #1976D2; }
 
         .btn-login {
             width: 100%;
@@ -48,9 +52,11 @@
             font-weight: bold;
             cursor: pointer;
             margin-top: 15px;
+            transition: background 0.2s;
         }
 
-        /* Кнопка "Забыли пароль" сразу под входом */
+        .btn-login:active { background-color: #1565C0; transform: scale(0.98); }
+
         .forgot-pass {
             color: #1976D2;
             text-decoration: none;
@@ -58,6 +64,7 @@
             font-weight: bold;
             margin-top: 15px;
             display: block;
+            text-align: center;
         }
 
         .policy-container {
@@ -72,6 +79,7 @@
         .policy-link {
             color: #1976D2;
             text-decoration: underline;
+            font-weight: 500;
         }
     </style>
 </head>
@@ -83,16 +91,16 @@
 
     <div class="input-group"><input type="text" id="name" placeholder="Ваше Имя"></div>
     <div class="input-group"><input type="text" id="phone" placeholder="Телефон" value="+7"></div>
-    <div class="input-group"><input type="text" id="secret" placeholder="Секретное слово"></div>
+    <div class="input-group"><input type="text" id="secret" placeholder="Секретное слово (для восстановления)"></div>
     <div class="input-group"><input type="password" id="password" placeholder="Пароль"></div>
 
     <button class="btn-login" onclick="handleLogin()">Регистрация / Вход</button>
 
-    <a href="#" class="forgot-pass" onclick="alert('Скоро: восстановление через секретное слово')">Забыли пароль?</a>
+    <a href="#" class="forgot-pass" onclick="alert('Восстановление через секретное слово будет доступно после подключения базы данных')">Забыли пароль?</a>
 
     <div class="policy-container">
         Нажимая кнопку, вы принимаете <br>
-        <a href="ССЫЛКА_НА_ЯНДЕКС_ДИСК" target="_blank" class="policy-link">Политику конфиденциальности</a>
+        <a href="https://disk.yandex.ru/i/6v_1fV9B6_NfSg" target="_blank" class="policy-link">Политику конфиденциальности</a>
     </div>
 
     <script>
@@ -101,12 +109,15 @@
             const phone = document.getElementById('phone').value;
             
             if (name.length < 2 || phone.length < 10) {
-                alert("Пожалуйста, заполните данные");
+                alert("Пожалуйста, заполните все поля");
                 return;
             }
 
+            // Имитация сохранения в SharedPreferences
             localStorage.setItem("USER_NAME", name);
             localStorage.setItem("USER_PHONE", phone);
+            
+            // Переход на главную
             window.location.href = "index.html";
         }
     </script>
