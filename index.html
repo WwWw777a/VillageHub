@@ -16,10 +16,10 @@
             --text-secondary: #777;
             --accent-blue: #2196F3;
             --card-bg: #ffffff;
-            --color-board: #4CAF50; /* Зеленый как в твоем проекте */
-            --color-taxi: #FFC107;  /* Желтый */
-            --color-issues: #F44336; /* Красный */
-            --color-chat: #9C27B0;  /* Фиолетовый */
+            --color-board: #4CAF50; 
+            --color-taxi: #FFC107;  
+            --color-issues: #F44336; 
+            --color-chat: #9C27B0;  
         }
 
         body {
@@ -31,7 +31,6 @@
             user-select: none;
         }
 
-        /* Шапка */
         .header {
             display: flex;
             justify-content: space-between;
@@ -60,10 +59,9 @@
             position: absolute; top: 0; right: 0;
             width: 10px; height: 10px;
             background: red; border-radius: 50%;
-            display: none; /* Появится при новых сообщениях */
+            display: none; 
         }
 
-        /* Сетка меню */
         .menu-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -87,11 +85,9 @@
         }
 
         .card:active { transform: scale(0.95); }
-
         .card i { font-size: 40px; margin-bottom: 12px; }
         .card span { font-weight: bold; font-size: 14px; text-align: center; }
 
-        /* Кнопка Админа */
         .admin-btn {
             background: var(--accent-blue);
             color: white;
@@ -107,8 +103,6 @@
         }
 
         .admin-btn i { margin-right: 12px; }
-
-        /* Имитация иконок (можно заменить на FontAwesome или картинки) */
         .icon-board { color: var(--color-board); }
         .icon-taxi { color: var(--color-taxi); }
         .icon-issues { color: var(--color-issues); }
@@ -156,7 +150,14 @@
     </div>
 
     <script>
-        // Функция приветствия (как в твоем Kotlin коде)
+        // --- ПРОВЕРКА АВТОРИЗАЦИИ ---
+        const savedPhone = localStorage.getItem("USER_PHONE");
+        if (!savedPhone) {
+            // Если номера нет в памяти — отправляем на страницу логина
+            window.location.href = "login.html";
+        }
+
+        // Функция приветствия
         function updateGreeting() {
             const userName = localStorage.getItem("USER_NAME") || "Житель";
             const hour = new Date().getHours();
@@ -182,10 +183,8 @@
         updateGreeting();
         checkAdmin();
 
-        // Клик по админу
         document.getElementById("card_contact_admin").onclick = function() {
             alert("Переход в чат с админом...");
-            // Здесь будет логика перехода
         };
     </script>
 </body>
