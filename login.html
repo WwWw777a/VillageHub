@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Вход в VillageHub</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -14,113 +16,40 @@
             padding: 30px 20px;
             margin: 0;
         }
-
         .map-icon { width: 100px; height: auto; margin-bottom: 10px; }
         h2 { margin: 0; color: #333; font-size: 26px; font-weight: bold; }
         .subtitle { color: #666; margin-bottom: 25px; font-size: 15px; }
-
         .input-group { width: 100%; max-width: 350px; margin-bottom: 15px; }
-
-        /* Поля ввода строго по скриншоту */
         input {
-            width: 100%;
-            padding: 16px;
-            border: 1.5px solid #8e8e8e;
-            border-radius: 12px;
-            background-color: #f5f5f5;
-            font-size: 16px;
-            box-sizing: border-box;
-            color: #333;
-            outline: none;
+            width: 100%; padding: 16px; border: 1.5px solid #8e8e8e; border-radius: 12px;
+            background-color: #f5f5f5; font-size: 16px; box-sizing: border-box; color: #333; outline: none;
         }
-
-        /* Синяя кнопка строго по скриншоту */
         .btn-login {
-            width: 100%;
-            max-width: 350px;
-            background-color: #1e7ad3;
-            color: white;
-            border: none;
-            border-radius: 30px;
-            padding: 16px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 15px;
+            width: 100%; max-width: 350px; background-color: #1e7ad3; color: white; border: none;
+            border-radius: 30px; padding: 16px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 15px;
         }
-
-        .policy-text {
-            font-size: 12px;
-            color: #666;
-            text-align: center;
-            margin-top: 20px;
-            line-height: 1.4;
-        }
-
-        .forgot-pass {
-            color: #1e7ad3;
-            text-decoration: none;
-            font-size: 15px;
-            font-weight: bold;
-            margin-top: 25px;
-            cursor: pointer;
-        }
-
-        /* МОДАЛЬНОЕ ОКНО ВОССТАНОВЛЕНИЯ */
+        .policy-text { font-size: 12px; color: #666; text-align: center; margin-top: 20px; line-height: 1.4; }
+        .forgot-pass { color: #1e7ad3; text-decoration: none; font-size: 15px; font-weight: bold; margin-top: 25px; cursor: pointer; }
         .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.4);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4); z-index: 1000; justify-content: center; align-items: center;
         }
-
         .modal-card {
-            background: white;
-            width: 85%;
-            max-width: 320px;
-            padding: 25px;
-            border-radius: 2px; /* Квадратные углы как на скрине */
+            background: white; width: 85%; max-width: 320px; padding: 25px; border-radius: 2px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
-
         .modal-card h3 { margin: 0 0 25px 0; font-size: 18px; color: #000; }
-
-        /* Поля в модалке (только нижняя линия) */
         .modal-input {
-            width: 100%;
-            border: none;
-            border-bottom: 1.5px solid #757575;
-            padding: 10px 0;
-            margin-bottom: 20px;
-            font-size: 16px;
-            outline: none;
-            background: transparent;
+            width: 100%; border: none; border-bottom: 1.5px solid #757575; padding: 10px 0;
+            margin-bottom: 20px; font-size: 16px; outline: none; background: transparent;
         }
-
-        .modal-buttons {
-            display: flex;
-            justify-content: flex-end;
-            gap: 25px;
-            margin-top: 10px;
-        }
-
-        .modal-btn {
-            background: none;
-            border: none;
-            color: #5c6bc0;
-            font-weight: bold;
-            font-size: 14px;
-            cursor: pointer;
-        }
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 25px; margin-top: 10px; }
+        .modal-btn { background: none; border: none; color: #5c6bc0; font-weight: bold; font-size: 14px; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <img src="https://vignette.wikia.nocookie.net/logopedia/images/d/d4/Google_Maps_Icon_2020.png" class="map-icon" alt="map">
-    
     <h2>Наш поселок</h2>
     <p class="subtitle">Регистрация / Вход</p>
 
@@ -129,11 +58,11 @@
     <div class="input-group"><input type="text" id="secret" placeholder="Секретное слово (для восстановления)"></div>
     <div class="input-group"><input type="password" id="password" placeholder="Пароль"></div>
 
-    <button class="btn-login" onclick="handleLogin()">Регистрация / Вход</button>
+    <button class="btn-login" id="mainLoginBtn">Регистрация / Вход</button>
 
     <div class="policy-text">
         Нажимая кнопку, вы принимаете <br>
-        <a href="https://disk.yandex.ru/i/6v_1fV9B6_NfSg" target="_blank" style="color:#666; text-decoration: none;">Политику конфиденциальности</a>
+        <a href="https://disk.yandex.ru/i/rrD6Mhbe3IEf0Q" target="_blank" style="color:#666; text-decoration: none;">Политику конфиденциальности</a>
     </div>
 
     <div class="forgot-pass" onclick="openResetModal()">Забыли пароль?</div>
@@ -141,35 +70,92 @@
     <div id="resetModal" class="modal-overlay">
         <div class="modal-card">
             <h3>Восстановление пароля</h3>
-            <input type="text" class="modal-input" placeholder="Введите номер телефона">
-            <input type="text" class="modal-input" placeholder="Ваше кодовое слово">
-            <input type="password" class="modal-input" placeholder="Новый пароль">
-            
+            <input type="text" id="resetPhone" class="modal-input" placeholder="Введите номер телефона">
+            <input type="text" id="resetSecret" class="modal-input" placeholder="Ваше кодовое слово">
+            <input type="password" id="resetPass" class="modal-input" placeholder="Новый пароль">
             <div class="modal-buttons">
                 <button class="modal-btn" onclick="closeResetModal()">Отмена</button>
-                <button class="modal-btn" onclick="processReset()">Сменить</button>
+                <button class="modal-btn" id="confirmResetBtn">Сменить</button>
             </div>
         </div>
     </div>
 
     <script>
+        // Конфигурация Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
+            authDomain: "villagehub-d4d5e.firebaseapp.com",
+            databaseURL: "https://villagehub-d4d5e-default-rtdb.firebaseio.com",
+            projectId: "villagehub-d4d5e",
+            storageBucket: "villagehub-d4d5e.firebasestorage.app",
+            messagingSenderId: "131056250064",
+            appId: "1:131056250064:web:84c0c67819e9828ec642d5",
+            measurementId: "G-N0C383JQWP"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
         function openResetModal() { document.getElementById('resetModal').style.display = 'flex'; }
         function closeResetModal() { document.getElementById('resetModal').style.display = 'none'; }
 
-        function processReset() {
-            alert("Функция будет доступна после подключения Firebase.");
-            closeResetModal();
-        }
-
-        function handleLogin() {
+        // ЛОГИКА ВХОДА И РЕГИСТРАЦИИ
+        document.getElementById('mainLoginBtn').onclick = function() {
             const name = document.getElementById('name').value;
-            const phone = document.getElementById('phone').value;
-            if (name.length < 2 || phone.length < 10) {
-                alert("Заполните поля");
-                return;
+            const phone = document.getElementById('phone').value.replace(/\D/g, ""); // Только цифры
+            const secret = document.getElementById('secret').value;
+            const password = document.getElementById('password').value;
+
+            if (!name || !phone || !secret || !password) {
+                alert("Заполните все поля"); return;
             }
+
+            const userRef = database.ref('Users/' + phone);
+            userRef.once('value').then((snapshot) => {
+                if (snapshot.exists()) {
+                    // Пользователь есть, проверяем пароль
+                    if (snapshot.val().password === password) {
+                        saveAndGo(name, phone, snapshot.val().role || "Житель");
+                    } else {
+                        alert("Неверный пароль!");
+                    }
+                } else {
+                    // Регистрация нового
+                    userRef.set({
+                        name: name,
+                        phone: phone,
+                        password: password,
+                        secretWord: secret,
+                        role: "Житель"
+                    }).then(() => saveAndGo(name, phone, "Житель"));
+                }
+            });
+        };
+
+        // ВОССТАНОВЛЕНИЕ ПАРОЛЯ
+        document.getElementById('confirmResetBtn').onclick = function() {
+            const rPhone = document.getElementById('resetPhone').value.replace(/\D/g, "");
+            const rSecret = document.getElementById('resetSecret').value;
+            const rPass = document.getElementById('resetPass').value;
+
+            if (!rPhone || !rSecret || !rPass) { alert("Заполните поля"); return; }
+
+            const userRef = database.ref('Users/' + rPhone);
+            userRef.once('value').then((snapshot) => {
+                if (snapshot.exists() && snapshot.val().secretWord === rSecret) {
+                    userRef.update({ password: rPass }).then(() => {
+                        alert("Пароль успешно изменен!");
+                        closeResetModal();
+                    });
+                } else {
+                    alert("Данные не совпадают!");
+                }
+            });
+        };
+
+        function saveAndGo(name, phone, role) {
             localStorage.setItem("USER_NAME", name);
             localStorage.setItem("USER_PHONE", phone);
+            localStorage.setItem("USER_ROLE", role);
             window.location.href = "index.html";
         }
     </script>
