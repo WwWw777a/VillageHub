@@ -3,28 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Редактирование</title>
+    <title>Объявление</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
         .header { background: #2196F3; color: white; padding: 15px; display: flex; align-items: center; }
         .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; }
-        
         .container { padding: 15px; }
-        
         .btn-photo { background: #FFA000; color: white; border: none; padding: 12px; border-radius: 20px; width: 220px; font-weight: bold; margin-bottom: 5px; cursor: pointer; }
         .photo-count { font-size: 12px; color: #666; margin-bottom: 15px; }
-        
-        /* Контейнер для превью фото */
-        .photo-preview { width: 100%; background: #eee; min-height: 100px; padding: 10px; display: flex; gap: 10px; overflow-x: auto; margin-bottom: 20px; }
+        .photo-preview { width: 100%; background: #eee; min-height: 100px; padding: 10px; display: flex; gap: 10px; overflow-x: auto; margin-bottom: 20px; box-sizing: border-box; border-radius: 8px; }
         .img-item { width: 80px; height: 80px; position: relative; flex-shrink: 0; }
-        .img-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
-        .img-item .del { position: absolute; top: 0; right: 0; background: rgba(0,0,0,0.6); color: white; width: 20px; height: 20px; text-align: center; font-size: 14px; cursor: pointer; }
-
+        .img-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; }
+        .img-item .del { position: absolute; top: -5px; right: -5px; background: #f44336; color: white; width: 22px; height: 22px; text-align: center; font-size: 16px; cursor: pointer; border-radius: 50%; line-height: 20px; font-weight: bold; border: 2px solid white; }
         input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px; box-sizing: border-box; font-size: 16px; outline: none; }
         textarea { height: 120px; resize: none; }
-
         .btn-save { background: #4CAF50; color: white; border: none; padding: 15px; border-radius: 30px; width: 100%; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 15px; }
         .btn-delete { background: #F44336; color: white; border: none; padding: 15px; border-radius: 30px; width: 100%; font-size: 18px; font-weight: bold; cursor: pointer; }
     </style>
@@ -33,7 +27,7 @@
 
     <div class="header">
         <span class="back-btn" onclick="history.back()">←</span>
-        <h1 id="pageTitle" style="font-size: 18px; margin: 0;">Редактирование</h1>
+        <h1 id="pageTitle" style="font-size: 18px; margin: 0;">Новое объявление</h1>
     </div>
 
     <div class="container">
@@ -48,12 +42,20 @@
         <input type="text" id="inPhone" placeholder="Телефон">
         <textarea id="inDesc" placeholder="Описание"></textarea>
 
-        <button class="btn-save" onclick="saveAd()">Сохранить</button>
+        <button class="btn-save" id="saveBtn" onclick="saveAd()">Опубликовать</button>
         <button id="delBtn" class="btn-delete" style="display:none" onclick="deleteAd()">Удалить объявление</button>
     </div>
 
     <script>
-        const firebaseConfig = { /* Твой конфиг */ };
+        const firebaseConfig = {
+            apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
+            authDomain: "villagehub-d4d5e.firebaseapp.com",
+            databaseURL: "https://villagehub-d4d5e-default-rtdb.firebaseio.com",
+            projectId: "villagehub-d4d5e",
+            storageBucket: "villagehub-d4d5e.firebasestorage.app",
+            messagingSenderId: "131056250064",
+            appId: "1:131056250064:web:84c0c67819e9828ec642d5"
+        };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         
@@ -61,25 +63,37 @@
         const editId = urlParams.get('editId');
         let currentPhotos = [];
 
+        // Если режим редактирования — подтягиваем данные
         if (editId) {
+            document.getElementById('pageTitle').innerText = "Редактирование";
+            document.getElementById('saveBtn').innerText = "Сохранить";
             document.getElementById('delBtn').style.display = 'block';
+
             database.ref('Ads/' + editId).once('value').then(snap => {
                 const ad = snap.val();
-                document.getElementById('inTitle').value = ad.title;
-                document.getElementById('inPrice').value = ad.price;
-                document.getElementById('inPhone').value = ad.phone;
-                document.getElementById('inDesc').value = ad.description;
-                currentPhotos = ad.imageUrls || [];
-                renderPhotos();
+                if (ad) {
+                    document.getElementById('inTitle').value = ad.title || "";
+                    document.getElementById('inPrice').value = ad.price || "";
+                    document.getElementById('inPhone').value = ad.phone || "";
+                    document.getElementById('inDesc').value = ad.description || "";
+                    // Загружаем фото (Base64)
+                    currentPhotos = ad.imageUrls || [];
+                    renderPhotos();
+                }
             });
+        } else {
+            // Если новое — подставим телефон из памяти
+            document.getElementById('inPhone').value = localStorage.getItem("USER_PHONE") || "+7";
         }
 
         function handleFiles(files) {
             for (let file of files) {
-                if (currentPhotos.length >= 5) break;
+                if (currentPhotos.length >= 5) {
+                    alert("Максимум 5 фотографий!");
+                    break;
+                }
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    // Убираем заголовок data:image/jpeg;base64, для базы
                     const base64 = e.target.result.split(',')[1];
                     currentPhotos.push(base64);
                     renderPhotos();
@@ -107,26 +121,38 @@
         }
 
         function saveAd() {
+            const title = document.getElementById('inTitle').value.trim();
+            const price = document.getElementById('inPrice').value.trim();
+            const phone = document.getElementById('inPhone').value.trim();
+            const description = document.getElementById('inDesc').value.trim();
+
+            if (!title || !price || !phone) {
+                alert("Заполните название, цену и телефон!");
+                return;
+            }
+
             const data = {
-                title: document.getElementById('inTitle').value,
-                price: document.getElementById('inPrice').value,
-                phone: document.getElementById('inPhone').value,
-                description: document.getElementById('inDesc').value,
+                title: title,
+                price: price,
+                phone: phone,
+                description: description,
                 imageUrls: currentPhotos,
-                author: localStorage.getItem("USER_NAME"),
+                author: localStorage.getItem("USER_NAME") || "Житель",
                 timestamp: Date.now()
             };
             
             const ref = editId ? database.ref('Ads/' + editId) : database.ref('Ads').push();
-            ref.update(data).then(() => {
-                alert("Сохранено!");
+            
+            ref.set(data).then(() => {
+                alert(editId ? "Изменения сохранены!" : "Объявление опубликовано!");
                 location.href = 'board.html';
-            });
+            }).catch(err => alert("Ошибка: " + err.message));
         }
 
         function deleteAd() {
-            if (confirm("Удалить объявление навсегда?")) {
+            if (confirm("Вы уверены, что хотите удалить это объявление?")) {
                 database.ref('Ads/' + editId).remove().then(() => {
+                    alert("Удалено");
                     location.href = 'board.html';
                 });
             }
