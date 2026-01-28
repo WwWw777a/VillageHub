@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VillageHub</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon.png">
+
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --text-primary: #333;
+            --text-secondary: #777;
+            --accent-blue: #2196F3;
+            --card-bg: #ffffff;
+            --color-board: #4CAF50; /* Зеленый как в твоем проекте */
+            --color-taxi: #FFC107;  /* Желтый */
+            --color-issues: #F44336; /* Красный */
+            --color-chat: #9C27B0;  /* Фиолетовый */
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 16px;
+            color: var(--text-primary);
+            user-select: none;
+        }
+
+        /* Шапка */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .title-group h1 {
+            margin: 16px 0 0 0;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .subtitle { color: var(--text-secondary); font-size: 16px; margin: 0; }
+        
+        .greeting {
+            color: var(--color-board);
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 4px;
+        }
+
+        .top-icons { display: flex; gap: 15px; margin-top: 12px; }
+        .icon-btn { font-size: 24px; cursor: pointer; position: relative; }
+        .badge {
+            position: absolute; top: 0; right: 0;
+            width: 10px; height: 10px;
+            background: red; border-radius: 50%;
+            display: none; /* Появится при новых сообщениях */
+        }
+
+        /* Сетка меню */
+        .menu-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: transform 0.1s;
+            aspect-ratio: 1 / 1;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .card:active { transform: scale(0.95); }
+
+        .card i { font-size: 40px; margin-bottom: 12px; }
+        .card span { font-weight: bold; font-size: 14px; text-align: center; }
+
+        /* Кнопка Админа */
+        .admin-btn {
+            background: var(--accent-blue);
+            color: white;
+            margin-top: 24px;
+            padding: 16px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            cursor: pointer;
+        }
+
+        .admin-btn i { margin-right: 12px; }
+
+        /* Имитация иконок (можно заменить на FontAwesome или картинки) */
+        .icon-board { color: var(--color-board); }
+        .icon-taxi { color: var(--color-taxi); }
+        .icon-issues { color: var(--color-issues); }
+        .icon-chat { color: var(--color-chat); }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="title-group">
+            <h1>Наш поселок</h1>
+            <p class="subtitle">Главное меню</p>
+            <div id="tv_greeting" class="greeting">Загрузка...</div>
+        </div>
+        <div class="top-icons">
+            <div id="btn_admin_panel" class="icon-btn" style="display:none;">⚙️</div>
+            <div id="btn_open_messages" class="icon-btn">
+                ✉️ <div id="badge_new_msg" class="badge"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="menu-grid">
+        <a href="board.html" class="card">
+            <i class="icon-board">📋</i>
+            <span>Доска объявлений</span>
+        </a>
+        <a href="taxi.html" class="card">
+            <i class="icon-taxi">🚕</i>
+            <span>Такси</span>
+        </a>
+        <a href="issues.html" class="card">
+            <i class="icon-issues">🚨</i>
+            <span>Проблемы поселка</span>
+        </a>
+        <a href="chat.html" class="card">
+            <i class="icon-chat">💬</i>
+            <span>Чат</span>
+        </a>
+    </div>
+
+    <div id="card_contact_admin" class="admin-btn">
+        <i>📧</i> Написать Администратору
+    </div>
+
+    <script>
+        // Функция приветствия (как в твоем Kotlin коде)
+        function updateGreeting() {
+            const userName = localStorage.getItem("USER_NAME") || "Житель";
+            const hour = new Date().getHours();
+            let text = "";
+
+            if (hour >= 6 && hour < 12) text = "Доброе утро";
+            else if (hour >= 12 && hour < 18) text = "Добрый день";
+            else if (hour >= 18 && hour < 24) text = "Добрый вечер";
+            else text = "Доброй ночи";
+
+            document.getElementById("tv_greeting").innerText = `${text}, ${userName}!`;
+        }
+
+        // Проверка роли админа
+        function checkAdmin() {
+            const role = localStorage.getItem("USER_ROLE");
+            if (role === "АДМИН" || role === "admin") {
+                document.getElementById("btn_admin_panel").style.display = "block";
+            }
+        }
+
+        // Запуск при загрузке
+        updateGreeting();
+        checkAdmin();
+
+        // Клик по админу
+        document.getElementById("card_contact_admin").onclick = function() {
+            alert("Переход в чат с админом...");
+            // Здесь будет логика перехода
+        };
+    </script>
+</body>
+</html>
