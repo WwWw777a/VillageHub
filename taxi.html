@@ -7,7 +7,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f5f5f5; margin: 0; padding: 0; user-select: none; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f5f5f5; margin: 0; padding: 0; user-select: none; -webkit-touch-callout: none; }
         
         .header { background-color: #ffc107; padding: 15px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
         .header-left { display: flex; align-items: center; }
@@ -17,21 +17,21 @@
 
         .container { padding: 15px; }
 
-        /* Карточка такси */
         .taxi-card { 
             background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; 
             display: flex; align-items: center; justify-content: space-between; 
             box-shadow: 0 2px 10px rgba(0,0,0,0.05); cursor: pointer;
+            transition: background 0.2s;
         }
         .taxi-card:active { background-color: #f0f0f0; }
 
-        .taxi-main { display: flex; align-items: center; }
+        .taxi-main { display: flex; align-items: center; pointer-events: none; }
         .taxi-icon { width: 40px; height: 40px; background: #ffcc80; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 15px; font-size: 20px; }
         .taxi-details h3 { margin: 0; font-size: 18px; color: #333; }
         .taxi-details p { margin: 5px 0 0 0; color: #777; font-size: 14px; }
-        .call-icon { color: #4CAF50; font-size: 26px; padding: 10px; opacity: 0.6; }
+        .call-icon { color: #4CAF50; font-size: 26px; padding: 10px; opacity: 0.6; pointer-events: none; }
 
-        /* ДИАЛОГ ПОДТВЕРЖДЕНИЯ (как на скрине) */
+        /* ОБЩИЙ СТИЛЬ МОДАЛОК */
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.4); z-index: 1000; justify-content: center; align-items: center;
@@ -44,6 +44,7 @@
         .confirm-card p { margin: 0 0 24px 0; font-size: 16px; color: #555; line-height: 1.4; }
         .confirm-buttons { display: flex; justify-content: flex-end; gap: 30px; }
         .confirm-btn { background: none; border: none; color: #673AB7; font-weight: bold; font-size: 14px; cursor: pointer; text-transform: uppercase; }
+        .delete-btn { color: #673AB7; }
     </style>
 </head>
 <body>
@@ -60,13 +61,24 @@
         <div id="taxiList"></div>
     </div>
 
-    <div id="confirmModal" class="modal-overlay">
+    <div id="callModal" class="modal-overlay">
         <div class="confirm-card">
-            <h3 id="confirmTitle">Позвонить в такси?</h3>
-            <p id="confirmBody">Вы хотите позвонить: Такси Рич?<br>Номер: +79184883535</p>
+            <h3>Позвонить в такси?</h3>
+            <p id="callBody"></p>
             <div class="confirm-buttons">
-                <button class="confirm-btn" onclick="closeConfirm()">НЕТ</button>
-                <button class="confirm-btn" id="btnYes">ДА</button>
+                <button class="confirm-btn" onclick="closeModals()">НЕТ</button>
+                <button class="confirm-btn" id="btnYesCall">ДА</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="modal-overlay">
+        <div class="confirm-card">
+            <h3>Удалить такси?</h3>
+            <p id="deleteBody"></p>
+            <div class="confirm-buttons">
+                <button class="confirm-btn" onclick="closeModals()">Отмена</button>
+                <button class="confirm-btn delete-btn" id="btnYesDelete">Удалить</button>
             </div>
         </div>
     </div>
@@ -84,13 +96,15 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        if (localStorage.getItem("USER_ROLE") === "АДМИН") {
+        const userRole = localStorage.getItem("USER_ROLE");
+        if (userRole === "АДМИН") {
             document.getElementById('adminAddBtn').style.display = 'block';
         }
 
         let currentPhone = "";
+        let currentKey = "";
+        let pressTimer;
 
-        // ЗАГРУЗКА ТАКСИ
         database.ref('Taxi').on('value', (snapshot) => {
             const listDiv = document.getElementById('taxiList');
             listDiv.innerHTML = '';
@@ -100,6 +114,7 @@
                 const taxi = child.val();
                 const name = taxi.name || "Такси";
                 const phone = taxi.phone || "";
+                const key = child.key;
                 
                 const card = document.createElement('div');
                 card.className = 'taxi-card';
@@ -113,24 +128,67 @@
                     </div>
                     <div class="call-icon">📞</div>
                 `;
-                card.onclick = () => openConfirm(name, phone);
+
+                // Обработка нажатий
+                card.addEventListener('mousedown', () => startPress(name, phone, key));
+                card.addEventListener('touchstart', (e) => { startPress(name, phone, key); });
+                card.addEventListener('mouseup', () => cancelPress());
+                card.addEventListener('mouseleave', () => cancelPress());
+                card.addEventListener('touchend', () => cancelPress());
+
                 listDiv.appendChild(card);
             });
         });
 
-        function openConfirm(name, phone) {
+        function startPress(name, phone, key) {
+            // Обычный клик (вызов) сработает при отпускании, если не было долгого нажатия
+            pressTimer = setTimeout(() => {
+                if (userRole === "АДМИН") {
+                    showDeleteDialog(name, key);
+                }
+                pressTimer = null;
+            }, 800);
+            
+            // Сохраняем данные для обычного клика
             currentPhone = phone;
-            document.getElementById('confirmBody').innerHTML = `Вы хотите позвонить: ${name}?<br>Номер: ${phone}`;
-            document.getElementById('confirmModal').style.display = 'flex';
+            currentName = name;
         }
 
-        function closeConfirm() {
-            document.getElementById('confirmModal').style.display = 'none';
+        function cancelPress() {
+            if (pressTimer) {
+                clearTimeout(pressTimer);
+                // Если таймер не дошел до конца — это обычный клик
+                showCallDialog(currentName, currentPhone);
+            }
+            pressTimer = null;
         }
 
-        document.getElementById('btnYes').onclick = function() {
+        function showCallDialog(name, phone) {
+            document.getElementById('callBody').innerHTML = `Вы хотите позвонить: ${name}?<br>Номер: ${phone}`;
+            document.getElementById('callModal').style.display = 'flex';
+        }
+
+        function showDeleteDialog(name, key) {
+            currentKey = key;
+            document.getElementById('deleteBody').innerText = `Удалить ${name} из списка?`;
+            document.getElementById('deleteModal').style.display = 'flex';
+        }
+
+        function closeModals() {
+            document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
+        }
+
+        document.getElementById('btnYesCall').onclick = function() {
             window.location.href = "tel:" + currentPhone;
-            closeConfirm();
+            closeModals();
+        };
+
+        document.getElementById('btnYesDelete').onclick = function() {
+            database.ref('Taxi').child(currentKey).remove()
+                .then(() => {
+                    closeModals();
+                    alert("Такси удалено");
+                });
         };
 
         function addNewTaxi() {
