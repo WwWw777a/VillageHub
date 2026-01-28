@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F5F5F5">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar_private_chat"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="#2196F3"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        app:navigationIcon="?attr/homeAsUpIndicator"/>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler_private_chat"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="8dp"
+        android:clipToPadding="false"
+        android:scrollbars="vertical"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:background="#FFFFFF"
+        android:elevation="8dp">
+
+        <EditText
+            android:id="@+id/input_private_message"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Напишите сообщение..."
+            android:padding="12dp"
+            android:background="@android:drawable/edit_text"
+            android:maxLines="4"
+            android:inputType="textCapSentences|textMultiLine"/>
+
+        <ImageButton
+            android:id="@+id/btn_send_private"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginLeft="8dp"
+            android:src="@android:drawable/ic_menu_send"
+            android:backgroundTint="#2196F3"
+            app:tint="#FFFFFF"
+            android:contentDescription="Отправить сообщение"
+            android:background="@drawable/abc_btn_default_mtrl_shape"/>
+    </LinearLayout>
+</LinearLayout>

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "131056250064",
+    "project_id": "villagehub-d4d5e",
+    "storage_bucket": "villagehub-d4d5e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:131056250064:android:0a207ea8f4461916c642d5",
+        "android_client_info": {
+          "package_name": "com.example.villagehub"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCBPj7cqzpSxSdevIQp1uatLl_LhDVKhMQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

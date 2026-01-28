@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#FFFFFF">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar_issues"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="#FF9800"
+        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        app:title="Сообщить о проблеме"
+        app:navigationIcon="?attr/homeAsUpIndicator"/>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Заполните форму о проблеме"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="16dp"
+                android:textColor="#333333"/>
+
+            <EditText
+                android:id="@+id/et_issue_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Коротко (например: Яма на Ленина)"
+                android:background="@android:drawable/edit_text"
+                android:padding="12dp"
+                android:layout_marginBottom="12dp"/>
+
+            <EditText
+                android:id="@+id/et_issue_desc"
+                android:layout_width="match_parent"
+                android:layout_height="120dp"
+                android:hint="Подробное описание..."
+                android:gravity="top|start"
+                android:background="@android:drawable/edit_text"
+                android:padding="12dp"
+                android:layout_marginBottom="12dp"/>
+
+            <EditText
+                android:id="@+id/et_issue_author"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Ваше имя"
+                android:background="@android:drawable/edit_text"
+                android:padding="12dp"
+                android:layout_marginBottom="16dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="24dp">
+
+                <Button
+                    android:id="@+id/btn_issue_photo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📷 Фото"
+                    android:backgroundTint="#FFFFFF"
+                    android:textColor="#FF9800"
+                    style="@style/Widget.AppCompat.Button.Borderless.Colored"/>
+
+                <TextView
+                    android:id="@+id/tv_photo_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Фото не выбрано"
+                    android:layout_marginLeft="12dp"
+                    android:textColor="#757575"/>
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/img_issue_preview"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:scaleType="centerCrop"
+                android:visibility="gone"
+                android:layout_marginBottom="16dp"/>
+
+            <Button
+                android:id="@+id/btn_send_issue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Отправить в приложение"
+                android:backgroundTint="#FF9800"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:padding="14dp"/>
+
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>
