@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход в VillageHub</title>
+    <style>
+        body {
+            font-family: -apple-system, system-ui, sans-serif;
+            background-color: #f8f9fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-card {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 320px;
+            text-align: center;
+        }
+        h2 { color: #333; margin-bottom: 20px; }
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:active { transform: scale(0.98); }
+        .footer-text { color: #777; font-size: 14px; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="login-card">
+    <h2>VillageHub</h2>
+    <p>Введите данные для входа</p>
+    <input type="text" id="phone" placeholder="Номер телефона (+7...)" />
+    <input type="text" id="name" placeholder="Ваше имя" />
+    <button onclick="login()">Войти</button>
+    <p class="footer-text">Доступ только для жителей поселка</p>
+</div>
+
+<script>
+    function login() {
+        const phone = document.getElementById('phone').value;
+        const name = document.getElementById('name').value;
+
+        if (phone.length < 10 || name.length < 2) {
+            alert("Пожалуйста, введите корректные данные");
+            return;
+        }
+
+        // Сохраняем данные в память браузера (аналог SharedPreferences)
+        localStorage.setItem("USER_PHONE", phone);
+        localStorage.setItem("USER_NAME", name);
+        localStorage.setItem("USER_ROLE", "Житель"); // По умолчанию
+
+        // Переходим на главную
+        window.location.href = "index.html";
+    }
+</script>
+
+</body>
+</html>
