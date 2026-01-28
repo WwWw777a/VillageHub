@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Доска объявлений</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <style>
+        body { font-family: -apple-system, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+        .header { background: #1e88e5; color: white; padding: 15px; display: flex; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; }
+        .header h1 { font-size: 18px; margin: 0; flex-grow: 1; }
+        .rules-btn { background: #f44336; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; font-size: 13px; }
+
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; }
+        .ad-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); cursor: pointer; }
+        .ad-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; background: #eee; }
+        .ad-info { padding: 8px; }
+        .price { color: #4CAF50; font-weight: bold; font-size: 17px; margin-bottom: 4px; }
+        .ad-title { font-size: 14px; color: #333; height: 36px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; }
+        .ad-meta { font-size: 11px; color: #999; margin-top: 6px; }
+
+        /* МОДАЛКА ПРАВИЛ */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; width: 85%; max-width: 320px; padding: 20px; border-radius: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        .modal-content h3 { margin: 0 0 10px 0; font-size: 18px; }
+        .admin-note { font-size: 12px; color: #666; margin-bottom: 10px; line-height: 1.3; }
+        
+        .rules-scroll { max-height: 250px; overflow-y: auto; margin: 10px 0; border: 1px solid #eee; padding: 10px; font-size: 14px; line-height: 1.5; color: #333; white-space: pre-wrap; }
+        .rules-edit { width: 100%; height: 200px; border: 1px solid #ccc; font-family: inherit; font-size: 14px; padding: 8px; box-sizing: border-box; resize: none; outline: none; }
+        
+        .modal-btns { display: flex; justify-content: flex-end; gap: 20px; margin-top: 15px; }
+        .m-btn { background: none; border: none; color: #673AB7; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 14px; }
+
+        .fab { position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px; background: #2196F3; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-decoration: none; border: none; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <span class="back-btn" onclick="location.href='index.html'">←</span>
+        <h1>Доска объявлений</h1>
+        <button class="rules-btn" onclick="openRules()">Правила</button>
+    </div>
+
+    <div class="grid" id="adsGrid"></div>
+
+    <button class="fab" id="addBtn">+</button>
+
+    <div id="rulesModal" class="modal">
+        <div class="modal-content">
+            <h3>Правила доски объявлений</h3>
+            <div id="adminNote" class="admin-note" style="display:none">Вы АДМИН. Вы можете изменить текст правил:</div>
+            
+            <div id="rulesViewer" class="rules-scroll"></div>
+            <textarea id="rulesEditor" class="rules-edit" style="display:none"></textarea>
+
+            <div class="modal-btns">
+                <button class="m-btn" onclick="closeRules()">Отмена</button>
+                <button class="m-btn" id="saveRulesBtn">ПОНЯТНО</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
+            authDomain: "villagehub-d4d5e.firebaseapp.com",
+            databaseURL: "https://villagehub-d4d5e-default-rtdb.firebaseio.com",
+            projectId: "villagehub-d4d5e",
+            storageBucket: "villagehub-d4d5e.firebasestorage.app",
+            messagingSenderId: "131056250064",
+            appId: "1:131056250064:web:84c0c67819e9828ec642d5"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const userRole = localStorage.getItem("USER_ROLE");
+
+        // Загрузка объявлений из 'Ads'
+        database.ref('Ads').on('value', (snap) => {
+            const grid = document.getElementById('adsGrid');
+            grid.innerHTML = '';
+            if(!snap.exists()) return;
+            
+            snap.forEach((child) => {
+                const ad = child.val();
+                const date = ad.regDate ? new Date(ad.regDate).toLocaleDateString() : '';
+                grid.innerHTML += `
+                    <div class="ad-card" onclick="location.href='ad_detail.html?id=${child.key}'">
+                        <img src="${ad.imageUrl || (ad.images ? ad.images[0] : '')}" class="ad-img">
+                        <div class="ad-info">
+                            <div class="price">${ad.price} ₽</div>
+                            <div class="ad-title">${ad.title}</div>
+                            <div class="ad-meta">${date} • ${ad.userName || 'Продавец'}</div>
+                        </div>
+                    </div>
+                `;
+            });
+        });
+
+        // ПРАВИЛА (Путь: Rules/board_rules)
+        function openRules() {
+            database.ref('Rules/board_rules').once('value').then((snap) => {
+                const text = snap.val() || "";
+                document.getElementById('rulesModal').style.display = 'flex';
+                
+                if(userRole === "АДМИН") {
+                    document.getElementById('adminNote').style.display = 'block';
+                    document.getElementById('rulesViewer').style.display = 'none';
+                    document.getElementById('rulesEditor').style.display = 'block';
+                    document.getElementById('rulesEditor').value = text;
+                    document.getElementById('saveRulesBtn').innerText = "СОХРАНИТЬ";
+                    document.getElementById('saveRulesBtn').onclick = saveRules;
+                } else {
+                    document.getElementById('adminNote').style.display = 'none';
+                    document.getElementById('rulesViewer').style.display = 'block';
+                    document.getElementById('rulesEditor').style.display = 'none';
+                    document.getElementById('rulesViewer').innerText = text;
+                    document.getElementById('saveRulesBtn').innerText = "ПОНЯТНО";
+                    document.getElementById('saveRulesBtn').onclick = closeRules;
+                }
+            });
+        }
+
+        function saveRules() {
+            const newText = document.getElementById('rulesEditor').value;
+            database.ref('Rules/board_rules').set(newText).then(() => closeRules());
+        }
+
+        function closeRules() { document.getElementById('rulesModal').style.display = 'none'; }
+    </script>
+</body>
+</html>
