@@ -11,28 +11,20 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 40px 20px;
+            padding: 30px 20px;
             margin: 0;
         }
 
-        /* Иконка карты */
-        .map-icon {
-            width: 100px;
-            height: auto;
-            margin-bottom: 20px;
-        }
-
+        .map-icon { font-size: 70px; margin-bottom: 10px; }
         h2 { margin: 0; color: #333; font-size: 24px; }
-        .subtitle { color: #666; margin-bottom: 30px; font-size: 14px; }
+        .subtitle { color: #666; margin-bottom: 25px; font-size: 14px; }
 
         .input-group {
             width: 100%;
             max-width: 350px;
             margin-bottom: 12px;
-            position: relative;
         }
 
-        /* Стиль полей как на скриншоте */
         input {
             width: 100%;
             padding: 14px 16px;
@@ -44,83 +36,64 @@
             color: #333;
         }
 
-        input::placeholder { color: #999; }
-
-        /* Синяя кнопка */
         .btn-login {
             width: 100%;
             max-width: 350px;
             background-color: #1976D2;
             color: white;
             border: none;
-            border-radius: 25px; /* Более округлая как на фото */
+            border-radius: 25px;
             padding: 14px;
             font-size: 18px;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-
-        .btn-login:active { background-color: #1565C0; transform: scale(0.98); }
-
-        .policy {
-            font-size: 11px;
-            color: #888;
-            text-align: center;
             margin-top: 15px;
-            max-width: 280px;
-            line-height: 1.4;
         }
 
+        /* Кнопка "Забыли пароль" сразу под входом */
         .forgot-pass {
             color: #1976D2;
             text-decoration: none;
             font-size: 14px;
             font-weight: bold;
-            margin-top: 25px;
+            margin-top: 15px;
+            display: block;
         }
 
-        /* Иконка глаза для пароля */
-        .eye-icon {
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #666;
-            cursor: pointer;
+        .policy-container {
+            font-size: 11px;
+            color: #888;
+            text-align: center;
+            margin-top: 30px;
+            max-width: 280px;
+            line-height: 1.4;
+        }
+
+        .policy-link {
+            color: #1976D2;
+            text-decoration: underline;
         }
     </style>
 </head>
 <body>
 
-    <div style="font-size: 80px; margin-bottom: 10px;">🗺️</div>
-
+    <div class="map-icon">🗺️</div>
     <h2>Наш поселок</h2>
     <p class="subtitle">Регистрация / Вход</p>
 
-    <div class="input-group">
-        <input type="text" id="name" placeholder="Ваше Имя">
-    </div>
-
-    <div class="input-group">
-        <input type="text" id="phone" placeholder="Телефон" value="+7">
-    </div>
-
-    <div class="input-group">
-        <input type="text" id="secret" placeholder="Секретное слово (для восстановления)">
-    </div>
-
-    <div class="input-group">
-        <input type="password" id="password" placeholder="Пароль">
-        <span class="eye-icon">👁️</span>
-    </div>
+    <div class="input-group"><input type="text" id="name" placeholder="Ваше Имя"></div>
+    <div class="input-group"><input type="text" id="phone" placeholder="Телефон" value="+7"></div>
+    <div class="input-group"><input type="text" id="secret" placeholder="Секретное слово"></div>
+    <div class="input-group"><input type="password" id="password" placeholder="Пароль"></div>
 
     <button class="btn-login" onclick="handleLogin()">Регистрация / Вход</button>
 
-    <p class="policy">Нажимая кнопку, вы принимаете Политику конфиденциальности</p>
+    <a href="#" class="forgot-pass" onclick="alert('Скоро: восстановление через секретное слово')">Забыли пароль?</a>
 
-    <a href="#" class="forgot-pass">Забыли пароль?</a>
+    <div class="policy-container">
+        Нажимая кнопку, вы принимаете <br>
+        <a href="ССЫЛКА_НА_ЯНДЕКС_ДИСК" target="_blank" class="policy-link">Политику конфиденциальности</a>
+    </div>
 
     <script>
         function handleLogin() {
@@ -128,15 +101,12 @@
             const phone = document.getElementById('phone').value;
             
             if (name.length < 2 || phone.length < 10) {
-                alert("Заполните все поля корректно");
+                alert("Пожалуйста, заполните данные");
                 return;
             }
 
-            // Сохраняем как в приложении
             localStorage.setItem("USER_NAME", name);
             localStorage.setItem("USER_PHONE", phone);
-            
-            // Переход на главную
             window.location.href = "index.html";
         }
     </script>
