@@ -8,7 +8,13 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; background: white; margin: 0; padding: 0; }
+        
+        /* Кнопка Назад */
         .back-nav { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.3); color: white; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; z-index: 10; cursor: pointer; }
+        
+        /* Кнопка Карандаш (Редактировать) */
+        .edit-nav { position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.3); color: white; width: 35px; height: 35px; border-radius: 50%; display: none; align-items: center; justify-content: center; font-size: 18px; z-index: 10; cursor: pointer; }
+
         .main-img { width: 100%; aspect-ratio: 4/3; object-fit: cover; background: #eee; }
         .content { padding: 20px; }
         .price { font-size: 24px; font-weight: bold; color: #4CAF50; margin-bottom: 10px; }
@@ -26,6 +32,8 @@
 <body>
 
     <div class="back-nav" onclick="history.back()">←</div>
+    <div id="editBtn" class="edit-nav">✎</div>
+    
     <img id="adImg" class="main-img" src="https://via.placeholder.com/600?text=Загрузка...">
     
     <div class="content">
@@ -57,6 +65,10 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         const adId = urlParams.get('id');
+        
+        // Получаем текущего пользователя и его роль
+        const currentUserName = localStorage.getItem("USER_NAME");
+        const currentUserRole = localStorage.getItem("USER_ROLE");
 
         if(adId) {
             database.ref('Ads/' + adId).once('value').then((snap) => {
@@ -64,6 +76,16 @@
                 if(!ad) {
                     alert("Объявление не найдено");
                     return;
+                }
+
+                // --- ПРОВЕРКА ПРАВ НА РЕДАКТИРОВАНИЕ ---
+                // Если имя автора совпадает с текущим или зашел АДМИН
+                if (ad.author === currentUserName || currentUserRole === "АДМИН") {
+                    const eBtn = document.getElementById('editBtn');
+                    eBtn.style.display = 'flex';
+                    eBtn.onclick = () => {
+                        window.location.href = `add_ad.html?editId=${adId}`;
+                    };
                 }
 
                 let mainImg = "https://via.placeholder.com/600?text=Нет+фото";
@@ -82,18 +104,15 @@
                 document.getElementById('adMeta').innerText = "Продавец: " + (ad.author || "Житель") + " • Опубликовано: " + dateStr;
                 document.getElementById('adDesc').innerText = ad.description || "Описание отсутствует";
                 
-                // --- ЛОГИКА ЗВОНКА (КАК В ТАКСИ) ---
                 if (ad.phone) {
-                    // Очищаем номер от всего кроме цифр и плюса
                     const cleanPhone = ad.phone.replace(/[^\d+]/g, '');
                     document.getElementById('callBtn').href = "tel:" + cleanPhone;
                 } else {
                     document.getElementById('callBtn').onclick = () => alert("Номер не указан");
                 }
-                // ------------------------------------
 
                 document.getElementById('chatBtn').onclick = () => {
-                    alert("Личные сообщения в разработке. Используйте звонок.");
+                    alert("Личные сообщения в разработке.");
                 };
             });
         } else {
