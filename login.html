@@ -111,7 +111,7 @@
             <input type="text" id="resetSecret" class="modal-input" placeholder="Ваше кодовое слово">
             <div style="position: relative;">
                 <input type="password" id="resetPass" class="modal-input" placeholder="Новый пароль">
-                <span class="password-toggle" onclick="togglePass('resetPass', this)" style="bottom: 25px; transform: none;">👁️</span>
+                <span class="password-toggle" onclick="togglePass('resetPass', this)" style="bottom: 35px; transform: none;">👁️</span>
             </div>
             <div class="modal-buttons">
                 <button class="modal-btn" onclick="closeResetModal()">Отмена</button>
@@ -233,7 +233,6 @@
             });
         }
 
-        // ИСПРАВЛЕННАЯ ФУНКЦИЯ СМЕНЫ ПАРОЛЯ
         document.getElementById('confirmResetBtn').onclick = function() {
             const phone = formatPhoneNumber(document.getElementById('resetPhone').value.trim());
             const secret = document.getElementById('resetSecret').value.trim();
