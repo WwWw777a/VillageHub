@@ -66,7 +66,7 @@
         .time { font-size: 10px; color: #888; text-align: right; margin-top: 4px; }
         
         .reply-box { background: rgba(0,0,0,0.05); border-left: 3px solid #F57C00; padding: 4px 8px; margin-bottom: 6px; border-radius: 4px; font-size: 13px; }
-        .reactions-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; background: rgba(0,0,0,0.03); border-radius: 10px; padding: 2px 8px; width: fit-content; font-size: 12px; }
+        .reactions-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; background: rgba(0,0,0,0.03); border-radius: 10px; padding: 2px 8px; width: fit-content; font-size: 12px; cursor: pointer; }
 
         #btnScrollDown { 
             position: absolute; right: 20px; bottom: 85px; 
@@ -185,7 +185,7 @@
         let lastReadTimestamp = parseInt(localStorage.getItem("CHAT_LAST_READ") || "0");
         let selectedMsg = null;
         let replyingTo = null;
-        let editingMsgId = null; // Новая переменная для режима редактирования
+        let editingMsgId = null;
         let lastPinnedId = "";
         let isFirstLoad = true;
 
@@ -198,7 +198,7 @@
             if (snap.exists()) {
                 const ban = snap.val();
                 if (ban.timestamp === -1 || ban.timestamp > Date.now()) {
-                    if (ban.type === 'GLOBAL') { alert('Вы заблокированы в данном приложении за нарушения'); location.href = 'login.html'; return; }
+                    if (ban.type === 'GLOBAL') { location.href = 'login.html'; return; }
                     row.innerHTML = `<div class="ban-text">Вы заблокированы ${ban.type==='CHAT_FULL'?'в чате':'до '+new Date(ban.timestamp).toLocaleString()}</div>`;
                 } else { db.ref('BannedUsers/' + myPhone).remove(); }
             }
@@ -235,54 +235,54 @@
             if(msg.reactionsCounts) {
                 let rText = '';
                 for(let e in msg.reactionsCounts) if(msg.reactionsCounts[e] > 0) rText += `${e} ${msg.reactionsCounts[e]} `;
-                if(rText) reactionsHtml = `<div class="reactions-list">${rText}</div>`;
+                if(rText) reactionsHtml = `<div class="reactions-list" onclick="event.stopPropagation(); showWhoReacted('${msg.id}')">${rText}</div>`;
             }
             div.innerHTML = `${!isMine ? `<div class="author ${roleClass}">${msg.author}</div>` : ''}${replyHtml}<div>${msg.text}</div>${reactionsHtml}<div class="time">${msg.time}</div>`;
             div.onclick = () => openActions(msg);
             container.appendChild(div);
         }
 
+        function showWhoReacted(msgId) {
+            if(!iAmPrivileged) return;
+            db.ref('ReactionDetails/' + msgId).once('value', snap => {
+                if(!snap.exists()) return;
+                let report = "Кто отреагировал:\n";
+                snap.forEach(emojiSnap => {
+                    report += `\n${emojiSnap.key}:\n`;
+                    emojiSnap.forEach(userSnap => {
+                        report += `- ${userSnap.val()} (${userSnap.key})\n`;
+                    });
+                });
+                alert(report);
+            });
+        }
+
         function updateReadStatus() { db.ref('Chats').limitToLast(1).once('value', s => { s.forEach(c => localStorage.setItem("CHAT_LAST_READ", c.val().timestamp)); }); }
         function scrollToBottom() { container.scrollTop = container.scrollHeight; }
         container.onscroll = () => { document.getElementById('btnScrollDown').style.display = (container.scrollHeight - container.scrollTop > 800) ? 'flex' : 'none'; };
 
-        // Логика кнопки отправки
-        function handleSendClick() {
-            if (editingMsgId) {
-                saveEdit();
-            } else {
-                sendChatMessage();
-            }
-        }
+        function handleSendClick() { if (editingMsgId) saveEdit(); else sendChatMessage(); }
 
         function sendChatMessage() {
             const input = document.getElementById('msgInput');
-            const text = input.value.trim();
-            if(!text) return;
-            const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            db.ref('Chats').push({ author: myName, role: myRole, text: text, time: timeStr, senderId: myPhone, timestamp: Date.now(), replyToText: replyingTo ? replyingTo.text : "", replyToAuthor: replyingTo ? replyingTo.author : "" });
+            if(!input.value.trim()) return;
+            db.ref('Chats').push({ author: myName, role: myRole, text: input.value.trim(), time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), senderId: myPhone, timestamp: Date.now(), replyToText: replyingTo ? replyingTo.text : "", replyToAuthor: replyingTo ? replyingTo.author : "" });
             input.value = ''; cancelReply(); scrollToBottom();
         }
 
-        // Функции редактирования
         function prepareEdit() {
             editingMsgId = selectedMsg.id;
             const input = document.getElementById('msgInput');
             input.value = selectedMsg.text;
-            document.getElementById('sendIcon').style.fill = "#4CAF50"; // Зеленый цвет для режима правки
+            document.getElementById('sendIcon').style.fill = "#4CAF50";
             closeActions();
             input.focus();
         }
 
         function saveEdit() {
             const input = document.getElementById('msgInput');
-            const newText = input.value.trim();
-            if(newText && editingMsgId) {
-                db.ref('Chats/' + editingMsgId).update({ text: newText });
-            }
-            editingMsgId = null;
-            input.value = '';
-            document.getElementById('sendIcon').style.fill = "#F57C00";
+            if(input.value.trim() && editingMsgId) db.ref('Chats/' + editingMsgId).update({ text: input.value.trim() });
+            editingMsgId = null; input.value = ''; document.getElementById('sendIcon').style.fill = "#F57C00";
         }
 
         db.ref('PinnedMessages').on('value', snap => {
@@ -299,23 +299,19 @@
             document.getElementById('overlay').style.display = 'block';
             document.getElementById('actionSheet').style.display = 'flex';
             backToMainActions();
-            
-            const isMine = msg.senderId === myPhone;
-            document.getElementById('editBtn').style.display = isMine ? 'block' : 'none';
+            document.getElementById('editBtn').style.display = (msg.senderId === myPhone) ? 'block' : 'none';
             document.getElementById('adminPinBtn').style.display = iAmPrivileged ? 'block' : 'none';
             document.getElementById('adminUnpinBtn').style.display = iAmPrivileged ? 'block' : 'none';
-            document.getElementById('deleteMsgBtn').style.display = (iAmPrivileged || isMine) ? 'block' : 'none';
-            document.getElementById('adminBanBtn').style.display = (iAmPrivileged && !isMine) ? 'block' : 'none';
-
+            document.getElementById('deleteMsgBtn').style.display = (iAmPrivileged || msg.senderId === myPhone) ? 'block' : 'none';
+            document.getElementById('adminBanBtn').style.display = (iAmPrivileged && msg.senderId !== myPhone) ? 'block' : 'none';
             const grid = document.getElementById('emojiGrid');
             grid.innerHTML = '';
             emojiList.forEach(emoji => { const s = document.createElement('span'); s.className = 'emoji-item'; s.innerText = emoji; s.onclick = () => toggleReaction(emoji); grid.appendChild(s); });
         }
 
         function toggleReaction(emoji) {
-            const msgId = selectedMsg.id;
-            const refCount = db.ref(`Chats/${msgId}/reactionsCounts/${emoji}`);
-            const refDetail = db.ref(`ReactionDetails/${msgId}/${emoji}/${myPhone}`);
+            const refCount = db.ref(`Chats/${selectedMsg.id}/reactionsCounts/${emoji}`);
+            const refDetail = db.ref(`ReactionDetails/${selectedMsg.id}/${emoji}/${myPhone}`);
             refDetail.once('value').then(snap => { if(snap.exists()) { refDetail.remove(); refCount.transaction(c => (c || 1) - 1); } else { refDetail.set(myName); refCount.transaction(c => (c || 0) + 1); } closeActions(); });
         }
 
@@ -324,7 +320,7 @@
         function showBanDuration() { document.getElementById('banMenu').style.display = 'none'; document.getElementById('durationMenu').style.display = 'block'; }
         function confirmBan(type, hours) { const ts = hours === -1 ? -1 : Date.now() + (hours * 3600000); db.ref('BannedUsers/' + selectedMsg.senderId).set({ type, timestamp: ts }).then(() => { alert('Наказание выдано'); closeActions(); }); }
         function prepareReply() { replyingTo = selectedMsg; document.getElementById('replyPreview').style.display = 'flex'; document.getElementById('replyPreviewName').innerText = replyingTo.author; document.getElementById('replyPreviewText').innerText = replyingTo.text; closeActions(); document.getElementById('msgInput').focus(); }
-        function writePrivate() { if(!selectedMsg.senderId) return; const otherPhone = selectedMsg.senderId; const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`; location.href = `private_chat.html?chatId=${chatId}&otherPhone=${otherPhone}`; }
+        function writePrivate() { const otherPhone = selectedMsg.senderId; const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`; location.href = `private_chat.html?chatId=${chatId}&otherPhone=${otherPhone}`; }
         function cancelReply() { replyingTo = null; document.getElementById('replyPreview').style.display = 'none'; }
         function closeActions() { document.getElementById('overlay').style.display = 'none'; document.getElementById('actionSheet').style.display = 'none'; }
         function pinMsg() { db.ref(`PinnedMessages`).remove().then(() => { db.ref(`PinnedMessages/${selectedMsg.id}`).set({ text: selectedMsg.text, author: selectedMsg.author, originalId: selectedMsg.id, pinnedTime: Date.now() }); }); closeActions(); }
