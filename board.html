@@ -18,7 +18,8 @@
             background: #f5f5f5; 
             margin: 0; 
             padding: 0; 
-            padding-top: max(16px, env(safe-area-inset-top)); 
+            /* Исправлено для редактора: добавлен fallback 0px */
+            padding-top: max(16px, env(safe-area-inset-top, 0px)); 
         }
         .header { background: #1e88e5; color: white; padding: 15px; display: flex; align-items: center; position: sticky; top: 0; z-index: 100; }
         .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; }
@@ -75,7 +76,6 @@
     </div>
 
     <script>
-        // СЕКРЕТ ПОЛНОЭКРАННОГО РЕЖИМА: ФУНКЦИЯ НАВИГАЦИИ
         function navTo(url) {
             if (window.navigator.standalone) {
                 window.location.replace(url);
@@ -159,7 +159,6 @@
 
         function closeRules() { document.getElementById('rulesModal').style.display = 'none'; }
 
-        // ПЕРЕХВАТ ВСЕХ КЛИКОВ (ФИНАЛЬНЫЙ ФИКС ДЛЯ iOS)
         (function(document,navigator,standalone) {
             if ((standalone in navigator) && navigator[standalone]) {
                 var curnode, location=document.location, stop=/^(a|html)$/i;
