@@ -10,12 +10,10 @@
         * { box-sizing: border-box; }
         body { font-family: -apple-system, sans-serif; background: #f5f5f5; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        /* Фиксированная шапка */
         .header { background: white; padding: 15px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 1000; position: relative; flex-shrink: 0; }
         .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; position: relative; z-index: 1001; }
         .header h1 { font-size: 18px; margin: 0; flex-grow: 1; }
 
-        /* ЗАКРЕП СТРОГО В ОДНУ СТРОКУ */
         #pinnedLayout { background: #FFF8E1; padding: 8px 15px; display: none; align-items: center; border-bottom: 1px solid #FFECB3; cursor: pointer; flex-shrink: 0; position: relative; z-index: 900; }
         .pinned-line { width: 4px; height: 32px; background: #2196F3; margin-right: 10px; flex-shrink: 0; }
         .pinned-info { flex-grow: 1; overflow: hidden; }
@@ -23,7 +21,6 @@
         #tvPinnedText { font-size: 13px; color: #333; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; width: 100%; display: block; }
 
         #chatMessages { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; scroll-behavior: smooth; padding-bottom: 80px; }
-
         .unread-header { background: #E0E0E0; color: #666; text-align: center; font-size: 12px; padding: 5px; margin: 10px 0; border-radius: 4px; }
 
         .msg-container { max-width: 80%; padding: 8px 12px; border-radius: 12px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-size: 15px; transition: background 0.5s; }
@@ -51,6 +48,9 @@
         #sendBtn { background: none; border: none; cursor: pointer; padding: 5px; display: flex; align-items: center; }
         #sendBtn svg { fill: #F57C00; width: 28px; height: 28px; }
 
+        /* БЛОКИРОВКА */
+        .ban-text { color: red !important; font-weight: bold !important; font-size: 14px !important; text-align: center; width: 100%; }
+
         .action-sheet { position: fixed; bottom: 0; left: 0; width: 100%; background: white; z-index: 2000; border-radius: 20px 20px 0 0; display: none; flex-direction: column; padding: 10px 0; max-height: 85vh; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); }
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1999; }
         .emoji-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; padding: 15px; overflow-y: auto; border-bottom: 1px solid #eee; }
@@ -74,7 +74,6 @@
     </div>
 
     <div id="chatMessages"></div>
-
     <div id="btnScrollDown" onclick="scrollToBottom()"><span>⬇</span></div>
 
     <div class="bottom-area">
@@ -86,7 +85,7 @@
             <span onclick="cancelReply()" style="cursor:pointer; padding: 5px;">✕</span>
         </div>
 
-        <div class="input-row">
+        <div class="input-row" id="inputRow">
             <input type="text" id="msgInput" placeholder="Написать сообщение...">
             <button id="sendBtn" onclick="sendChatMessage()">
                 <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
@@ -97,11 +96,28 @@
     <div id="overlay" class="overlay" onclick="closeActions()"></div>
     <div id="actionSheet" class="action-sheet">
         <div id="emojiGrid" class="emoji-grid"></div>
-        <div class="action-item" style="color: #2196F3; font-weight: bold;" onclick="prepareReply()">Ответить</div>
-        <div class="action-item" onclick="writePrivate()">Написать лично</div>
-        <div id="adminPinBtn" class="action-item" style="display: none;" onclick="pinMsg()">📌 Закрепить</div>
-        <div id="adminUnpinBtn" class="action-item" style="display: none; color: orange;" onclick="unpinMsg()">📍 Открепить</div>
-        <div id="deleteMsgBtn" class="action-item" style="display: none; color: red;" onclick="deleteMsg()">Удалить</div>
+        <div id="mainActions">
+            <div class="action-item" style="color: #2196F3; font-weight: bold;" onclick="prepareReply()">Ответить</div>
+            <div class="action-item" onclick="writePrivate()">Написать лично</div>
+            <div id="adminPinBtn" class="action-item" style="display: none;" onclick="pinMsg()">📌 Закрепить</div>
+            <div id="adminUnpinBtn" class="action-item" style="display: none; color: orange;" onclick="unpinMsg()">📍 Открепить</div>
+            <div id="deleteMsgBtn" class="action-item" style="display: none; color: red;" onclick="deleteMsg()">Удалить</div>
+            <div id="adminBanBtn" class="action-item" style="display: none; color: red; font-weight: bold;" onclick="showBanMenu()">ЗАБЛОКИРОВАТЬ ⛔</div>
+        </div>
+        <div id="banMenu" style="display: none;">
+            <div class="action-item" onclick="showBanDuration('CHAT_WRITE')">Только чтение (Мут)</div>
+            <div class="action-item" onclick="confirmBan('CHAT_FULL', -1)">Полный бан чата (Кик)</div>
+            <div class="action-item" onclick="confirmBan('GLOBAL', -1)">Глобальный бан</div>
+            <div class="action-item" style="color: gray;" onclick="backToMainActions()">⬅ Назад</div>
+        </div>
+        <div id="durationMenu" style="display: none;">
+            <div class="action-item" onclick="confirmBan('CHAT_WRITE', 1)">На 1 час</div>
+            <div class="action-item" onclick="confirmBan('CHAT_WRITE', 6)">На 6 часов</div>
+            <div class="action-item" onclick="confirmBan('CHAT_WRITE', 12)">На 12 часов</div>
+            <div class="action-item" onclick="confirmBan('CHAT_WRITE', 24)">На 24 часа</div>
+            <div class="action-item" onclick="confirmBan('CHAT_WRITE', -1)">Навсегда</div>
+            <div class="action-item" style="color: gray;" onclick="showBanMenu()">⬅ Назад</div>
+        </div>
     </div>
 
     <script>
@@ -128,15 +144,33 @@
         let lastPinnedId = "";
         let isFirstLoad = true;
 
-        const emojiList = [
-            "👍", "❤️", "🔥", "😂", "😮", "😢", "🙏", "👏", "🎉", "✨",
-            "👎", "😡", "💩", "👀", "💯", "✅", "❌", "🤝", "💪", "🙌",
-            "🤔", "🥳", "😱", "😴", "🤡", "👻", "👽", "🤖", "🎃", "🌟",
-            "💘", "💔", "💎", "💰", "⚽", "🚗", "🏠", "🎁", "🍻", "☕",
-            "👋", "👌", "✌️", "🤞", "🤟", "🤘", "🤙", "🖕", "🤩", "😈"
-        ];
+        const emojiList = ["👍", "❤️", "🔥", "😂", "😮", "😢", "🙏", "👏", "🎉", "✨", "👎", "😡", "💩", "👀", "💯", "✅", "❌", "🤝", "💪", "🙌", "🤔", "🥳", "😱", "😴", "🤡", "👻", "👽", "🤖", "🎃", "🌟", "💘", "💔", "💎", "💰", "⚽", "🚗", "🏠", "🎁", "🍻", "☕", "👋", "👌", "✌️", "🤞", "🤟", "🤘", "🤙", "🖕", "🤩", "😈"];
 
         const container = document.getElementById('chatMessages');
+
+        // Проверка бана
+        db.ref('BannedUsers/' + myPhone).on('value', snap => {
+            const row = document.getElementById('inputRow');
+            if (snap.exists()) {
+                const ban = snap.val();
+                const now = Date.now();
+                if (ban.timestamp === -1 || ban.timestamp > now) {
+                    if (ban.type === 'GLOBAL') {
+                        alert('Вы заблокированы в данном приложении за нарушения');
+                        location.href = 'login.html';
+                        return;
+                    }
+                    if (ban.type === 'CHAT_FULL') {
+                        row.innerHTML = '<div class="ban-text">Вы заблокированы в чате</div>';
+                    } else {
+                        const date = ban.timestamp === -1 ? 'НАВСЕГДА' : new Date(ban.timestamp).toLocaleString();
+                        row.innerHTML = `<div class="ban-text">Вы заблокированы за нарушение до ${date}</div>`;
+                    }
+                } else {
+                    db.ref('BannedUsers/' + myPhone).remove();
+                }
+            }
+        });
 
         db.ref('Chats').limitToLast(100).on('value', snap => {
             container.innerHTML = '';
@@ -225,13 +259,11 @@
             selectedMsg = msg;
             document.getElementById('overlay').style.display = 'block';
             document.getElementById('actionSheet').style.display = 'flex';
-            
-            // Логика отображения кнопок
+            backToMainActions();
             document.getElementById('adminPinBtn').style.display = iAmPrivileged ? 'block' : 'none';
             document.getElementById('adminUnpinBtn').style.display = iAmPrivileged ? 'block' : 'none';
-            // Житель может удалять только свои, Админ/Модер - любые
             document.getElementById('deleteMsgBtn').style.display = (iAmPrivileged || msg.senderId === myPhone) ? 'block' : 'none';
-
+            document.getElementById('adminBanBtn').style.display = (iAmPrivileged && msg.senderId !== myPhone) ? 'block' : 'none';
             const grid = document.getElementById('emojiGrid');
             grid.innerHTML = '';
             emojiList.forEach(emoji => {
@@ -248,6 +280,30 @@
             refDetail.once('value').then(snap => {
                 if(snap.exists()) { refDetail.remove(); refCount.transaction(c => (c || 1) - 1); }
                 else { refDetail.set(myName); refCount.transaction(c => (c || 0) + 1); }
+                closeActions();
+            });
+        }
+
+        function showBanMenu() {
+            document.getElementById('mainActions').style.display = 'none';
+            document.getElementById('banMenu').style.display = 'block';
+        }
+
+        function backToMainActions() {
+            document.getElementById('mainActions').style.display = 'block';
+            document.getElementById('banMenu').style.display = 'none';
+            document.getElementById('durationMenu').style.display = 'none';
+        }
+
+        function showBanDuration(type) {
+            document.getElementById('banMenu').style.display = 'none';
+            document.getElementById('durationMenu').style.display = 'block';
+        }
+
+        function confirmBan(type, hours) {
+            const timestamp = hours === -1 ? -1 : Date.now() + (hours * 3600000);
+            db.ref('BannedUsers/' + selectedMsg.senderId).set({ type, timestamp }).then(() => {
+                alert('Наказание выдано');
                 closeActions();
             });
         }
@@ -280,14 +336,8 @@
             closeActions();
         }
 
-        function unpinMsg() {
-            db.ref(`PinnedMessages`).remove();
-            closeActions();
-        }
-
-        function deleteMsg() {
-            if(confirm("Удалить это сообщение?")) { db.ref(`Chats/${selectedMsg.id}`).remove(); closeActions(); }
-        }
+        function unpinMsg() { db.ref(`PinnedMessages`).remove(); closeActions(); }
+        function deleteMsg() { if(confirm("Удалить это сообщение?")) { db.ref(`Chats/${selectedMsg.id}`).remove(); closeActions(); } }
     </script>
 </body>
 </html>
