@@ -21,8 +21,8 @@
         
         .msg-footer { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: 4px; font-size: 10px; color: #888; }
         .ticks { font-weight: bold; font-size: 14px; line-height: 1; }
-        .read { color: #2196F3; } 
-        .unread { color: #BDBDBD; } 
+        .read { color: #2196F3; }
+        .unread { color: #BDBDBD; }
 
         .bottom-area { background: white; border-top: 1px solid #ddd; padding: 10px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
         input { flex-grow: 1; border: 1px solid #eee; background: #f9f9f9; outline: none; font-size: 16px; padding: 10px 15px; border-radius: 25px; }
@@ -59,52 +59,39 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        function getRawPhone(p) {
-            return p ? p.replace(/\D/g, '') : "";
-        }
-
         function getFullPhone(p) {
             if(!p) return "";
+            // Возвращаем плюс на место, если браузер заменил его на пробел
             let cleaned = p.trim().replace(/ /g, '+');
             if(!cleaned.startsWith('+')) cleaned = '+' + cleaned;
             return cleaned;
         }
 
         const urlParams = new URLSearchParams(window.location.search);
-        let rawOther = urlParams.get('otherPhone') || "";
-        let rawMe = localStorage.getItem("USER_PHONE") || "";
-
-        const myPhone = getFullPhone(rawMe);
-        const otherPhone = getFullPhone(rawOther);
+        
+        // ПРИНУДИТЕЛЬНО ВОССТАНАВЛИВАЕМ ПЛЮСЫ ДЛЯ СИНХРОНИЗАЦИИ
+        let chatId = urlParams.get('chatId') ? urlParams.get('chatId').replace(/ /g, '+') : '';
+        let otherPhone = getFullPhone(urlParams.get('otherPhone'));
+        let myPhone = getFullPhone(localStorage.getItem("USER_PHONE") || "");
 
         document.getElementById('otherUserPhoneDisplay').innerText = otherPhone;
 
-        // Сравниваем ЧИСТЫЕ ЦИФРЫ номеров для построения ID чата
-        const myNumString = getRawPhone(myPhone);
-        const otherNumString = getRawPhone(otherPhone);
-        
-        let chatId = "";
-        // Используем логику сравнения чисел, чтобы порядок всегда был одинаков везде
-        if (BigInt(myNumString) < BigInt(otherNumString)) {
-            chatId = myPhone + "_" + otherPhone;
-        } else {
-            chatId = otherPhone + "_" + myPhone;
-        }
+        if (chatId) {
+            db.ref('PrivateChats/' + chatId).on('value', snap => {
+                const container = document.getElementById('messages');
+                container.innerHTML = '';
+                snap.forEach(child => {
+                    const msg = child.val();
+                    msg.id = child.key;
 
-        db.ref('PrivateChats/' + chatId).on('value', snap => {
-            const container = document.getElementById('messages');
-            container.innerHTML = '';
-            snap.forEach(child => {
-                const msg = child.val();
-                msg.id = child.key;
-
-                if (getFullPhone(msg.senderId) !== myPhone && !msg.isRead) {
-                    db.ref(`PrivateChats/${chatId}/${msg.id}/isRead`).setValue(true);
-                }
-                renderMessage(msg);
+                    if (getFullPhone(msg.senderId) !== myPhone && !msg.isRead) {
+                        db.ref(`PrivateChats/${chatId}/${msg.id}/isRead`).setValue(true);
+                    }
+                    renderMessage(msg);
+                });
+                container.scrollTop = container.scrollHeight;
             });
-            container.scrollTop = container.scrollHeight;
-        });
+        }
 
         function renderMessage(msg) {
             const isMine = getFullPhone(msg.senderId) === myPhone;
@@ -125,7 +112,7 @@
         function sendMsg() {
             const input = document.getElementById('msgInput');
             const text = input.value.trim();
-            if (!text) return;
+            if (!text || !chatId) return;
 
             const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             const timestamp = Date.now();
