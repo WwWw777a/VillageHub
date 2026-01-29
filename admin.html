@@ -8,107 +8,43 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 
     <style>
-        :root {
-            --safe-top: env(safe-area-inset-top, 0px);
-        }
-
+        :root { --safe-top: env(safe-area-inset-top, 0px); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
         body, html {
-            margin: 0; padding: 0; 
-            height: 100dvh; width: 100vw; 
-            background: #F5F5F5;
-            font-family: -apple-system, sans-serif;
-            overflow: hidden;
-            position: fixed;
-            -webkit-text-size-adjust: 100%;
+            margin: 0; padding: 0; height: 100dvh; width: 100vw; 
+            background: #F5F5F5; font-family: -apple-system, sans-serif;
+            overflow: hidden; position: fixed; -webkit-text-size-adjust: 100%;
         }
-
-        .fixed-top {
-            position: fixed;
-            top: 0; left: 0; width: 100%;
-            z-index: 1000;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .admin-header {
-            background: #333333; color: white;
-            padding: calc(15px + var(--safe-top)) 20px 15px 20px;
-        }
+        .fixed-top { position: fixed; top: 0; left: 0; width: 100%; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .admin-header { background: #333333; color: white; padding: calc(15px + var(--safe-top)) 20px 15px 20px; }
         .admin-header h1 { margin: 0; font-size: 20px; font-weight: bold; }
-        
-        .stats-row {
-            display: flex;
-            gap: 15px;
-            margin-top: 6px;
-        }
+        .stats-row { display: flex; gap: 15px; margin-top: 6px; }
         .total-count { color: #CCCCCC; font-size: 13px; }
         .online-count { color: #4CAF50; font-size: 13px; font-weight: bold; }
-
-        .search-area {
-            background: white; padding: 10px 15px;
-            display: flex; align-items: center; gap: 10px;
-            border-bottom: 1px solid #ddd;
-        }
+        .search-area { background: white; padding: 10px 15px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #ddd; }
         .back-btn { font-size: 24px; cursor: pointer; padding-right: 10px; color: #333; }
-        #et_search_user {
-            flex-grow: 1; border: none; outline: none;
-            font-size: 16px; padding: 8px;
-        }
-        .btn-alert {
-            background: #FF9800; color: white; border: none;
-            padding: 8px 15px; border-radius: 5px; font-weight: bold;
-            font-size: 12px; cursor: pointer;
-        }
-
-        .scroll-container {
-            height: 100dvh;
-            overflow-y: auto;
-            padding-top: calc(140px + var(--safe-top)); 
-            padding-bottom: 20px;
-            -webkit-overflow-scrolling: touch;
-        }
-
+        #et_search_user { flex-grow: 1; border: none; outline: none; font-size: 16px; padding: 8px; }
+        .btn-alert { background: #FF9800; color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; font-size: 12px; cursor: pointer; }
+        .scroll-container { height: 100dvh; overflow-y: auto; padding-top: calc(140px + var(--safe-top)); padding-bottom: 20px; -webkit-overflow-scrolling: touch; }
         .users-list { padding: 10px; }
-        .user-card {
-            background: white; border-radius: 8px; padding: 15px;
-            margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            cursor: pointer;
-        }
+        .user-card { background: white; border-radius: 8px; padding: 15px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); cursor: pointer; }
         .user-row { display: flex; justify-content: space-between; align-items: center; }
-        
         .name-wrapper { display: flex; align-items: center; gap: 8px; }
-        .status-dot {
-            width: 10px; height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        .online { background-color: #4CAF50; box-shadow: 0 0 5px #4CAF50; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        /* ИСПРАВЛЕНО: Яркий зеленый для онлайна */
+        .online { background-color: #4CAF50; box-shadow: 0 0 8px #4CAF50; }
         .offline { background-color: #bbb; }
-
         .user-name { font-weight: bold; font-size: 17px; color: #333; }
         .user-role { font-weight: bold; font-size: 13px; }
         .user-phone { color: #555; margin: 4px 0; font-size: 14px; }
         .user-dates { color: #9E9E9E; font-size: 11px; line-height: 1.4; }
-
         .role-admin { color: #4CAF50; }
         .role-mod { color: #2196F3; }
         .role-banned { color: #F44336; }
         .role-user { color: #757575; }
-
-        .modal-overlay {
-            display: none; position: fixed; top:0; left:0; width:100%; height:100%;
-            background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center;
-        }
-        .modal-card {
-            background: white; width: 85%; max-width: 320px; padding: 20px;
-            border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        }
-        .modal-btn {
-            display: block; width: 100%; padding: 12px; margin-top: 10px;
-            border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-align: left;
-            background: #f9f9f9;
-        }
+        .modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center; }
+        .modal-card { background: white; width: 85%; max-width: 320px; padding: 20px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-btn { display: block; width: 100%; padding: 12px; margin-top: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-align: left; background: #f9f9f9; }
     </style>
 </head>
 <body>
@@ -169,13 +105,14 @@
                 allUsers = [];
                 snap.forEach(child => {
                     const val = child.val();
+                    // ИСПРАВЛЕНО: Преобразование строк из базы в числа для корректного сравнения
                     allUsers.push({
                         phone: child.key,
                         name: val.name || "Без имени",
                         role: val.role || "Житель",
-                        regDate: val.regDate || 0,
-                        lastOnline: val.lastOnline || 0,
-                        lastActive: val.lastActive || 0,
+                        regDate: Number(val.regDate) || 0,
+                        lastOnline: Number(val.lastOnline) || 0,
+                        lastActive: Number(val.lastActive) || 0,
                         isBanned: bannedPhones.has(child.key)
                     });
                 });
@@ -191,12 +128,12 @@
 
             list.forEach(user => {
                 const lastSeenTime = Math.max(user.lastOnline, user.lastActive);
-                const isOnline = (now - lastSeenTime) < (5 * 60 * 1000);
+                // ИСПРАВЛЕНО: Расчет статуса (теперь lastSeenTime точно число)
+                const isOnline = lastSeenTime > 0 && (now - lastSeenTime) < (5 * 60 * 1000);
                 if (isOnline) onlineCount++;
 
                 const div = document.createElement('div');
                 div.className = 'user-card';
-                
                 const statusClass = isOnline ? 'online' : 'offline';
 
                 let roleDisplay = user.role;
