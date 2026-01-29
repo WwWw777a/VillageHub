@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Админ Панель</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            --safe-top: env(safe-area-inset-top, 0px);
+        }
+
+        body, html {
+            margin: 0; padding: 0; background: #F5F5F5;
+            font-family: -apple-system, sans-serif;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        /* ШАПКА КАК В XML */
+        .admin-header {
+            background: #333333; color: white;
+            padding: calc(20px + var(--safe-top)) 20px 20px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        .admin-header h1 { margin: 0; font-size: 22px; font-weight: bold; }
+        .total-count { color: #CCCCCC; font-size: 14px; margin-top: 5px; }
+
+        /* ПОИСК И КНОПКИ */
+        .search-area {
+            background: white; padding: 10px 15px;
+            display: flex; align-items: center; gap: 10px;
+            position: sticky; top: 0; z-index: 100;
+            border-bottom: 1px solid #ddd;
+        }
+        .back-btn { font-size: 24px; cursor: pointer; padding-right: 10px; }
+        #et_search_user {
+            flex-grow: 1; border: none; outline: none;
+            font-size: 16px; padding: 10px;
+        }
+        .btn-alert {
+            background: #FF9800; color: white; border: none;
+            padding: 8px 15px; border-radius: 5px; font-weight: bold;
+            font-size: 12px; cursor: pointer;
+        }
+
+        /* СПИСОК ПОЛЬЗОВАТЕЛЕЙ */
+        .users-list { padding: 10px; }
+        .user-card {
+            background: white; border-radius: 4px; padding: 15px;
+            margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            cursor: pointer;
+        }
+        .user-row { display: flex; justify-content: space-between; align-items: flex-start; }
+        .user-name { font-weight: bold; font-size: 18px; color: #333; }
+        .user-role { font-weight: bold; font-size: 14px; }
+        .user-phone { color: #555; margin: 5px 0; font-size: 15px; }
+        .user-dates { color: #9E9E9E; font-size: 12px; line-height: 1.4; }
+
+        /* Цвета ролей */
+        .role-admin { color: #4CAF50; }
+        .role-mod { color: #2196F3; }
+        .role-banned { color: #F44336; }
+        .role-user { color: #757575; }
+
+        /* МОДАЛЬНЫЕ ОКНА */
+        .modal-overlay {
+            display: none; position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;
+        }
+        .modal-card {
+            background: white; width: 85%; max-width: 320px; padding: 20px;
+            border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .modal-btn {
+            display: block; width: 100%; padding: 12px; margin-top: 10px;
+            border: none; border-radius: 5px; font-weight: bold; cursor: pointer; text-align: left;
+            background: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="admin-header">
+        <h1>Админ Панель 🛠️</h1>
+        <div id="tv_total_users" class="total-count">Всего пользователей: ...</div>
+    </div>
+
+    <div class="search-area">
+        <div class="back-btn" onclick="location.href='index.html'">←</div>
+        <input type="text" id="et_search_user" placeholder="🔍 Поиск по имени/номеру">
+        <button class="btn-alert" onclick="showGlobalMsgDialog()">📢 Рассылка</button>
+    </div>
+
+    <div class="users-list" id="rv_users_list">
+        </div>
+
+    <div id="userModal" class="modal-overlay" onclick="this.style.display='none'">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <h3 id="modalTitle">Управление</h3>
+            <button class="modal-btn" id="btnBan" style="color: red;">БАН НАВСЕГДА ⛔</button>
+            <button class="modal-btn" onclick="showRoleDialog()">Сменить роль</button>
+            <button class="modal-btn" onclick="closeModals()">Отмена</button>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
+            authDomain: "villagehub-d4d5e.firebaseapp.com",
+            databaseURL: "https://villagehub-d4d5e-default-rtdb.firebaseio.com",
+            projectId: "villagehub-d4d5e",
+            storageBucket: "villagehub-d4d5e.firebasestorage.app",
+            messagingSenderId: "131056250064",
+            appId: "1:131056250064:web:84c0c67819e9828ec642d5"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let allUsers = [];
+        let bannedPhones = new Set();
+        let selectedUser = null;
+
+        // ЗАГРУЗКА БАНОВ
+        db.ref('BannedUsers').on('value', snap => {
+            bannedPhones.clear();
+            snap.forEach(child => bannedPhones.add(child.key));
+            fetchUsers();
+        });
+
+        // ЗАГРУЗКА ЮЗЕРОВ
+        function fetchUsers() {
+            db.ref('Users').on('value', snap => {
+                allUsers = [];
+                snap.forEach(child => {
+                    const val = child.val();
+                    allUsers.push({
+                        phone: child.key,
+                        name: val.name || "Без имени",
+                        role: val.role || "Житель",
+                        regDate: val.regDate || 0,
+                        lastOnline: val.lastOnline || 0,
+                        lastActive: val.lastActive || 0,
+                        isBanned: bannedPhones.has(child.key)
+                    });
+                });
+                renderList(allUsers);
+                document.getElementById('tv_total_users').innerText = `Всего пользователей: ${allUsers.length}`;
+            });
+        }
+
+        // ОТРИСОВКА СПИСКА
+        function renderList(list) {
+            const container = document.getElementById('rv_users_list');
+            container.innerHTML = '';
+            list.forEach(user => {
+                const div = document.createElement('div');
+                div.className = 'user-card';
+                
+                let roleDisplay = user.role;
+                let roleClass = 'role-user';
+                if (user.isBanned) {
+                    roleDisplay = "⛔ ЗАБАНЕН";
+                    roleClass = 'role-banned';
+                } else if (user.role === "АДМИН") {
+                    roleClass = 'role-admin';
+                } else if (user.role === "МОДЕРАТОР") {
+                    roleClass = 'role-mod';
+                }
+
+                const reg = user.regDate ? new Date(user.regDate).toLocaleDateString() : 'нет данных';
+                const last = Math.max(user.lastOnline, user.lastActive);
+                const lastSeen = last ? new Date(last).toLocaleString([], {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : 'Никогда';
+
+                div.innerHTML = `
+                    <div class="user-row">
+                        <div class="user-name">${user.name}</div>
+                        <div class="user-role ${roleClass}">${roleDisplay}</div>
+                    </div>
+                    <div class="user-phone">${user.phone}</div>
+                    <div class="user-dates">Зареган: ${reg}<br>Был в сети: ${lastSeen}</div>
+                `;
+                div.onclick = () => showUserOptions(user);
+                container.appendChild(div);
+            });
+        }
+
+        // ПОИСК
+        document.getElementById('et_search_user').oninput = function(e) {
+            const txt = e.target.value.toLowerCase();
+            const filtered = allUsers.filter(u => u.name.toLowerCase().includes(txt) || u.phone.includes(txt));
+            renderList(filtered);
+        };
+
+        // ДЕЙСТВИЯ
+        function showUserOptions(user) {
+            selectedUser = user;
+            document.getElementById('modalTitle').innerText = user.name;
+            const btnBan = document.getElementById('btnBan');
+            if (user.isBanned) {
+                btnBan.innerText = "РАЗБАНИТЬ 🟢";
+                btnBan.style.color = "green";
+                btnBan.onclick = unbanUser;
+            } else {
+                btnBan.innerText = "БАН НАВСЕГДА ⛔";
+                btnBan.style.color = "red";
+                btnBan.onclick = banUser;
+            }
+            document.getElementById('userModal').style.display = 'flex';
+        }
+
+        function banUser() {
+            if (confirm(`Заблокировать ${selectedUser.name}?`)) {
+                db.ref('BannedUsers/' + selectedUser.phone).set({ timestamp: -1, type: "GLOBAL" });
+                closeModals();
+            }
+        }
+
+        function unbanUser() {
+            db.ref('BannedUsers/' + selectedUser.phone).remove();
+            closeModals();
+        }
+
+        function showRoleDialog() {
+            const roles = ["Житель", "МОДЕРАТОР", "АДМИН", "Водитель"];
+            const newRole = prompt(`Выберите роль для ${selectedUser.name}:\n${roles.join(", ")}`, selectedUser.role);
+            if (newRole && roles.includes(newRole)) {
+                db.ref('Users/' + selectedUser.phone + '/role').set(newRole);
+                alert("Роль изменена!");
+                closeModals();
+            } else if (newRole) {
+                alert("Некорректная роль");
+            }
+        }
+
+        function showGlobalMsgDialog() {
+            const msg = prompt("Введите текст объявления для всех:");
+            if (msg) {
+                db.ref('SystemAlerts').set({ text: msg, time: Date.now() });
+                alert("Уведомление отправлено!");
+            }
+        }
+
+        function closeModals() { document.getElementById('userModal').style.display = 'none'; }
+    </script>
+</body>
+</html>
