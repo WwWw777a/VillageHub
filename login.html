@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>VillageHub</title>
     
+    <link rel="manifest" href="manifest.json">
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VillageHub">
@@ -14,7 +16,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f5f5f5; display: flex; flex-direction: column; align-items: center; padding: 30px 20px; margin: 0; padding-top: env(safe-area-inset-top); }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f5f5f5; display: flex; flex-direction: column; align-items: center; padding: 30px 20px; margin: 0; padding-top: max(30px, env(safe-area-inset-top)); }
         .map-icon { width: 100px; height: auto; margin-bottom: 10px; }
         h2 { margin: 0; color: #333; font-size: 26px; font-weight: bold; }
         .subtitle { color: #666; margin-bottom: 25px; font-size: 15px; }
@@ -59,7 +61,7 @@
 
     <div id="geoHint">
         <div class="hint-card">
-            <p>📍 <b>Проверка доступа</b><br><br>Для входа необходимо подтвердить, что вы находитесь на территории поселка. Пожалуйста, разрешите доступ к местоположению в следующем окне.</p>
+            <p>📍 <b>Проверка доступа</b><br><br>Для входа необходимо подтвердить, что вы находитесь на территории поселка.</p>
             <button class="hint-btn" onclick="startGeoCheck()">Понятно</button>
         </div>
     </div>
@@ -173,6 +175,7 @@
             localStorage.setItem("USER_NAME", name);
             localStorage.setItem("USER_ROLE", role);
             
+            // СУПЕР ВАЖНО: используем replace, чтобы iOS не открывала Safari
             if (window.navigator.standalone) {
                 window.location.replace("index.html");
             } else {
@@ -183,7 +186,7 @@
         function openResetModal() { document.getElementById('resetModal').style.display = 'flex'; }
         function closeResetModal() { document.getElementById('resetModal').style.display = 'none'; }
 
-        // --- ФИНАЛЬНЫЙ ПЕРЕХВАТ КЛИКОВ ---
+        // ПЕРЕХВАТ ВСЕХ КЛИКОВ
         (function(document,navigator,standalone) {
             if ((standalone in navigator) && navigator[standalone]) {
                 var curnode, location=document.location, stop=/^(a|html)$/i;
