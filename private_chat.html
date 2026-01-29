@@ -60,40 +60,47 @@
         const db = firebase.database();
 
         const urlParams = new URLSearchParams(window.location.search);
-        const chatId = urlParams.get('chatId');
-        const otherPhone = urlParams.get('otherPhone');
-        const myPhone = localStorage.getItem("USER_PHONE");
+        
+        // Исправляем получение параметров: меняем пробелы обратно на плюсы
+        let chatId = urlParams.get('chatId') ? urlParams.get('chatId').replace(/ /g, '+') : '';
+        let otherPhone = urlParams.get('otherPhone') ? urlParams.get('otherPhone').replace(/ /g, '+') : '';
+        let myPhone = localStorage.getItem("USER_PHONE");
+        if (myPhone && !myPhone.startsWith('+')) myPhone = '+' + myPhone;
 
         // Загрузка имени собеседника
-        db.ref('Users/' + otherPhone + '/name').once('value', s => {
-            document.getElementById('otherUserName').innerText = s.val() || otherPhone;
-        });
+        if (otherPhone) {
+            db.ref('Users/' + otherPhone + '/name').once('value', s => {
+                document.getElementById('otherUserName').innerText = s.val() || otherPhone;
+            });
+        }
 
         // Загрузка сообщений
-        db.ref('PrivateChats/' + chatId).on('value', snap => {
-            const container = document.getElementById('messages');
-            container.innerHTML = '';
-            snap.forEach(child => {
-                const msg = child.val();
-                msg.id = child.key;
+        if (chatId) {
+            db.ref('PrivateChats/' + chatId).on('value', snap => {
+                const container = document.getElementById('messages');
+                container.innerHTML = '';
+                snap.forEach(child => {
+                    const msg = child.val();
+                    msg.id = child.key;
 
-                // Логика прочтения: если сообщение не мое и не прочитано — ставим true
-                if (msg.senderId !== myPhone && !msg.isRead) {
-                    db.ref(`PrivateChats/${chatId}/${msg.id}/isRead`).setValue(true);
-                }
+                    // Логика прочтения: если сообщение не мое и не прочитано — ставим true
+                    if (msg.senderId !== myPhone && !msg.isRead) {
+                        db.ref(`PrivateChats/${chatId}/${msg.id}/isRead`).setValue(true);
+                    }
 
-                renderMessage(msg);
+                    renderMessage(msg);
+                });
+                container.scrollTop = container.scrollHeight;
             });
-            container.scrollTop = container.scrollHeight;
-        });
+        }
 
         function renderMessage(msg) {
             const isMine = msg.senderId === myPhone;
             const div = document.createElement('div');
             div.className = `msg ${isMine ? 'sent' : 'received'}`;
             
-            // Галочки: одна если unread, две если read (упрощенная имитация Android)
-            const ticks = isMine ? `<span class="ticks ${msg.isRead ? 'read' : 'unread'}">✔${msg.isRead ? '✔' : ''}</span>` : '';
+            // Галочки: одна если unread, две если read
+            const ticks = isMine ? `<span class="ticks ${msg.isRead ? 'read' : 'unread'}">${msg.isRead ? '✔✔' : '✔'}</span>` : '';
 
             div.innerHTML = `
                 <div>${msg.text}</div>
@@ -101,7 +108,6 @@
                     ${msg.time} ${ticks}
                 </div>
             `;
-            // Удаление отдельного сообщения по долгому нажатию/клику
             div.oncontextmenu = (e) => {
                 e.preventDefault();
                 if (confirm("Удалить это сообщение?")) {
@@ -114,7 +120,7 @@
         function sendMsg() {
             const input = document.getElementById('msgInput');
             const text = input.value.trim();
-            if (!text) return;
+            if (!text || !chatId) return;
 
             const now = new Date();
             const time = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
@@ -128,13 +134,14 @@
                 isRead: false
             };
 
-            const msgRef = db.ref('PrivateChats/' + chatId).push();
-            msgRef.set(newMsg);
+            db.ref('PrivateChats/' + chatId).push(newMsg);
 
             // Обновляем списки последних чатов для обоих
-            const update = { phone: otherPhone, lastMessage: text, timestamp: timestamp };
-            db.ref(`UserChats/${myPhone}/${otherPhone}`).update(update);
-            db.ref(`UserChats/${otherPhone}/${myPhone}`).update({ phone: myPhone, lastMessage: text, timestamp: timestamp });
+            const updateSelf = { phone: otherPhone, lastMessage: text, timestamp: timestamp };
+            const updateOther = { phone: myPhone, lastMessage: text, timestamp: timestamp };
+            
+            db.ref(`UserChats/${myPhone}/${otherPhone}`).update(updateSelf);
+            db.ref(`UserChats/${otherPhone}/${myPhone}`).update(updateOther);
 
             input.value = '';
         }
