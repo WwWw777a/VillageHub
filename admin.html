@@ -31,7 +31,6 @@
         .user-row { display: flex; justify-content: space-between; align-items: center; }
         .name-wrapper { display: flex; align-items: center; gap: 8px; }
         .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-        /* ИСПРАВЛЕНО: Яркий зеленый для онлайна */
         .online { background-color: #4CAF50; box-shadow: 0 0 8px #4CAF50; }
         .offline { background-color: #bbb; }
         .user-name { font-weight: bold; font-size: 17px; color: #333; }
@@ -94,6 +93,19 @@
         let bannedPhones = new Set();
         let selectedUser = null;
 
+        // Обновление своего статуса (чтобы админ тоже был "онлайн")
+        function updateAdminStatus() {
+            const myPhone = localStorage.getItem("USER_PHONE");
+            if (myPhone) {
+                db.ref('Users/' + myPhone).update({
+                    lastOnline: Date.now(),
+                    lastActive: Date.now()
+                });
+            }
+        }
+        updateAdminStatus();
+        setInterval(updateAdminStatus, 60000); // Раз в минуту
+
         db.ref('BannedUsers').on('value', snap => {
             bannedPhones.clear();
             snap.forEach(child => bannedPhones.add(child.key));
@@ -105,7 +117,6 @@
                 allUsers = [];
                 snap.forEach(child => {
                     const val = child.val();
-                    // ИСПРАВЛЕНО: Преобразование строк из базы в числа для корректного сравнения
                     allUsers.push({
                         phone: child.key,
                         name: val.name || "Без имени",
@@ -122,15 +133,20 @@
 
         function renderList(list) {
             const container = document.getElementById('rv_users_list');
+            const searchVal = document.getElementById('et_search_user').value.toLowerCase();
             container.innerHTML = '';
             const now = Date.now();
             let onlineCount = 0;
 
             list.forEach(user => {
                 const lastSeenTime = Math.max(user.lastOnline, user.lastActive);
-                // ИСПРАВЛЕНО: Расчет статуса (теперь lastSeenTime точно число)
                 const isOnline = lastSeenTime > 0 && (now - lastSeenTime) < (5 * 60 * 1000);
                 if (isOnline) onlineCount++;
+
+                // Фильтр поиска
+                if (searchVal && !user.name.toLowerCase().includes(searchVal) && !user.phone.includes(searchVal)) {
+                    return;
+                }
 
                 const div = document.createElement('div');
                 div.className = 'user-card';
@@ -169,10 +185,11 @@
             document.getElementById('tv_online_users').innerText = `В сети: ${onlineCount}`;
         }
 
-        document.getElementById('et_search_user').oninput = function(e) {
-            const txt = e.target.value.toLowerCase();
-            const filtered = allUsers.filter(u => u.name.toLowerCase().includes(txt) || u.phone.includes(txt));
-            renderList(filtered);
+        // Обновляем список по таймеру для актуальности кружков
+        setInterval(() => { renderList(allUsers); }, 30000);
+
+        document.getElementById('et_search_user').oninput = function() {
+            renderList(allUsers);
         };
 
         function showUserOptions(user) {
