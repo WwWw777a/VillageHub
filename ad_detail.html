@@ -2,13 +2,22 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Объявление</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>VillageHub</title>
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="VillageHub">
+    <link rel="apple-touch-icon" href="icon.png">
+
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
-        body { font-family: -apple-system, sans-serif; background: white; margin: 0; padding: 0; overflow-x: hidden; }
-        .back-nav, .edit-nav { position: absolute; top: 15px; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 100; cursor: pointer; background: rgba(0,0,0,0.4); color: white; }
+        body { 
+            font-family: -apple-system, sans-serif; background: white; margin: 0; padding: 0; overflow-x: hidden; 
+            padding-top: env(safe-area-inset-top); /* Отступ под челку */
+        }
+        .back-nav, .edit-nav { position: absolute; top: calc(15px + env(safe-area-inset-top)); width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 100; cursor: pointer; background: rgba(0,0,0,0.4); color: white; }
         .back-nav { left: 15px; font-size: 20px; }
         .edit-nav { right: 15px; font-size: 18px; display: none; }
         .slider-wrapper { width: 100%; position: relative; background: #eee; aspect-ratio: 4/3; overflow: hidden; }
@@ -31,7 +40,7 @@
         .fs-container::-webkit-scrollbar { display: none; }
         .fs-slide { flex: 0 0 100%; scroll-snap-align: start; display: flex; align-items: center; justify-content: center; }
         .fs-slide img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .footer-btns { position: fixed; bottom: 0; left: 0; width: 100%; background: white; padding: 15px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+        .footer-btns { position: fixed; bottom: 0; left: 0; width: 100%; background: white; padding: 15px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); padding-bottom: max(15px, env(safe-area-inset-bottom)); }
         .btn { border: none; padding: 14px; border-radius: 25px; color: white; font-weight: bold; font-size: 16px; cursor: pointer; text-align: center; text-decoration: none; }
         .btn-call { background-color: #4CAF50; }
         .btn-chat { background-color: #2196F3; }
@@ -39,7 +48,7 @@
 </head>
 <body>
 
-    <div class="back-nav" onclick="history.back()">←</div>
+    <div class="back-nav" onclick="navTo('board.html')">←</div>
     <div id="editBtn" class="edit-nav">✎</div>
 
     <div class="slider-wrapper">
@@ -62,10 +71,19 @@
 
     <div class="footer-btns">
         <a id="callBtn" class="btn btn-call" href="javascript:void(0)">Позвонить продавцу</a>
-        <a id="chatBtn" class="btn btn-chat">Написать сообщение</a>
+        <button id="chatBtn" class="btn btn-chat" onclick="openChat()">Написать сообщение</button>
     </div>
 
     <script>
+        // ФУНКЦИЯ БЕЗОПАСНОЙ НАВИГАЦИИ ДЛЯ PWA
+        function navTo(url) {
+            if (window.navigator.standalone) {
+                window.location.replace(url);
+            } else {
+                window.location.href = url;
+            }
+        }
+
         const firebaseConfig = {
             apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
             authDomain: "villagehub-d4d5e.firebaseapp.com",
@@ -82,30 +100,29 @@
         const adId = urlParams.get('id');
         const currentUserName = localStorage.getItem("USER_NAME");
         const currentUserRole = localStorage.getItem("USER_ROLE");
+        const myPhone = localStorage.getItem("USER_PHONE");
+        let sellerPhone = "";
 
         if(adId) {
             database.ref('Ads/' + adId).once('value').then((snap) => {
                 const ad = snap.val();
                 if(!ad) return;
 
-                // Универсальные поля для текста
-                const authorName = ad.author || ad.userName || ad.name || "Житель";
-                const priceValue = ad.price || ad.cost || "0";
-                const descriptionText = ad.description || ad.desc || ad.text || "Описание отсутствует";
-                const timestamp = ad.timestamp || ad.regDate || Date.now();
+                const authorName = ad.author || "Житель";
+                const priceValue = ad.price || "0";
+                const descriptionText = ad.description || "Описание отсутствует";
+                const timestamp = ad.timestamp || Date.now();
+                sellerPhone = ad.phone;
 
-                // Проверка прав на редактирование
                 if (authorName === currentUserName || currentUserRole === "АДМИН") {
                     const eBtn = document.getElementById('editBtn');
                     eBtn.style.display = 'flex';
-                    eBtn.onclick = () => location.href = `add_ad.html?editId=${adId}`;
+                    eBtn.onclick = () => navTo(`add_ad.html?editId=${adId}`);
                 }
 
-                // Универсальная загрузка фото
                 const slider = document.getElementById('slider');
                 const fsContainer = document.getElementById('fsContainer');
                 const dots = document.getElementById('dots');
-                
                 let rawPhotos = ad.imageUrls || ad.images || ad.imageUrl;
                 let photos = [];
 
@@ -124,7 +141,6 @@
                             dots.innerHTML += `<div class="dot ${idx === 0 ? 'active' : ''}"></div>`;
                         }
                     });
-
                     slider.onscroll = () => {
                         const page = Math.round(slider.scrollLeft / slider.offsetWidth);
                         document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === page));
@@ -133,17 +149,23 @@
                     slider.innerHTML = `<div class="slide"><img src="https://via.placeholder.com/600?text=Нет+фото"></div>`;
                 }
 
-                const dateStr = new Date(timestamp).toLocaleString();
                 document.getElementById('adPrice').innerText = priceValue + " ₽";
                 document.getElementById('adTitle').innerText = ad.title || "Без названия";
-                document.getElementById('adMeta').innerText = "Продавец: " + authorName + " • " + dateStr;
+                document.getElementById('adMeta').innerText = "Продавец: " + authorName + " • " + new Date(timestamp).toLocaleString();
                 document.getElementById('adDesc').innerText = descriptionText;
                 
                 if (ad.phone) {
-                    const cleanPhone = ad.phone.toString().replace(/[^\d+]/g, '');
-                    document.getElementById('callBtn').href = "tel:" + cleanPhone;
+                    document.getElementById('callBtn').onclick = () => window.location.href = "tel:" + ad.phone.toString().replace(/[^\d+]/g, '');
                 }
             });
+        }
+
+        function openChat() {
+            if(!sellerPhone || !myPhone) return;
+            const sDigits = sellerPhone.replace(/\D/g, '');
+            const mDigits = myPhone.replace(/\D/g, '');
+            const chatId = BigInt(mDigits) < BigInt(sDigits) ? `${myPhone}_${sellerPhone}` : `${sellerPhone}_${myPhone}`;
+            navTo(`private_chat.html?chatId=${chatId}&otherPhone=${encodeURIComponent(sellerPhone)}`);
         }
 
         function openFS(idx) {
@@ -152,8 +174,22 @@
             const container = document.getElementById('fsContainer');
             container.scrollLeft = container.offsetWidth * idx;
         }
-
         function closeFS() { document.getElementById('fsGallery').style.display = 'none'; }
+
+        // ПЕРЕХВАТ КЛИКОВ ДЛЯ iOS
+        (function(document,navigator,standalone) {
+            if ((standalone in navigator) && navigator[standalone]) {
+                var curnode, location=document.location, stop=/^(a|html)$/i;
+                document.addEventListener('click', function(e) {
+                    curnode=e.target;
+                    while (!(stop).test(curnode.nodeName)) { curnode=curnode.parentNode; }
+                    if('href' in curnode && (curnode.href.indexOf('http') || ~curnode.href.indexOf(location.host))) {
+                        e.preventDefault();
+                        location.replace(curnode.href);
+                    }
+                },false);
+            }
+        })(document,window.navigator,'standalone');
     </script>
 </body>
 </html>
