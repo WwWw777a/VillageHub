@@ -327,17 +327,20 @@
         function confirmBan(type, hours) { const ts = hours === -1 ? -1 : Date.now() + (hours * 3600000); db.ref('BannedUsers/' + selectedMsg.senderId).set({ type, timestamp: ts }).then(() => { alert('Наказание выдано'); closeActions(); }); }
         function prepareReply() { replyingTo = selectedMsg; document.getElementById('replyPreview').style.display = 'flex'; document.getElementById('replyPreviewName').innerText = replyingTo.author; document.getElementById('replyPreviewText').innerText = replyingTo.text; closeActions(); document.getElementById('msgInput').focus(); }
         
-        // ИСПРАВЛЕННАЯ ФУНКЦИЯ КНОПКИ
+        // ПРАВИЛЬНАЯ ФУНКЦИЯ ДЛЯ ПРИВАТНОГО ЧАТА (С ПЛЮСОМ)
         function writePrivate() {
             if(!selectedMsg || !selectedMsg.senderId) return;
             
-            const otherPhone = selectedMsg.senderId;
-            if(otherPhone === myPhone) { alert("Это ваше сообщение"); return; }
+            let myP = myPhone.trim();
+            let otherP = selectedMsg.senderId.trim();
+
+            if (!myP.startsWith('+')) myP = '+' + myP;
+            if (!otherP.startsWith('+')) otherP = '+' + otherP;
             
-            // Сравниваем полные строки с плюсом (как в Android приложении)
-            const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
+            if(myP === otherP) { alert("Это ваше сообщение"); return; }
             
-            location.href = `private_chat.html?chatId=${chatId}&otherPhone=${otherPhone}`;
+            const chatId = myP < otherP ? (myP + "_" + otherP) : (otherP + "_" + myP);
+            location.href = `private_chat.html?chatId=${chatId}&otherPhone=${encodeURIComponent(otherP)}`;
         }
 
         function cancelReply() { replyingTo = null; document.getElementById('replyPreview').style.display = 'none'; }
