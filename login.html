@@ -34,9 +34,10 @@
             -webkit-text-size-adjust: 100%;
         }
         
-        .map-icon { width: 100px; height: auto; margin-bottom: 10px; }
-        h2 { margin: 0; color: #333; font-size: 26px; font-weight: bold; }
-        .subtitle { color: #666; margin-bottom: 25px; font-size: 15px; }
+        /* СТИЛЬ ДЛЯ ВАШЕГО ЛОГОТИПА */
+        .map-icon { width: 120px; height: auto; margin-bottom: 15px; }
+        
+        .subtitle { color: #666; margin-bottom: 25px; font-size: 18px; font-weight: bold; }
         .input-group { width: 100%; max-width: 350px; margin-bottom: 15px; position: relative; }
         input { width: 100%; padding: 16px; border: 1.5px solid #8e8e8e; border-radius: 12px; background-color: #f5f5f5; font-size: 16px; box-sizing: border-box; color: #333; outline: none; }
         
@@ -72,12 +73,16 @@
 </head>
 <body>
 
-    <img src="https://vignette.wikia.nocookie.net/logopedia/images/d/d4/Google_Maps_Icon_2020.png" class="map-icon" alt="map">
-    <h2>Наш поселок</h2>
+    <img src="logo.png" class="map-icon" alt="logo">
+    
     <p class="subtitle">Регистрация / Вход</p>
 
     <div class="input-group"><input type="text" id="name" placeholder="Ваше Имя"></div>
-    <div class="input-group"><input type="text" id="phone" placeholder="9..." value="+7"></div>
+    
+    <div class="input-group">
+        <input type="text" id="phone" placeholder="9..." value="+7">
+    </div>
+    
     <div class="input-group"><input type="text" id="secret" placeholder="Секретное слово (для восстановления)"></div>
     
     <div class="input-group">
@@ -131,7 +136,7 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ ПАРОЛЯ
+        // ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ ВИДИМОСТИ ПАРОЛЯ
         function togglePass(inputId, el) {
             const input = document.getElementById(inputId);
             if (input.type === "password") {
@@ -143,13 +148,13 @@
             }
         }
 
-        // ЖЕСТКАЯ БЛОКИРОВКА +7
+        // ЛОГИКА ТЕЛЕФОНА (+7)
         const phoneInput = document.getElementById('phone');
         phoneInput.addEventListener('input', function(e) {
             if (!this.value.startsWith('+7')) {
                 this.value = '+7';
             }
-            // Ограничение: только цифры после +7
+            // Удаляем всё, кроме цифр после +7
             let val = this.value.substring(2).replace(/\D/g, '');
             this.value = '+7' + val;
         });
@@ -162,7 +167,6 @@
         });
 
         phoneInput.addEventListener('click', function() {
-            // При клике, если поле пустое или курсор в начале, переносим его в конец после +7
             if (this.selectionStart < 2) {
                 this.setSelectionRange(2, 2);
             }
