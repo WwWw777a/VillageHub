@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>VillageHub</title>
     
     <link rel="manifest" href="manifest.json">
@@ -38,29 +38,8 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             overflow: hidden; 
             position: fixed;
-            /* ИСПРАВЛЕНО: Запрет на авто-изменение размера шрифта при повороте */
+            /* Запрет на изменение размера шрифта при повороте (как в объявлениях) */
             -webkit-text-size-adjust: 100%;
-        }
-
-        /* БЛОКИРОВКА ПОВОРОТА */
-        #orientation-lock {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: #1e7ad3;
-            color: white;
-            z-index: 99999;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 20px;
-        }
-
-        @media (orientation: landscape) {
-            #orientation-lock {
-                display: flex;
-            }
         }
 
         .scroll-container {
@@ -78,7 +57,11 @@
         .greeting { color: var(--color-board); font-size: 18px; font-weight: bold; margin-top: 4px; }
         
         .top-icons { display: flex; gap: 20px; margin-top: 12px; align-items: center; }
+        
+        /* Ключик для админа */
         .admin-icon-btn { font-size: 38px; cursor: pointer; display: none; }
+
+        /* Увеличенный конверт */
         .msg-icon-btn { font-size: 48px; cursor: pointer; position: relative; display: flex; align-items: center; }
         
         .badge { 
@@ -112,12 +95,6 @@
     </style>
 </head>
 <body>
-
-    <div id="orientation-lock">
-        <div style="font-size: 50px; margin-bottom: 20px;">📱🔄</div>
-        <h2 style="margin: 0;">Верните телефон в вертикальное положение</h2>
-        <p style="opacity: 0.8; margin-top: 10px;">Приложение работает только портретно</p>
-    </div>
 
     <script>
         if (!localStorage.getItem("USER_PHONE")) {
