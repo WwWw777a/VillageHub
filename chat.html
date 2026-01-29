@@ -26,7 +26,7 @@
             display: flex; align-items: center; padding: 0 15px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex-shrink: 0; z-index: 10000 !important; position: relative;
         }
-        .back-btn { font-size: 28px; cursor: pointer; margin-right: 15px; padding: 5px; position: relative; z-index: 10001; }
+        .back-btn { font-size: 28px; cursor: pointer; color: #000; margin-right: 15px; padding: 5px; position: relative; z-index: 10001; }
         .header h1 { font-size: 18px; margin: 0; flex-grow: 1; font-weight: bold; }
 
         #pinnedLayout { 
@@ -236,11 +236,26 @@
             if(msg.reactionsCounts) {
                 let rText = '';
                 for(let e in msg.reactionsCounts) if(msg.reactionsCounts[e] > 0) rText += `${e} ${msg.reactionsCounts[e]} `;
-                if(rText) reactionsHtml = `<div class="reactions-list">${rText}</div>`;
+                if(rText) reactionsHtml = `<div class="reactions-list" onclick="event.stopPropagation(); showWhoReacted('${msg.id}')">${rText}</div>`;
             }
             div.innerHTML = `${!isMine ? `<div class="author ${roleClass}">${msg.author}</div>` : ''}${replyHtml}<div>${msg.text}</div>${reactionsHtml}<div class="time">${msg.time}</div>`;
             div.onclick = () => openActions(msg);
             container.appendChild(div);
+        }
+
+        function showWhoReacted(msgId) {
+            if(!iAmPrivileged) return;
+            db.ref('ReactionDetails/' + msgId).once('value', snap => {
+                if(!snap.exists()) return;
+                let report = "Кто отреагировал:\n";
+                snap.forEach(emojiSnap => {
+                    report += `\n${emojiSnap.key}:\n`;
+                    emojiSnap.forEach(userSnap => {
+                        report += `- ${userSnap.val()} (${userSnap.key})\n`;
+                    });
+                });
+                alert(report);
+            });
         }
 
         function updateReadStatus() { db.ref('Chats').limitToLast(1).once('value', s => { s.forEach(c => localStorage.setItem("CHAT_LAST_READ", c.val().timestamp)); }); }
@@ -315,10 +330,17 @@
         // ОБНОВЛЕННАЯ ФУНКЦИЯ ДЛЯ ПРИВАТНОГО ЧАТА
         function writePrivate() {
             if(!selectedMsg || !selectedMsg.senderId) return;
-            const otherPhone = selectedMsg.senderId;
-            if(otherPhone === myPhone) { alert("Это ваше сообщение"); return; }
-            const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
-            location.href = `private_chat.html?chatId=${chatId}&otherPhone=${otherPhone}`;
+            
+            // Очищаем номера от лишних символов (плюсов и прочего)
+            const cleanMyPhone = myPhone.replace(/\D/g, '');
+            const cleanOtherPhone = selectedMsg.senderId.replace(/\D/g, '');
+            
+            if(cleanOtherPhone === cleanMyPhone) { alert("Это ваше сообщение"); return; }
+            
+            // chatId всегда: меньшее_большее
+            const chatId = cleanMyPhone < cleanOtherPhone ? `${cleanMyPhone}_${cleanOtherPhone}` : `${cleanOtherPhone}_${cleanMyPhone}`;
+            
+            location.href = `private_chat.html?chatId=${chatId}&otherPhone=${selectedMsg.senderId}`;
         }
 
         function cancelReply() { replyingTo = null; document.getElementById('replyPreview').style.display = 'none'; }
