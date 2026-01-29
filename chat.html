@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Чат поселка</title>
+    <title>VillageHub</title>
 
+    <link rel="manifest" href="manifest.json">
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VillageHub">
@@ -15,12 +17,16 @@
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
+        :root {
+            --safe-top: env(safe-area-inset-top, 0px);
+        }
+
         body, html { 
             margin: 0; padding: 0; 
             height: 100dvh; width: 100vw; 
             overflow: hidden; background: #f5f5f5;
             font-family: -apple-system, sans-serif;
-            padding-top: env(safe-area-inset-top); /* Отступ под челку */
+            padding-top: var(--safe-top);
         }
 
         .main-wrapper {
@@ -110,7 +116,7 @@
 
     <div class="main-wrapper">
         <div class="header">
-            <div class="back-btn" onclick="window.location.replace('index.html')">←</div>
+            <div class="back-btn" onclick="navTo('index.html')">←</div>
             <h1>Чат поселка</h1>
         </div>
 
@@ -173,6 +179,14 @@
     </div>
 
     <script>
+        function navTo(url) {
+            if (window.navigator.standalone) {
+                window.location.replace(url);
+            } else {
+                window.location.href = url;
+            }
+        }
+
         const firebaseConfig = {
             apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
             authDomain: "villagehub-d4d5e.firebaseapp.com",
@@ -206,7 +220,7 @@
             if (snap.exists()) {
                 const ban = snap.val();
                 if (ban.timestamp === -1 || ban.timestamp > Date.now()) {
-                    if (ban.type === 'GLOBAL') { window.location.replace('login.html'); return; }
+                    if (ban.type === 'GLOBAL') { navTo('login.html'); return; }
                     row.innerHTML = `<div class="ban-text">Вы заблокированы ${ban.type==='CHAT_FULL'?'в чате':'до '+new Date(ban.timestamp).toLocaleString()}</div>`;
                 } else { db.ref('BannedUsers/' + myPhone).remove(); }
             }
@@ -342,7 +356,7 @@
             if (!otherP.startsWith('+')) otherP = '+' + otherP;
             if(myP === otherP) { alert("Это ваше сообщение"); return; }
             const chatId = myP < otherP ? (myP + "_" + otherP) : (otherP + "_" + myP);
-            window.location.replace(`private_chat.html?chatId=${chatId}&otherPhone=${encodeURIComponent(otherP)}`);
+            navTo(`private_chat.html?chatId=${chatId}&otherPhone=${encodeURIComponent(otherP)}`);
         }
 
         function cancelReply() { replyingTo = null; document.getElementById('replyPreview').style.display = 'none'; }
@@ -351,8 +365,21 @@
         function unpinMsg() { db.ref(`PinnedMessages`).remove(); closeActions(); }
         function deleteMsg() { if(confirm("Удалить?")) { db.ref(`Chats/${selectedMsg.id}`).remove(); closeActions(); } }
 
-        // --- ФИКС ДЛЯ iOS: ЧТОБЫ ССЫЛКИ НЕ ОТКРЫВАЛИСЬ В SAFARI ---
-        (function(a,b,c){if(c in b&&b[c]){var d,e=a.location,f=/^(a|html)$/i;a.addEventListener("click",function(a){d=a.target;while(!f.test(d.nodeName))d=d.parentNode;"href"in d&&(d.href.indexOf("http")||~d.href.indexOf(e.host))&&(a.preventDefault(),e.href=d.href)},!1)}})(document,window.navigator,"standalone");
+        (function(document,navigator,standalone) {
+            if ((standalone in navigator) && navigator[standalone]) {
+                var curnode, location=document.location, stop=/^(a|html)$/i;
+                document.addEventListener('click', function(e) {
+                    curnode=e.target;
+                    while (!(stop).test(curnode.nodeName)) {
+                        curnode=curnode.parentNode;
+                    }
+                    if('href' in curnode && (curnode.href.indexOf('http') || ~curnode.href.indexOf(location.host))) {
+                        e.preventDefault();
+                        location.replace(curnode.href);
+                    }
+                },false);
+            }
+        })(document,window.navigator,'standalone');
     </script>
 </body>
 </html>
