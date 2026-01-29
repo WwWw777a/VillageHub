@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>VillageHub</title>
-
+    
+    <link rel="manifest" href="manifest.json">
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VillageHub">
@@ -14,20 +16,18 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 
     <style>
+        :root {
+            /* Выносим отступ в переменную, чтобы редактор не ругался */
+            --safe-top: env(safe-area-inset-top, 0px);
+        }
+
         body { 
             font-family: -apple-system, sans-serif; 
             background: #f5f5f5; 
             margin: 0; 
             padding: 0;
-            /* Стандартный отступ, который понятен редактору */
-            padding-top: 20px; 
-        }
-        
-        /* Хайк для Safari: редактор проигнорирует, а iPhone поймет */
-        @supports (padding: max(0px)) {
-            body {
-                padding-top: max(16px, env(safe-area-inset-top));
-            }
+            padding-top: 20px; /* Запасной отступ для всех */
+            padding-top: max(16px, var(--safe-top)); /* Умный отступ для iPhone */
         }
 
         .header { background: #1e88e5; color: white; padding: 15px; display: flex; align-items: center; position: sticky; top: 0; z-index: 100; }
