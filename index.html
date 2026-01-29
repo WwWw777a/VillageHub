@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>VillageHub</title>
     
+    <link rel="manifest" href="manifest.json">
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VillageHub">
@@ -33,90 +35,36 @@
             padding: 16px;
             color: var(--text-primary);
             user-select: none;
-            /* Отступ под "челку" iPhone */
             padding-top: max(16px, env(safe-area-inset-top));
         }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 20px;
-        }
-
-        .title-group h1 {
-            margin: 16px 0 0 0;
-            font-size: 28px;
-            font-weight: bold;
-        }
-
+        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+        .title-group h1 { margin: 16px 0 0 0; font-size: 28px; font-weight: bold; }
         .subtitle { color: var(--text-secondary); font-size: 16px; margin: 0; }
-        
-        .greeting {
-            color: var(--color-board);
-            font-size: 18px;
-            font-weight: bold;
-            margin-top: 4px;
-        }
-
+        .greeting { color: var(--color-board); font-size: 18px; font-weight: bold; margin-top: 4px; }
         .top-icons { display: flex; gap: 15px; margin-top: 12px; }
         .icon-btn { font-size: 24px; cursor: pointer; position: relative; }
-        .badge {
-            position: absolute; top: 0; right: 0;
-            width: 10px; height: 10px;
-            background: red; border-radius: 50%;
-            display: none; 
-            border: 2px solid var(--bg-color);
-        }
-
-        .menu-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-top: 20px;
-        }
-
-        .card {
-            background: var(--card-bg);
-            border-radius: 20px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            transition: transform 0.1s;
-            aspect-ratio: 1 / 1;
-            cursor: pointer;
-        }
-
+        .badge { position: absolute; top: 0; right: 0; width: 10px; height: 10px; background: red; border-radius: 50%; display: none; border: 2px solid var(--bg-color); }
+        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+        .card { background: var(--card-bg); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08); transition: transform 0.1s; aspect-ratio: 1 / 1; cursor: pointer; }
         .card:active { transform: scale(0.95); }
         .card i { font-size: 40px; margin-bottom: 12px; font-style: normal; }
         .card span { font-weight: bold; font-size: 14px; text-align: center; }
-
-        .admin-btn {
-            background: var(--accent-blue);
-            color: white;
-            margin-top: 24px;
-            padding: 16px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            cursor: pointer;
-        }
-
+        .admin-btn { background: var(--accent-blue); color: white; margin-top: 24px; padding: 16px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer; }
         .admin-btn i { margin-right: 12px; font-style: normal; }
         .icon-board { color: var(--color-board); }
         .icon-taxi { color: var(--color-taxi); }
         .icon-issues { color: var(--color-issues); }
         .icon-chat { color: var(--color-chat); }
-
     </style>
 </head>
 <body>
+
+    <script>
+        if (!localStorage.getItem("USER_PHONE")) {
+            window.location.replace("login.html");
+        }
+    </script>
 
     <div class="header">
         <div class="title-group">
@@ -156,10 +104,9 @@
     </div>
 
     <script>
-        // БЕЗОПАСНАЯ НАВИГАЦИЯ ДЛЯ PWA
+        // БЕЗОПАСНАЯ НАВИГАЦИЯ
         function navTo(url) {
             if (window.navigator.standalone) {
-                // replace() не создает новую запись в истории, что мешает iOS выкинуть в Safari
                 window.location.replace(url);
             } else {
                 window.location.href = url;
@@ -179,34 +126,23 @@
         const db = firebase.database();
 
         const savedPhone = localStorage.getItem("USER_PHONE");
-        if (!savedPhone) {
-            navTo("login.html");
-        }
 
         if (savedPhone) {
             db.ref('Users/' + savedPhone + '/hasNewMessage').on('value', snap => {
                 const badge = document.getElementById("badge_new_msg");
-                if (snap.val() === true) {
-                    badge.style.display = "block";
-                } else {
-                    badge.style.display = "none";
-                }
+                badge.style.display = snap.val() === true ? "block" : "none";
             });
         }
 
         document.getElementById("btn_open_messages").onclick = function() {
-            db.ref('Users/' + savedPhone + '/hasNewMessage').set(false);
+            if(savedPhone) db.ref('Users/' + savedPhone + '/hasNewMessage').set(false);
             navTo("messages.html");
         };
 
         function updateGreeting() {
             const userName = localStorage.getItem("USER_NAME") || "Житель";
             const hour = new Date().getHours();
-            let text = "";
-            if (hour >= 6 && hour < 12) text = "Доброе утро";
-            else if (hour >= 12 && hour < 18) text = "Добрый день";
-            else if (hour >= 18 && hour < 24) text = "Добрый вечер";
-            else text = "Доброй ночи";
+            let text = (hour >= 6 && hour < 12) ? "Доброе утро" : (hour >= 12 && hour < 18) ? "Добрый день" : (hour >= 18 && hour < 24) ? "Добрый вечер" : "Доброй ночи";
             document.getElementById("tv_greeting").innerText = `${text}, ${userName}!`;
         }
 
@@ -226,15 +162,13 @@
              navTo(`private_chat.html?chatId=${chatId}&otherPhone=${adminPhone}`);
         };
 
-        // ПЕРЕХВАТ ВСЕХ КЛИКОВ (ФИНАЛЬНЫЙ ФИКС)
+        // ПЕРЕХВАТ ВСЕХ КЛИКОВ (ЖЕСТКАЯ ЗАЩИТА iOS)
         (function(document,navigator,standalone) {
             if ((standalone in navigator) && navigator[standalone]) {
                 var curnode, location=document.location, stop=/^(a|html)$/i;
                 document.addEventListener('click', function(e) {
                     curnode=e.target;
-                    while (!(stop).test(curnode.nodeName)) {
-                        curnode=curnode.parentNode;
-                    }
+                    while (!(stop).test(curnode.nodeName)) { curnode=curnode.parentNode; }
                     if('href' in curnode && (curnode.href.indexOf('http') || ~curnode.href.indexOf(location.host))) {
                         e.preventDefault();
                         location.replace(curnode.href);
