@@ -32,7 +32,8 @@
             padding: 16px;
             color: var(--text-primary);
             user-select: none;
-            padding-top: env(safe-area-inset-top); /* Фикс для челки iPhone */
+            /* Учет безопасной зоны сверху для iPhone с челкой */
+            padding-top: max(16px, env(safe-area-inset-top));
         }
 
         .header {
@@ -111,7 +112,6 @@
         .icon-taxi { color: var(--color-taxi); }
         .icon-issues { color: var(--color-issues); }
         .icon-chat { color: var(--color-chat); }
-
     </style>
 </head>
 <body>
@@ -123,7 +123,7 @@
             <div id="tv_greeting" class="greeting">Загрузка...</div>
         </div>
         <div class="top-icons">
-            <div id="btn_admin_panel" class="icon-btn" style="display:none;" onclick="location.href='admin.html'">⚙️</div>
+            <div id="btn_admin_panel" class="icon-btn" style="display:none;" onclick="navTo('admin.html')">⚙️</div>
             <div id="btn_open_messages" class="icon-btn">
                 ✉️ <div id="badge_new_msg" class="badge"></div>
             </div>
@@ -131,19 +131,19 @@
     </div>
 
     <div class="menu-grid">
-        <div onclick="location.href='board.html'" class="card">
+        <div onclick="navTo('board.html')" class="card">
             <i class="icon-board">📋</i>
             <span>Доска объявлений</span>
         </div>
-        <div onclick="location.href='taxi.html'" class="card">
+        <div onclick="navTo('taxi.html')" class="card">
             <i class="icon-taxi">🚕</i>
             <span>Такси</span>
         </div>
-        <div onclick="location.href='issues.html'" class="card">
+        <div onclick="navTo('issues.html')" class="card">
             <i class="icon-issues">🚨</i>
             <span>Проблемы поселка</span>
         </div>
-        <div onclick="location.href='chat.html'" class="card">
+        <div onclick="navTo('chat.html')" class="card">
             <i class="icon-chat">💬</i>
             <span>Чат</span>
         </div>
@@ -154,6 +154,15 @@
     </div>
 
     <script>
+        // --- ПЕРЕХОД БЕЗ ВЫЛЕТА В SAFARI ---
+        function navTo(url) {
+            if (window.navigator.standalone) {
+                window.location.assign(url);
+            } else {
+                window.location.href = url;
+            }
+        }
+
         const firebaseConfig = {
             apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
             authDomain: "villagehub-d4d5e.firebaseapp.com",
@@ -168,7 +177,7 @@
 
         const savedPhone = localStorage.getItem("USER_PHONE");
         if (!savedPhone) {
-            window.location.href = "login.html";
+            navTo("login.html");
         }
 
         if (savedPhone) {
@@ -184,7 +193,7 @@
 
         document.getElementById("btn_open_messages").onclick = function() {
             db.ref('Users/' + savedPhone + '/hasNewMessage').set(false);
-            window.location.href = "messages.html";
+            navTo("messages.html");
         };
 
         function updateGreeting() {
@@ -209,13 +218,27 @@
         checkAdmin();
 
         document.getElementById("card_contact_admin").onclick = function() {
-             const adminPhone = "+79998887766"; // Замени на реальный номер админа
+             const adminPhone = "+79002712293"; 
              const chatId = savedPhone < adminPhone ? (savedPhone + "_" + adminPhone) : (adminPhone + "_" + savedPhone);
-             location.href = `private_chat.html?chatId=${chatId}&otherPhone=${adminPhone}`;
+             navTo(`private_chat.html?chatId=${chatId}&otherPhone=${adminPhone}`);
         };
 
-        // --- ФИКС ДЛЯ iOS: ЧТОБЫ ССЫЛКИ НЕ ОТКРЫВАЛИСЬ В SAFARI ---
-        (function(a,b,c){if(c in b&&b[c]){var d,e=a.location,f=/^(a|html)$/i;a.addEventListener("click",function(a){d=a.target;while(!f.test(d.nodeName))d=d.parentNode;"href"in d&&(d.href.indexOf("http")||~d.indexOf(e.host))&&(a.preventDefault(),e.href=d.href)},!1)}})(document,window.navigator,"standalone")
+        // ГЛОБАЛЬНЫЙ ПЕРЕХВАТ ДЛЯ STANDALONE РЕЖИМА
+        (function(document,navigator,standalone) {
+            if ((standalone in navigator) && navigator[standalone]) {
+                var curnode, location=document.location, stop=/^(a|html)$/i;
+                document.addEventListener('click', function(e) {
+                    curnode=e.target;
+                    while (!(stop).test(curnode.nodeName)) {
+                        curnode=curnode.parentNode;
+                    }
+                    if('href' in curnode && (curnode.href.indexOf('http') || ~curnode.href.indexOf(location.host))) {
+                        e.preventDefault();
+                        location.href = curnode.href;
+                    }
+                },false);
+            }
+        })(document,window.navigator,'standalone');
     </script>
 </body>
 </html>
