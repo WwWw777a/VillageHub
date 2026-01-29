@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>VillageHub</title>
 
+    <link rel="manifest" href="manifest.json">
+
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VillageHub">
@@ -13,11 +15,14 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
+        :root {
+            --safe-top: env(safe-area-inset-top, 0px);
+        }
         body { 
             font-family: -apple-system, sans-serif; background: white; margin: 0; padding: 0; overflow-x: hidden; 
-            padding-top: env(safe-area-inset-top); /* Отступ под челку */
+            padding-top: var(--safe-top);
         }
-        .back-nav, .edit-nav { position: absolute; top: calc(15px + env(safe-area-inset-top)); width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 100; cursor: pointer; background: rgba(0,0,0,0.4); color: white; }
+        .back-nav, .edit-nav { position: absolute; top: calc(15px + var(--safe-top)); width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 100; cursor: pointer; background: rgba(0,0,0,0.4); color: white; }
         .back-nav { left: 15px; font-size: 20px; }
         .edit-nav { right: 15px; font-size: 18px; display: none; }
         .slider-wrapper { width: 100%; position: relative; background: #eee; aspect-ratio: 4/3; overflow: hidden; }
@@ -75,7 +80,6 @@
     </div>
 
     <script>
-        // ФУНКЦИЯ БЕЗОПАСНОЙ НАВИГАЦИИ ДЛЯ PWA
         function navTo(url) {
             if (window.navigator.standalone) {
                 window.location.replace(url);
@@ -109,9 +113,6 @@
                 if(!ad) return;
 
                 const authorName = ad.author || "Житель";
-                const priceValue = ad.price || "0";
-                const descriptionText = ad.description || "Описание отсутствует";
-                const timestamp = ad.timestamp || Date.now();
                 sellerPhone = ad.phone;
 
                 if (authorName === currentUserName || currentUserRole === "АДМИН") {
@@ -149,10 +150,10 @@
                     slider.innerHTML = `<div class="slide"><img src="https://via.placeholder.com/600?text=Нет+фото"></div>`;
                 }
 
-                document.getElementById('adPrice').innerText = priceValue + " ₽";
+                document.getElementById('adPrice').innerText = (ad.price || "0") + " ₽";
                 document.getElementById('adTitle').innerText = ad.title || "Без названия";
-                document.getElementById('adMeta').innerText = "Продавец: " + authorName + " • " + new Date(timestamp).toLocaleString();
-                document.getElementById('adDesc').innerText = descriptionText;
+                document.getElementById('adMeta').innerText = "Продавец: " + authorName + " • " + new Date(ad.timestamp || Date.now()).toLocaleString();
+                document.getElementById('adDesc').innerText = ad.description || "Описание отсутствует";
                 
                 if (ad.phone) {
                     document.getElementById('callBtn').onclick = () => window.location.href = "tel:" + ad.phone.toString().replace(/[^\d+]/g, '');
@@ -176,7 +177,6 @@
         }
         function closeFS() { document.getElementById('fsGallery').style.display = 'none'; }
 
-        // ПЕРЕХВАТ КЛИКОВ ДЛЯ iOS
         (function(document,navigator,standalone) {
             if ((standalone in navigator) && navigator[standalone]) {
                 var curnode, location=document.location, stop=/^(a|html)$/i;
