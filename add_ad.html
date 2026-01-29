@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Объявление</title>
+    <title>Редактирование</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
@@ -17,8 +17,9 @@
         .img-item { width: 80px; height: 80px; position: relative; flex-shrink: 0; }
         .img-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; }
         .img-item .del { position: absolute; top: -5px; right: -5px; background: #f44336; color: white; width: 22px; height: 22px; text-align: center; font-size: 16px; cursor: pointer; border-radius: 50%; line-height: 20px; font-weight: bold; border: 2px solid white; }
-        input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px; box-sizing: border-box; font-size: 16px; outline: none; }
+        input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 5px; box-sizing: border-box; font-size: 16px; outline: none; }
         textarea { height: 120px; resize: none; }
+        .char-counter { font-size: 12px; color: #999; text-align: right; margin-bottom: 15px; }
         .btn-save { background: #4CAF50; color: white; border: none; padding: 15px; border-radius: 30px; width: 100%; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 15px; }
         .btn-delete { background: #F44336; color: white; border: none; padding: 15px; border-radius: 30px; width: 100%; font-size: 18px; font-weight: bold; cursor: pointer; }
     </style>
@@ -37,10 +38,14 @@
         
         <div class="photo-preview" id="preview"></div>
 
-        <input type="text" id="inTitle" placeholder="Название">
+        <input type="text" id="inTitle" placeholder="Название" maxlength="180" oninput="updateCount('titleCount', this)">
+        <div class="char-counter" id="titleCount">0 / 180</div>
+
         <input type="number" id="inPrice" placeholder="Цена">
         <input type="text" id="inPhone" placeholder="Телефон">
-        <textarea id="inDesc" placeholder="Описание"></textarea>
+
+        <textarea id="inDesc" placeholder="Описание" maxlength="2500" oninput="updateCount('descCount', this)"></textarea>
+        <div class="char-counter" id="descCount">0 / 2500</div>
 
         <button class="btn-save" id="saveBtn" onclick="saveAd()">Опубликовать</button>
         <button id="delBtn" class="btn-delete" style="display:none" onclick="deleteAd()">Удалить объявление</button>
@@ -63,7 +68,10 @@
         const editId = urlParams.get('editId');
         let currentPhotos = [];
 
-        // Если режим редактирования — подтягиваем данные
+        function updateCount(elementId, input) {
+            document.getElementById(elementId).innerText = input.value.length + " / " + input.getAttribute('maxlength');
+        }
+
         if (editId) {
             document.getElementById('pageTitle').innerText = "Редактирование";
             document.getElementById('saveBtn').innerText = "Сохранить";
@@ -72,17 +80,22 @@
             database.ref('Ads/' + editId).once('value').then(snap => {
                 const ad = snap.val();
                 if (ad) {
-                    document.getElementById('inTitle').value = ad.title || "";
+                    const titleEl = document.getElementById('inTitle');
+                    const descEl = document.getElementById('inDesc');
+                    
+                    titleEl.value = ad.title || "";
                     document.getElementById('inPrice').value = ad.price || "";
                     document.getElementById('inPhone').value = ad.phone || "";
-                    document.getElementById('inDesc').value = ad.description || "";
-                    // Загружаем фото (Base64)
+                    descEl.value = ad.description || "";
+                    
+                    updateCount('titleCount', titleEl);
+                    updateCount('descCount', descEl);
+
                     currentPhotos = ad.imageUrls || [];
                     renderPhotos();
                 }
             });
         } else {
-            // Если новое — подставим телефон из памяти
             document.getElementById('inPhone').value = localStorage.getItem("USER_PHONE") || "+7";
         }
 
