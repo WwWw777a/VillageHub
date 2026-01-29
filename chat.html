@@ -29,6 +29,7 @@
             font-family: -apple-system, sans-serif;
             overflow: hidden; 
             position: fixed; 
+            -webkit-text-size-adjust: 100%;
         }
 
         .main-wrapper {
@@ -69,7 +70,6 @@
         
         .author { font-size: 12px; font-weight: bold; margin-bottom: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
         
-        /* Стили для статусов */
         .status-admin { color: #F44336; font-weight: bold; }
         .status-mod { color: #2196F3; font-weight: bold; }
         .status-user { color: inherit; font-weight: normal; }
@@ -195,6 +195,19 @@
         const myRole = (localStorage.getItem("USER_ROLE") || "Житель");
         const iAmPrivileged = (myRole === "АДМИН" || myRole === "admin" || myRole === "МОДЕРАТОР");
 
+        // ФУНКЦИЯ ОБНОВЛЕНИЯ СТАТУСА ОНЛАЙН
+        function updateMyStatus() {
+            if (myPhone) {
+                const now = Date.now();
+                db.ref('Users/' + myPhone).update({
+                    lastOnline: now,
+                    lastActive: now
+                });
+            }
+        }
+        updateMyStatus();
+        setInterval(updateMyStatus, 120000);
+
         let lastReadTimestamp = parseInt(localStorage.getItem("CHAT_LAST_READ") || "0");
         let selectedMsg = null, replyingTo = null, editingMsgId = null, lastPinnedId = "", isFirstLoad = true;
         const emojiList = ["👍", "❤️", "🔥", "😂", "😮", "😢", "🙏", "👏", "🎉", "✨", "👎", "😡", "💩", "👀", "💯", "✅", "❌", "🤝", "💪", "🙌", "🤔", "🥳", "😱", "😴", "🤡", "👻", "👽", "🤖", "🎃", "🌟", "💘", "💔", "💎", "💰", "⚽", "🚗", "🏠", "🎁", "🍻", "☕", "👋", "👌", "✌️", "🤞", "🤟", "🤘", "🤙", "🖕", "🤩", "😈"];
@@ -238,7 +251,6 @@
             let roleClass = msg.role === 'АДМИН' ? 'role-admin' : (msg.role === 'МОДЕРАТОР' ? 'role-mod' : 'role-user');
             let replyHtml = msg.replyToText ? `<div class="reply-box"><b>${msg.replyToAuthor}</b><br>${msg.replyToText}</div>` : '';
             
-            // Подтягиваем актуальный статус из базы
             db.ref('Users/' + msg.senderId + '/role').once('value').then(roleSnap => {
                 const actualRole = roleSnap.val() || "Житель";
                 let statusStyle = "status-user";
@@ -287,7 +299,7 @@
             if(!text) return;
             const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             db.ref('Chats').push({ author: myName, role: myRole, text: text, time: timeStr, senderId: myPhone, timestamp: Date.now(), replyToText: replyingTo ? replyingTo.text : "", replyToAuthor: replyingTo ? replyingTo.author : "" });
-            input.value = ''; cancelReply(); scrollToBottom();
+            input.value = ''; cancelReply(); scrollToBottom(); updateMyStatus();
         }
 
         function prepareEdit() {
@@ -323,7 +335,7 @@
 
         function toggleReaction(emoji) {
             const msgId = selectedMsg.id; const refCount = db.ref(`Chats/${msgId}/reactionsCounts/${emoji}`); const refDetail = db.ref(`ReactionDetails/${msgId}/${emoji}/${myPhone}`);
-            refDetail.once('value').then(snap => { if(snap.exists()) { refDetail.remove(); refCount.transaction(c => (c || 1) - 1); } else { refDetail.set(myName); refCount.transaction(c => (c || 0) + 1); } closeActions(); });
+            refDetail.once('value').then(snap => { if(snap.exists()) { refDetail.remove(); refCount.transaction(c => (c || 1) - 1); } else { refDetail.set(myName); refCount.transaction(c => (c || 0) + 1); } closeActions(); updateMyStatus(); });
         }
 
         function showBanMenu() { document.getElementById('mainActions').style.display = 'none'; document.getElementById('banMenu').style.display = 'block'; }
