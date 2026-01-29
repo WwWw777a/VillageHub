@@ -19,6 +19,7 @@
         
         :root {
             --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
         }
 
         body, html { 
@@ -26,43 +27,38 @@
             height: 100dvh; width: 100vw; 
             overflow: hidden; background: #f5f5f5;
             font-family: -apple-system, sans-serif;
-            padding-top: var(--safe-top);
         }
 
         .main-wrapper {
             display: flex; flex-direction: column;
             height: 100dvh; width: 100%;
+            padding-top: var(--safe-top);
         }
 
         .header { 
             height: 60px; background: white; 
             display: flex; align-items: center; padding: 0 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex-shrink: 0; z-index: 10000 !important; position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex-shrink: 0; z-index: 10000; position: relative;
         }
-        .back-btn { font-size: 28px; cursor: pointer; color: #000; margin-right: 15px; padding: 5px; position: relative; z-index: 10001; }
+        .back-btn { font-size: 28px; cursor: pointer; color: #000; margin-right: 15px; padding: 5px; }
         .header h1 { font-size: 18px; margin: 0; flex-grow: 1; font-weight: bold; }
 
         #pinnedLayout { 
             background: #FFF8E1; padding: 8px 15px; 
             display: none; align-items: center; 
             border-bottom: 1px solid #FFECB3; flex-shrink: 0; cursor: pointer;
-            position: relative; z-index: 9000 !important;
+            position: relative; z-index: 9000;
         }
         .pinned-line { width: 4px; height: 24px; background: #2196F3; margin-right: 10px; border-radius: 2px; flex-shrink: 0; }
-        .pinned-info { flex-grow: 1; overflow: hidden !important; width: 0; }
+        .pinned-info { flex-grow: 1; overflow: hidden; width: 0; }
         .pinned-title { color: #2196F3; font-weight: bold; font-size: 10px; text-transform: uppercase; }
-        #tvPinnedText { 
-            font-size: 13px; color: #333; 
-            white-space: nowrap !important; 
-            overflow: hidden !important; 
-            text-overflow: ellipsis !important; 
-            display: block !important; width: 100% !important;
-        }
+        #tvPinnedText { font-size: 13px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; }
 
         #chatMessages { 
             flex-grow: 1; overflow-y: auto; 
             padding: 10px; display: flex; flex-direction: column; gap: 8px;
             -webkit-overflow-scrolling: touch;
+            touch-action: pan-y; /* Важно для фикса залипания */
         }
 
         .unread-header { background: #E0E0E0; color: #666; text-align: center; font-size: 12px; padding: 6px; margin: 10px 0; border-radius: 4px; font-weight: bold; }
@@ -82,24 +78,20 @@
         .reactions-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; background: rgba(0,0,0,0.03); border-radius: 10px; padding: 2px 8px; width: fit-content; font-size: 12px; cursor: pointer; }
 
         #btnScrollDown { 
-            position: absolute; right: 20px; bottom: 85px; 
+            position: fixed; right: 20px; bottom: calc(85px + var(--safe-bottom)); 
             width: 44px; height: 44px; background: white; 
             border-radius: 50%; display: none; align-items: center; justify-content: center; 
             box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; z-index: 8000; 
         }
-        #btnScrollDown span { color: #2196F3; font-size: 20px; font-weight: bold; }
 
         .bottom-area { 
             background: white; border-top: 1px solid #ddd; 
-            flex-shrink: 0; padding-bottom: max(10px, env(safe-area-inset-bottom)); 
-            z-index: 11000 !important; width: 100%; position: relative;
+            flex-shrink: 0; padding-bottom: max(10px, var(--safe-bottom)); 
+            z-index: 11000; width: 100%; position: relative;
         }
         #replyPreview { background: #f0f0f0; padding: 10px 15px; display: none; border-left: 4px solid #F57C00; align-items: center; }
         .input-row { display: flex; align-items: center; padding: 10px 15px; gap: 10px; }
-        #msgInput { 
-            flex-grow: 1; border: 1px solid #eee; background: #f9f9f9; 
-            outline: none; font-size: 16px; padding: 12px 15px; border-radius: 25px; 
-        }
+        #msgInput { flex-grow: 1; border: 1px solid #eee; background: #f9f9f9; outline: none; font-size: 16px; padding: 12px 15px; border-radius: 25px; }
         #sendBtn { background: none; border: none; cursor: pointer; padding: 5px; display: flex; }
         #sendBtn svg { fill: #F57C00; width: 32px; height: 32px; }
 
@@ -109,7 +101,6 @@
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 15000; }
         .emoji-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; padding: 15px; overflow-y: auto; border-bottom: 1px solid #eee; }
         .action-item { padding: 16px 20px; font-size: 17px; cursor: pointer; border-bottom: 1px solid #f2f2f2; }
-        .action-item:active { background: #f0f0f0; }
     </style>
 </head>
 <body>
@@ -140,9 +131,8 @@
                 </div>
                 <span onclick="cancelReply()" style="cursor:pointer; padding: 5px; font-size: 20px;">✕</span>
             </div>
-
             <div class="input-row" id="inputRow">
-                <input type="text" id="msgInput" placeholder="Написать сообщение..." autocomplete="off" onblur="window.scrollTo(0,0)">
+                <input type="text" id="msgInput" placeholder="Написать сообщение..." autocomplete="off">
                 <button id="sendBtn" onclick="handleSendClick()">
                     <svg id="sendIcon" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                 </button>
@@ -180,11 +170,7 @@
 
     <script>
         function navTo(url) {
-            if (window.navigator.standalone) {
-                window.location.replace(url);
-            } else {
-                window.location.href = url;
-            }
+            if (window.navigator.standalone) { window.location.replace(url); } else { window.location.href = url; }
         }
 
         const firebaseConfig = {
@@ -205,14 +191,8 @@
         const iAmPrivileged = (myRole === "АДМИН" || myRole === "admin" || myRole === "МОДЕРАТОР");
 
         let lastReadTimestamp = parseInt(localStorage.getItem("CHAT_LAST_READ") || "0");
-        let selectedMsg = null;
-        let replyingTo = null;
-        let editingMsgId = null; 
-        let lastPinnedId = "";
-        let isFirstLoad = true;
-
+        let selectedMsg = null, replyingTo = null, editingMsgId = null, lastPinnedId = "", isFirstLoad = true;
         const emojiList = ["👍", "❤️", "🔥", "😂", "😮", "😢", "🙏", "👏", "🎉", "✨", "👎", "😡", "💩", "👀", "💯", "✅", "❌", "🤝", "💪", "🙌", "🤔", "🥳", "😱", "😴", "🤡", "👻", "👽", "🤖", "🎃", "🌟", "💘", "💔", "💎", "💰", "⚽", "🚗", "🏠", "🎁", "🍻", "☕", "👋", "👌", "✌️", "🤞", "🤟", "🤘", "🤙", "🖕", "🤩", "😈"];
-
         const container = document.getElementById('chatMessages');
 
         db.ref('BannedUsers/' + myPhone).on('value', snap => {
@@ -227,11 +207,9 @@
         });
 
         db.ref('Chats').limitToLast(100).on('value', snap => {
-            container.innerHTML = '';
-            let unreadShown = false;
+            container.innerHTML = ''; let unreadShown = false;
             snap.forEach(child => {
-                const msg = child.val();
-                msg.id = child.key;
+                const msg = child.val(); msg.id = child.key;
                 if (!unreadShown && msg.timestamp > lastReadTimestamp && msg.senderId !== myPhone && lastReadTimestamp !== 0) {
                     container.innerHTML += '<div class="unread-header" id="unread_anchor">Непрочитанные сообщения</div>';
                     unreadShown = true;
@@ -242,7 +220,7 @@
                 const anchor = document.getElementById('unread_anchor');
                 if (anchor) anchor.scrollIntoView({ block: "center" }); else scrollToBottom();
                 isFirstLoad = false;
-            } else if (container.scrollHeight - container.scrollTop < 1200) { scrollToBottom(); }
+            }
             updateReadStatus();
         });
 
@@ -271,9 +249,7 @@
                 let report = "Кто отреагировал:\n";
                 snap.forEach(emojiSnap => {
                     report += `\n${emojiSnap.key}:\n`;
-                    emojiSnap.forEach(userSnap => {
-                        report += `- ${userSnap.val()} (${userSnap.key})\n`;
-                    });
+                    emojiSnap.forEach(userSnap => { report += `- ${userSnap.val()} (${userSnap.key})\n`; });
                 });
                 alert(report);
             });
@@ -286,8 +262,7 @@
         function handleSendClick() { if (editingMsgId) saveEdit(); else sendChatMessage(); }
 
         function sendChatMessage() {
-            const input = document.getElementById('msgInput');
-            const text = input.value.trim();
+            const input = document.getElementById('msgInput'); const text = input.value.trim();
             if(!text) return;
             const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             db.ref('Chats').push({ author: myName, role: myRole, text: text, time: timeStr, senderId: myPhone, timestamp: Date.now(), replyToText: replyingTo ? replyingTo.text : "", replyToAuthor: replyingTo ? replyingTo.author : "" });
@@ -295,12 +270,8 @@
         }
 
         function prepareEdit() {
-            editingMsgId = selectedMsg.id;
-            const input = document.getElementById('msgInput');
-            input.value = selectedMsg.text;
-            document.getElementById('sendIcon').style.fill = "#4CAF50";
-            closeActions();
-            input.focus();
+            editingMsgId = selectedMsg.id; document.getElementById('msgInput').value = selectedMsg.text;
+            document.getElementById('sendIcon').style.fill = "#4CAF50"; closeActions(); document.getElementById('msgInput').focus();
         }
 
         function saveEdit() {
@@ -312,50 +283,39 @@
         db.ref('PinnedMessages').on('value', snap => {
             const layout = document.getElementById('pinnedLayout');
             if(!snap.exists()) { layout.style.display = 'none'; return; }
-            layout.style.display = 'flex';
-            let last = null; snap.forEach(c => last = c.val());
-            document.getElementById('tvPinnedText').innerText = last.text;
-            lastPinnedId = last.originalId;
+            layout.style.display = 'flex'; let last = null; snap.forEach(c => last = c.val());
+            document.getElementById('tvPinnedText').innerText = last.text; lastPinnedId = last.originalId;
             layout.onclick = () => { const target = document.getElementById("msg_" + lastPinnedId); if (target) { target.scrollIntoView({ behavior: "smooth", block: "center" }); target.classList.add('highlight-msg'); setTimeout(() => target.classList.remove('highlight-msg'), 1500); } };
         });
 
         function openActions(msg) {
-            selectedMsg = msg;
-            document.getElementById('overlay').style.display = 'block';
-            document.getElementById('actionSheet').style.display = 'flex';
-            backToMainActions();
-            const isMine = msg.senderId === myPhone;
+            selectedMsg = msg; document.getElementById('overlay').style.display = 'block'; document.getElementById('actionSheet').style.display = 'flex';
+            backToMainActions(); const isMine = msg.senderId === myPhone;
             document.getElementById('editBtn').style.display = isMine ? 'block' : 'none';
             document.getElementById('adminPinBtn').style.display = iAmPrivileged ? 'block' : 'none';
             document.getElementById('adminUnpinBtn').style.display = iAmPrivileged ? 'block' : 'none';
             document.getElementById('deleteMsgBtn').style.display = (iAmPrivileged || isMine) ? 'block' : 'none';
             document.getElementById('adminBanBtn').style.display = (iAmPrivileged && !isMine) ? 'block' : 'none';
-            const grid = document.getElementById('emojiGrid');
-            grid.innerHTML = '';
-            emojiList.forEach(emoji => { const s = document.createElement('span'); s.className = 'emoji-item'; s.innerText = emoji; s.onclick = () => toggleReaction(emoji); grid.appendChild(s); });
+            const grid = document.getElementById('emojiGrid'); grid.innerHTML = '';
+            emojiList.forEach(emoji => { const s = document.createElement('span'); s.style.fontSize="24px"; s.style.cursor="pointer"; s.innerText = emoji; s.onclick = () => toggleReaction(emoji); grid.appendChild(s); });
         }
 
         function toggleReaction(emoji) {
-            const msgId = selectedMsg.id;
-            const refCount = db.ref(`Chats/${msgId}/reactionsCounts/${emoji}`);
-            const refDetail = db.ref(`ReactionDetails/${msgId}/${emoji}/${myPhone}`);
+            const msgId = selectedMsg.id; const refCount = db.ref(`Chats/${msgId}/reactionsCounts/${emoji}`); const refDetail = db.ref(`ReactionDetails/${msgId}/${emoji}/${myPhone}`);
             refDetail.once('value').then(snap => { if(snap.exists()) { refDetail.remove(); refCount.transaction(c => (c || 1) - 1); } else { refDetail.set(myName); refCount.transaction(c => (c || 0) + 1); } closeActions(); });
         }
 
         function showBanMenu() { document.getElementById('mainActions').style.display = 'none'; document.getElementById('banMenu').style.display = 'block'; }
         function backToMainActions() { document.getElementById('mainActions').style.display = 'block'; document.getElementById('banMenu').style.display = 'none'; document.getElementById('durationMenu').style.display = 'none'; }
         function showBanDuration() { document.getElementById('banMenu').style.display = 'none'; document.getElementById('durationMenu').style.display = 'block'; }
-        function confirmBan(type, hours) { const ts = hours === -1 ? -1 : Date.now() + (hours * 3600000); db.ref('BannedUsers/' + selectedMsg.senderId).set({ type, timestamp: ts }).then(() => { alert('Наказание выдано'); closeActions(); }); }
+        function confirmBan(type, hours) { const ts = hours === -1 ? -1 : Date.now() + (hours * 3600000); db.ref('BannedUsers/' + selectedMsg.senderId).set({ type, timestamp: ts }).then(() => { alert('Готово'); closeActions(); }); }
         function prepareReply() { replyingTo = selectedMsg; document.getElementById('replyPreview').style.display = 'flex'; document.getElementById('replyPreviewName').innerText = replyingTo.author; document.getElementById('replyPreviewText').innerText = replyingTo.text; closeActions(); document.getElementById('msgInput').focus(); }
         
         function writePrivate() {
             if(!selectedMsg || !selectedMsg.senderId) return;
-            let myP = myPhone.trim();
-            let otherP = selectedMsg.senderId.trim();
-            if (!myP.startsWith('+')) myP = '+' + myP;
-            if (!otherP.startsWith('+')) otherP = '+' + otherP;
-            if(myP === otherP) { alert("Это ваше сообщение"); return; }
-            const chatId = myP < otherP ? (myP + "_" + otherP) : (otherP + "_" + myP);
+            let otherP = selectedMsg.senderId.trim(); if (!otherP.startsWith('+')) otherP = '+' + otherP;
+            if(myPhone === otherP) return;
+            const chatId = myPhone < otherP ? (myPhone + "_" + otherP) : (otherP + "_" + myPhone);
             navTo(`private_chat.html?chatId=${chatId}&otherPhone=${encodeURIComponent(otherP)}`);
         }
 
@@ -369,14 +329,8 @@
             if ((standalone in navigator) && navigator[standalone]) {
                 var curnode, location=document.location, stop=/^(a|html)$/i;
                 document.addEventListener('click', function(e) {
-                    curnode=e.target;
-                    while (!(stop).test(curnode.nodeName)) {
-                        curnode=curnode.parentNode;
-                    }
-                    if('href' in curnode && (curnode.href.indexOf('http') || ~curnode.href.indexOf(location.host))) {
-                        e.preventDefault();
-                        location.replace(curnode.href);
-                    }
+                    curnode=e.target; while (!(stop).test(curnode.nodeName)) { curnode=curnode.parentNode; }
+                    if('href' in curnode && (curnode.href.indexOf('http') || ~curnode.href.indexOf(location.host))) { e.preventDefault(); location.replace(curnode.href); }
                 },false);
             }
         })(document,window.navigator,'standalone');
