@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no">
     <title>VillageHub</title>
     
     <link rel="manifest" href="manifest.json">
@@ -38,9 +38,11 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             overflow: hidden; 
             position: fixed;
+            /* ИСПРАВЛЕНО: Запрет на авто-изменение размера шрифта при повороте */
+            -webkit-text-size-adjust: 100%;
         }
 
-        /* БЛОКИРОВКА ПОВОРОТА (CSS часть) */
+        /* БЛОКИРОВКА ПОВОРОТА */
         #orientation-lock {
             display: none;
             position: fixed;
@@ -55,7 +57,6 @@
             padding: 20px;
         }
 
-        /* Показываем заглушку только в альбомном режиме */
         @media (orientation: landscape) {
             #orientation-lock {
                 display: flex;
@@ -114,8 +115,8 @@
 
     <div id="orientation-lock">
         <div style="font-size: 50px; margin-bottom: 20px;">📱🔄</div>
-        <h2 style="margin: 0;">Пожалуйста, верните телефон в вертикальное положение</h2>
-        <p style="opacity: 0.8; margin-top: 10px;">Приложение работает только в портретном режиме</p>
+        <h2 style="margin: 0;">Верните телефон в вертикальное положение</h2>
+        <p style="opacity: 0.8; margin-top: 10px;">Приложение работает только портретно</p>
     </div>
 
     <script>
@@ -190,7 +191,6 @@
             db.ref('Users/' + savedPhone + '/hasNewMessage').on('value', snap => {
                 const badge = document.getElementById("badge_new_msg");
                 const msgIcon = document.getElementById("btn_open_messages");
-                
                 if (snap.val() === true) {
                     badge.style.display = "block";
                     msgIcon.classList.add("blinking");
