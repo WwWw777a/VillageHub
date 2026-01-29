@@ -27,18 +27,32 @@
             padding: 30px 20px; 
             margin: 0; 
             padding-top: max(30px, env(safe-area-inset-top));
-            /* ФИКС ДЕРГАНИЯ */
             overflow: hidden;
             position: fixed;
             width: 100vw;
             height: 100dvh;
+            -webkit-text-size-adjust: 100%;
         }
         
         .map-icon { width: 100px; height: auto; margin-bottom: 10px; }
         h2 { margin: 0; color: #333; font-size: 26px; font-weight: bold; }
         .subtitle { color: #666; margin-bottom: 25px; font-size: 15px; }
-        .input-group { width: 100%; max-width: 350px; margin-bottom: 15px; }
+        .input-group { width: 100%; max-width: 350px; margin-bottom: 15px; position: relative; }
         input { width: 100%; padding: 16px; border: 1.5px solid #8e8e8e; border-radius: 12px; background-color: #f5f5f5; font-size: 16px; box-sizing: border-box; color: #333; outline: none; }
+        
+        /* СТИЛЬ ДЛЯ ГЛАЗИКА */
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 20px;
+            cursor: pointer;
+            color: #757575;
+            user-select: none;
+            z-index: 10;
+        }
+
         .btn-login { width: 100%; max-width: 350px; background-color: #1e7ad3; color: white; border: none; border-radius: 30px; padding: 16px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 15px; }
         .policy-text { font-size: 12px; color: #666; text-align: center; margin-top: 20px; line-height: 1.4; }
         .forgot-pass { color: #1e7ad3; text-decoration: none; font-size: 15px; font-weight: bold; margin-top: 25px; cursor: pointer; }
@@ -46,7 +60,7 @@
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 1000; justify-content: center; align-items: center; }
         .modal-card { background: white; width: 85%; max-width: 320px; padding: 25px; border-radius: 2px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
         .modal-card h3 { margin: 0 0 25px 0; font-size: 18px; color: #000; }
-        .modal-input { width: 100%; border: none; border-bottom: 1.5px solid #757575; padding: 10px 0; margin-bottom: 20px; font-size: 16px; outline: none; background: transparent; }
+        .modal-input { width: 100%; border: none; border-bottom: 1.5px solid #757575; padding: 10px 0; margin-bottom: 20px; font-size: 16px; outline: none; background: transparent; border-radius: 0; }
         .modal-buttons { display: flex; justify-content: flex-end; gap: 25px; margin-top: 10px; }
         .modal-btn { background: none; border: none; color: #5c6bc0; font-weight: bold; font-size: 14px; cursor: pointer; }
 
@@ -63,9 +77,13 @@
     <p class="subtitle">Регистрация / Вход</p>
 
     <div class="input-group"><input type="text" id="name" placeholder="Ваше Имя"></div>
-    <div class="input-group"><input type="text" id="phone" placeholder="Телефон" value="+7"></div>
+    <div class="input-group"><input type="text" id="phone" placeholder="9..." value="+7"></div>
     <div class="input-group"><input type="text" id="secret" placeholder="Секретное слово (для восстановления)"></div>
-    <div class="input-group"><input type="password" id="password" placeholder="Пароль"></div>
+    
+    <div class="input-group">
+        <input type="password" id="password" placeholder="Пароль">
+        <span class="password-toggle" onclick="togglePass('password', this)">👁️</span>
+    </div>
 
     <button class="btn-login" id="mainLoginBtn">Регистрация / Вход</button>
 
@@ -88,7 +106,10 @@
             <h3>Восстановление пароля</h3>
             <input type="text" id="resetPhone" class="modal-input" placeholder="Введите номер телефона">
             <input type="text" id="resetSecret" class="modal-input" placeholder="Ваше кодовое слово">
-            <input type="password" id="resetPass" class="modal-input" placeholder="Новый пароль">
+            <div style="position: relative;">
+                <input type="password" id="resetPass" class="modal-input" placeholder="Новый пароль">
+                <span class="password-toggle" onclick="togglePass('resetPass', this)" style="bottom: 25px; transform: none;">👁️</span>
+            </div>
             <div class="modal-buttons">
                 <button class="modal-btn" onclick="closeResetModal()">Отмена</button>
                 <button class="modal-btn" id="confirmResetBtn">Сменить</button>
@@ -110,16 +131,40 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // БЛОКИРОВКА СТИРАНИЯ +7
+        // ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ ПАРОЛЯ
+        function togglePass(inputId, el) {
+            const input = document.getElementById(inputId);
+            if (input.type === "password") {
+                input.type = "text";
+                el.innerText = "🔒";
+            } else {
+                input.type = "password";
+                el.innerText = "👁️";
+            }
+        }
+
+        // ЖЕСТКАЯ БЛОКИРОВКА +7
         const phoneInput = document.getElementById('phone');
         phoneInput.addEventListener('input', function(e) {
             if (!this.value.startsWith('+7')) {
                 this.value = '+7';
             }
+            // Ограничение: только цифры после +7
+            let val = this.value.substring(2).replace(/\D/g, '');
+            this.value = '+7' + val;
         });
+
         phoneInput.addEventListener('keydown', function(e) {
+            // Запрет на стирание первых двух символов (+7)
             if (this.selectionStart <= 2 && (e.key === 'Backspace' || e.key === 'Delete')) {
                 e.preventDefault();
+            }
+        });
+
+        phoneInput.addEventListener('click', function() {
+            // При клике, если поле пустое или курсор в начале, переносим его в конец после +7
+            if (this.selectionStart < 2) {
+                this.setSelectionRange(2, 2);
             }
         });
 
@@ -210,7 +255,6 @@
         function openResetModal() { document.getElementById('resetModal').style.display = 'flex'; }
         function closeResetModal() { document.getElementById('resetModal').style.display = 'none'; }
 
-        // ЗАПРЕТ СКРОЛЛА BODY
         document.addEventListener('touchmove', function(e) {
             e.preventDefault();
         }, { passive: false });
