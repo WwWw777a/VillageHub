@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>VillageHub</title>
 
+    <link rel="manifest" href="manifest.json">
+
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VillageHub">
@@ -13,9 +15,15 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
+        :root {
+            --safe-top: env(safe-area-inset-top, 0px);
+        }
         body { 
-            font-family: -apple-system, sans-serif; background: #f5f5f5; margin: 0; padding: 0; 
-            padding-top: env(safe-area-inset-top); /* Отступ под челку */
+            font-family: -apple-system, sans-serif; 
+            background: #f5f5f5; 
+            margin: 0; 
+            padding: 0; 
+            padding-top: max(16px, var(--safe-top)); 
         }
         .header { background: #2196F3; color: white; padding: 15px; display: flex; align-items: center; position: sticky; top: 0; z-index: 100; }
         .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; }
@@ -73,7 +81,6 @@
             chats.sort((a, b) => b.timestamp - a.timestamp);
 
             chats.forEach(chat => {
-                // Чистим номера для сравнения BigInt
                 const n1 = BigInt(myPhone.replace(/\D/g, ''));
                 const n2 = BigInt(chat.phone.replace(/\D/g, ''));
                 const chatId = n1 < n2 ? `${myPhone}_${chat.phone}` : `${chat.phone}_${myPhone}`;
