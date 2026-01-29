@@ -34,14 +34,12 @@
             -webkit-text-size-adjust: 100%;
         }
         
-        /* СТИЛЬ ДЛЯ ВАШЕГО ЛОГОТИПА - УМЕНЬШЕНО НА 30% */
         .map-icon { width: 250px; height: auto; margin-bottom: 15px; }
         
         .subtitle { color: #666; margin-bottom: 25px; font-size: 18px; font-weight: bold; }
         .input-group { width: 100%; max-width: 350px; margin-bottom: 15px; position: relative; }
         input { width: 100%; padding: 16px; border: 1.5px solid #8e8e8e; border-radius: 12px; background-color: #f5f5f5; font-size: 16px; box-sizing: border-box; color: #333; outline: none; }
         
-        /* СТИЛЬ ДЛЯ ГЛАЗИКА */
         .password-toggle {
             position: absolute;
             right: 15px;
@@ -136,7 +134,6 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ ВИДИМОСТИ ПАРОЛЯ
         function togglePass(inputId, el) {
             const input = document.getElementById(inputId);
             if (input.type === "password") {
@@ -148,28 +145,19 @@
             }
         }
 
-        // ЛОГИКА ТЕЛЕФОНА (+7)
         const phoneInput = document.getElementById('phone');
         phoneInput.addEventListener('input', function(e) {
-            if (!this.value.startsWith('+7')) {
-                this.value = '+7';
-            }
-            // Удаляем всё, кроме цифр после +7
+            if (!this.value.startsWith('+7')) { this.value = '+7'; }
             let val = this.value.substring(2).replace(/\D/g, '');
             this.value = '+7' + val;
         });
 
         phoneInput.addEventListener('keydown', function(e) {
-            // Запрет на стирание первых двух символов (+7)
-            if (this.selectionStart <= 2 && (e.key === 'Backspace' || e.key === 'Delete')) {
-                e.preventDefault();
-            }
+            if (this.selectionStart <= 2 && (e.key === 'Backspace' || e.key === 'Delete')) { e.preventDefault(); }
         });
 
         phoneInput.addEventListener('click', function() {
-            if (this.selectionStart < 2) {
-                this.setSelectionRange(2, 2);
-            }
+            if (this.selectionStart < 2) { this.setSelectionRange(2, 2); }
         });
 
         const VILLAGE_LAT = 44.841121;
@@ -245,23 +233,49 @@
             });
         }
 
+        // ИСПРАВЛЕННАЯ ФУНКЦИЯ СМЕНЫ ПАРОЛЯ
+        document.getElementById('confirmResetBtn').onclick = function() {
+            const phone = formatPhoneNumber(document.getElementById('resetPhone').value.trim());
+            const secret = document.getElementById('resetSecret').value.trim();
+            const newPass = document.getElementById('resetPass').value.trim();
+
+            if (!phone || !secret || newPass.length < 6) {
+                alert("Заполните все поля (пароль мин. 6 симв.)");
+                return;
+            }
+
+            const secretHash = hashString(secret);
+            const newPassHash = hashString(newPass);
+
+            database.ref('Users/' + phone).once('value').then(snap => {
+                if (snap.exists()) {
+                    const userData = snap.val();
+                    if (userData.secretWord === secretHash) {
+                        database.ref('Users/' + phone + '/password').set(newPassHash)
+                        .then(() => {
+                            alert("Пароль успешно изменен!");
+                            closeResetModal();
+                        });
+                    } else {
+                        alert("Неверное секретное слово!");
+                    }
+                } else {
+                    alert("Пользователь не найден!");
+                }
+            });
+        };
+
         function saveLocal(name, phone, role) {
             localStorage.setItem("USER_PHONE", phone);
             localStorage.setItem("USER_NAME", name);
             localStorage.setItem("USER_ROLE", role);
-            if (window.navigator.standalone) {
-                window.location.replace("index.html");
-            } else {
-                window.location.href = "index.html";
-            }
+            if (window.navigator.standalone) { window.location.replace("index.html"); } else { window.location.href = "index.html"; }
         }
 
         function openResetModal() { document.getElementById('resetModal').style.display = 'flex'; }
         function closeResetModal() { document.getElementById('resetModal').style.display = 'none'; }
 
-        document.addEventListener('touchmove', function(e) {
-            e.preventDefault();
-        }, { passive: false });
+        document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
 
         (function(document,navigator,standalone) {
             if ((standalone in navigator) && navigator[standalone]) {
