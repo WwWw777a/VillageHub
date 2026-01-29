@@ -25,29 +25,30 @@
             height: 100dvh; width: 100vw; 
             background: #f5f5f5; 
             font-family: -apple-system, sans-serif;
-            overflow: hidden; /* Запрещаем скролл всей страницы */
+            overflow: hidden;
         }
 
-        /* ЗАКРЕПЛЕННАЯ ШАПКА */
         .header { 
-            background: #1e88e5; color: white; padding: 15px; 
+            background: #1e88e5; color: white; padding: 0 15px; 
             display: flex; align-items: center; 
             position: fixed; top: 0; left: 0; width: 100%; 
-            z-index: 1000; height: calc(60px + var(--safe-top));
+            z-index: 1000; 
+            /* Исправлена высота шапки, чтобы не была слишком широкой */
+            height: calc(56px + var(--safe-top));
             padding-top: var(--safe-top);
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
         .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; padding: 5px; }
         .header h1 { font-size: 18px; margin: 0; flex-grow: 1; }
-        .rules-btn { background: #f44336; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; font-size: 13px; }
+        /* Кнопка правил сдвинута чуть левее от края */
+        .rules-btn { background: #f44336; color: white; border: none; padding: 8px 14px; border-radius: 20px; font-weight: bold; cursor: pointer; font-size: 13px; margin-right: 5px; }
 
-        /* ОБЛАСТЬ СКРОЛЛА */
         .grid-container {
             height: 100dvh;
             overflow-y: auto;
             padding: 10px;
-            padding-top: calc(70px + var(--safe-top)); /* Отступ под шапку */
+            padding-top: calc(66px + var(--safe-top)); 
             -webkit-overflow-scrolling: touch;
         }
 
@@ -62,11 +63,8 @@
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center; }
         .modal-content { background: white; width: 85%; max-width: 320px; padding: 20px; border-radius: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
         .modal-content h3 { margin: 0 0 10px 0; font-size: 18px; }
-        .admin-note { font-size: 12px; color: #666; margin-bottom: 10px; line-height: 1.3; }
-        
         .rules-scroll { max-height: 250px; overflow-y: auto; margin: 10px 0; border: 1px solid #eee; padding: 10px; font-size: 14px; line-height: 1.5; color: #333; white-space: pre-wrap; }
         .rules-edit { width: 100%; height: 200px; border: 1px solid #ccc; font-family: inherit; font-size: 14px; padding: 8px; box-sizing: border-box; resize: none; outline: none; }
-        
         .modal-btns { display: flex; justify-content: flex-end; gap: 20px; margin-top: 15px; }
         .m-btn { background: none; border: none; color: #673AB7; font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 14px; }
 
@@ -90,11 +88,9 @@
     <div id="rulesModal" class="modal">
         <div class="modal-content">
             <h3>Правила доски объявлений</h3>
-            <div id="adminNote" class="admin-note" style="display:none">Вы АДМИН. Вы можете изменить текст правил:</div>
-            
+            <div id="adminNote" class="admin-note" style="display:none; font-size: 12px; color: #666; margin-bottom: 10px;">Вы АДМИН. Измените текст правил:</div>
             <div id="rulesViewer" class="rules-scroll"></div>
             <textarea id="rulesEditor" class="rules-edit" style="display:none"></textarea>
-
             <div class="modal-btns">
                 <button class="m-btn" onclick="closeRules()">Отмена</button>
                 <button class="m-btn" id="saveRulesBtn">ПОНЯТНО</button>
@@ -124,7 +120,6 @@
             const grid = document.getElementById('adsGrid');
             grid.innerHTML = '';
             if(!snap.exists()) return;
-            
             snap.forEach((child) => {
                 const ad = child.val();
                 let displayImg = "https://via.placeholder.com/300?text=Нет+фото";
@@ -134,21 +129,11 @@
                     const firstKey = Object.keys(ad.imageUrls)[0];
                     displayImg = "data:image/jpeg;base64," + ad.imageUrls[firstKey];
                 }
-
                 const date = ad.timestamp ? new Date(ad.timestamp).toLocaleDateString() : '';
-                
                 const card = document.createElement('div');
                 card.className = 'ad-card';
                 card.onclick = () => navTo('ad_detail.html?id=' + child.key);
-                card.innerHTML = `
-                    <img src="${displayImg}" class="ad-img" onerror="this.src='https://via.placeholder.com/300?text=Ошибка+загрузки'">
-                    <div class="ad-info">
-                        <div class="price">${ad.price} ₽</div>
-                        <div class="ad-title">${ad.title || 'Без названия'}</div>
-                        <div class="ad-meta">${date} • ${ad.author || 'Продавец'}</div>
-                    </div>
-                `;
-                // НОВЫЕ ОБЪЯВЛЕНИЯ ВВЕРХУ (prepend вместо appendChild)
+                card.innerHTML = `<img src="${displayImg}" class="ad-img"><div class="ad-info"><div class="price">${ad.price} ₽</div><div class="ad-title">${ad.title || 'Без названия'}</div><div class="ad-meta">${date} • ${ad.author || 'Продавец'}</div></div>`;
                 grid.prepend(card);
             });
         });
@@ -169,30 +154,15 @@
                     document.getElementById('rulesViewer').style.display = 'block';
                     document.getElementById('rulesEditor').style.display = 'none';
                     document.getElementById('rulesViewer').innerText = text;
-                    document.getElementById('saveRulesBtn').innerText = "ПОНЯТНО";
                     document.getElementById('saveRulesBtn').onclick = closeRules;
                 }
             });
         }
-
         function saveRules() {
             const newText = document.getElementById('rulesEditor').value;
             database.ref('Rules/board_rules').set(newText).then(() => closeRules());
         }
-
         function closeRules() { document.getElementById('rulesModal').style.display = 'none'; }
-
-        (function(document,navigator,standalone) {
-            if ((standalone in navigator) && navigator[standalone]) {
-                var curnode, location=document.location, stop=/^(a|html)$/i;
-                document.addEventListener('click', function(e) {
-                    curnode=e.target; while (!(stop).test(curnode.nodeName)) { curnode=curnode.parentNode; }
-                    if('href' in curnode && (curnode.href.indexOf('http') || ~curnode.href.indexOf(location.host))) {
-                        e.preventDefault(); location.replace(curnode.href);
-                    }
-                },false);
-            }
-        })(document,window.navigator,'standalone');
     </script>
 </body>
 </html>
