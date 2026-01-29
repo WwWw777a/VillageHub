@@ -9,6 +9,9 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="icon.png">
 
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
     <style>
         :root {
             --bg-color: #f8f9fa;
@@ -60,6 +63,7 @@
             width: 10px; height: 10px;
             background: red; border-radius: 50%;
             display: none; 
+            border: 2px solid var(--bg-color);
         }
 
         .menu-grid {
@@ -150,12 +154,44 @@
     </div>
 
     <script>
+        // --- КОНФИГУРАЦИЯ FIREBASE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
+            authDomain: "villagehub-d4d5e.firebaseapp.com",
+            databaseURL: "https://villagehub-d4d5e-default-rtdb.firebaseio.com",
+            projectId: "villagehub-d4d5e",
+            storageBucket: "villagehub-d4d5e.firebasestorage.app",
+            messagingSenderId: "131056250064",
+            appId: "1:131056250064:web:84c0c67819e9828ec642d5"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
         // --- ПРОВЕРКА АВТОРИЗАЦИИ ---
         const savedPhone = localStorage.getItem("USER_PHONE");
         if (!savedPhone) {
-            // Если номера нет в памяти — отправляем на страницу логина
             window.location.href = "login.html";
         }
+
+        // Слежение за новыми сообщениями (красная точка)
+        if (savedPhone) {
+            db.ref('Users/' + savedPhone + '/hasNewMessage').on('value', snap => {
+                const badge = document.getElementById("badge_new_msg");
+                if (snap.val() === true) {
+                    badge.style.display = "block";
+                } else {
+                    badge.style.display = "none";
+                }
+            });
+        }
+
+        // Логика нажатия на конвертик
+        document.getElementById("btn_open_messages").onclick = function() {
+            // Сбрасываем флаг в базе
+            db.ref('Users/' + savedPhone + '/hasNewMessage').set(false);
+            // Переходим на страницу переписок
+            window.location.href = "messages.html";
+        };
 
         // Функция приветствия
         function updateGreeting() {
