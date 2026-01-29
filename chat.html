@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Чат поселка</title>
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="VillageHub">
+    <link rel="apple-touch-icon" href="icon.png">
+
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
@@ -14,6 +20,7 @@
             height: 100dvh; width: 100vw; 
             overflow: hidden; background: #f5f5f5;
             font-family: -apple-system, sans-serif;
+            padding-top: env(safe-area-inset-top); /* Отступ под челку */
         }
 
         .main-wrapper {
@@ -103,7 +110,7 @@
 
     <div class="main-wrapper">
         <div class="header">
-            <div class="back-btn" onclick="location.href='index.html'">←</div>
+            <div class="back-btn" onclick="window.location.replace('index.html')">←</div>
             <h1>Чат поселка</h1>
         </div>
 
@@ -199,7 +206,7 @@
             if (snap.exists()) {
                 const ban = snap.val();
                 if (ban.timestamp === -1 || ban.timestamp > Date.now()) {
-                    if (ban.type === 'GLOBAL') { alert('Вы заблокированы в данном приложении за нарушения'); location.href = 'login.html'; return; }
+                    if (ban.type === 'GLOBAL') { window.location.replace('login.html'); return; }
                     row.innerHTML = `<div class="ban-text">Вы заблокированы ${ban.type==='CHAT_FULL'?'в чате':'до '+new Date(ban.timestamp).toLocaleString()}</div>`;
                 } else { db.ref('BannedUsers/' + myPhone).remove(); }
             }
@@ -327,20 +334,15 @@
         function confirmBan(type, hours) { const ts = hours === -1 ? -1 : Date.now() + (hours * 3600000); db.ref('BannedUsers/' + selectedMsg.senderId).set({ type, timestamp: ts }).then(() => { alert('Наказание выдано'); closeActions(); }); }
         function prepareReply() { replyingTo = selectedMsg; document.getElementById('replyPreview').style.display = 'flex'; document.getElementById('replyPreviewName').innerText = replyingTo.author; document.getElementById('replyPreviewText').innerText = replyingTo.text; closeActions(); document.getElementById('msgInput').focus(); }
         
-        // ПРАВИЛЬНАЯ ФУНКЦИЯ ДЛЯ ПРИВАТНОГО ЧАТА (С ПЛЮСОМ)
         function writePrivate() {
             if(!selectedMsg || !selectedMsg.senderId) return;
-            
             let myP = myPhone.trim();
             let otherP = selectedMsg.senderId.trim();
-
             if (!myP.startsWith('+')) myP = '+' + myP;
             if (!otherP.startsWith('+')) otherP = '+' + otherP;
-            
             if(myP === otherP) { alert("Это ваше сообщение"); return; }
-            
             const chatId = myP < otherP ? (myP + "_" + otherP) : (otherP + "_" + myP);
-            location.href = `private_chat.html?chatId=${chatId}&otherPhone=${encodeURIComponent(otherP)}`;
+            window.location.replace(`private_chat.html?chatId=${chatId}&otherPhone=${encodeURIComponent(otherP)}`);
         }
 
         function cancelReply() { replyingTo = null; document.getElementById('replyPreview').style.display = 'none'; }
@@ -348,6 +350,9 @@
         function pinMsg() { db.ref(`PinnedMessages`).remove().then(() => { db.ref(`PinnedMessages/${selectedMsg.id}`).set({ text: selectedMsg.text, author: selectedMsg.author, originalId: selectedMsg.id, pinnedTime: Date.now() }); }); closeActions(); }
         function unpinMsg() { db.ref(`PinnedMessages`).remove(); closeActions(); }
         function deleteMsg() { if(confirm("Удалить?")) { db.ref(`Chats/${selectedMsg.id}`).remove(); closeActions(); } }
+
+        // --- ФИКС ДЛЯ iOS: ЧТОБЫ ССЫЛКИ НЕ ОТКРЫВАЛИСЬ В SAFARI ---
+        (function(a,b,c){if(c in b&&b[c]){var d,e=a.location,f=/^(a|html)$/i;a.addEventListener("click",function(a){d=a.target;while(!f.test(d.nodeName))d=d.parentNode;"href"in d&&(d.href.indexOf("http")||~d.href.indexOf(e.host))&&(a.preventDefault(),e.href=d.href)},!1)}})(document,window.navigator,"standalone");
     </script>
 </body>
 </html>
