@@ -59,12 +59,10 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Универсальная функция очистки номера для сравнения
         function getRawPhone(p) {
             return p ? p.replace(/\D/g, '') : "";
         }
 
-        // Функция приведения к формату с плюсом для базы
         function getFullPhone(p) {
             if(!p) return "";
             let cleaned = p.trim().replace(/ /g, '+');
@@ -79,23 +77,20 @@
         const myPhone = getFullPhone(rawMe);
         const otherPhone = getFullPhone(rawOther);
 
-        // Отображаем номер в заголовке, как в Android
         document.getElementById('otherUserPhoneDisplay').innerText = otherPhone;
 
-        // ГЕНЕРАЦИЯ ID ЧАТА (сравнение по цифрам, чтобы избежать ошибок Safari/Chrome)
-        const myNum = parseInt(getRawPhone(myPhone));
-        const otherNum = parseInt(getRawPhone(otherPhone));
+        // Сравниваем ЧИСТЫЕ ЦИФРЫ номеров для построения ID чата
+        const myNumString = getRawPhone(myPhone);
+        const otherNumString = getRawPhone(otherPhone);
         
         let chatId = "";
-        if (myNum < otherNum) {
+        // Используем логику сравнения чисел, чтобы порядок всегда был одинаков везде
+        if (BigInt(myNumString) < BigInt(otherNumString)) {
             chatId = myPhone + "_" + otherPhone;
         } else {
             chatId = otherPhone + "_" + myPhone;
         }
 
-        console.log("CHAT_PATH:", chatId);
-
-        // Загрузка сообщений
         db.ref('PrivateChats/' + chatId).on('value', snap => {
             const container = document.getElementById('messages');
             container.innerHTML = '';
@@ -145,7 +140,6 @@
 
             db.ref('PrivateChats/' + chatId).push(newMsg);
 
-            // Обновляем списки превью (UserChats)
             db.ref(`UserChats/${myPhone}/${otherPhone}`).update({ phone: otherPhone, lastMessage: text, timestamp: timestamp });
             db.ref(`UserChats/${otherPhone}/${myPhone}`).update({ phone: myPhone, lastMessage: text, timestamp: timestamp });
 
