@@ -187,9 +187,7 @@
 
         // Логика нажатия на конвертик
         document.getElementById("btn_open_messages").onclick = function() {
-            // Сбрасываем флаг в базе
             db.ref('Users/' + savedPhone + '/hasNewMessage').set(false);
-            // Переходим на страницу переписок
             window.location.href = "messages.html";
         };
 
@@ -215,13 +213,15 @@
             }
         }
 
-        // Запуск при загрузке
         updateGreeting();
         checkAdmin();
 
         document.getElementById("card_contact_admin").onclick = function() {
             alert("Переход в чат с админом...");
         };
+
+        // --- ФИКС ДЛЯ iOS: ЧТОБЫ ССЫЛКИ НЕ ОТКРЫВАЛИСЬ В SAFARI ---
+        (function(a,b,c){if(c in b&&b[c]){var d,e=a.location,f=/^(a|html)$/i;a.addEventListener("click",function(a){d=a.target;while(!f.test(d.nodeName))d=d.parentNode;"href"in d&&(d.href.indexOf("http")||~d.href.indexOf(e.host))&&(a.preventDefault(),e.href=d.href)},!1)}})(document,window.navigator,"standalone")
     </script>
 </body>
 </html>
