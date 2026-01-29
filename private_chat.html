@@ -30,6 +30,7 @@
             height: 100dvh; 
             overflow: hidden;
             padding-top: var(--safe-top);
+            -webkit-text-size-adjust: 100%;
         }
 
         .header { background: #2196F3; color: white; padding: 15px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex-shrink: 0; }
@@ -85,6 +86,20 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
+
+        // ФУНКЦИЯ ОБНОВЛЕНИЯ СТАТУСА ОНЛАЙН
+        const savedPhoneForStatus = localStorage.getItem("USER_PHONE");
+        function updateMyStatus() {
+            if (savedPhoneForStatus) {
+                const now = Date.now();
+                db.ref('Users/' + savedPhoneForStatus).update({
+                    lastOnline: now,
+                    lastActive: now
+                });
+            }
+        }
+        updateMyStatus();
+        setInterval(updateMyStatus, 120000);
 
         function getRaw(p) { return p ? p.replace(/\D/g, '') : "0"; }
         function getFull(p) {
@@ -161,6 +176,7 @@
                     if('href' in curnode && (curnode.href.indexOf('http') || ~curnode.href.indexOf(location.host))) {
                         e.preventDefault();
                         location.replace(curnode.href);
+                        updateMyStatus();
                     }
                 },false);
             }
