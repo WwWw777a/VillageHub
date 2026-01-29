@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>VillageHub Чат</title>
+    <title>VillageHub</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -40,7 +40,7 @@
 </head>
 <body>
     <div class="header">
-        <div class="back-btn" onclick="window.location.replace('messages.html')">←</div>
+        <div class="back-btn" onclick="navTo('messages.html')">←</div>
         <div class="user-phone" id="otherUserDisplay">Загрузка...</div>
         <div class="clear-btn" onclick="clearEntireChat()">🗑</div>
     </div>
@@ -53,6 +53,15 @@
     </div>
 
     <script>
+        // БЕЗОПАСНАЯ НАВИГАЦИЯ ДЛЯ PWA
+        function navTo(url) {
+            if (window.navigator.standalone) {
+                window.location.replace(url);
+            } else {
+                window.location.href = url;
+            }
+        }
+
         const firebaseConfig = {
             apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
             authDomain: "villagehub-d4d5e.firebaseapp.com",
@@ -65,7 +74,6 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Функции форматирования
         function getRaw(p) { return p ? p.replace(/\D/g, '') : "0"; }
         function getFull(p) {
             if(!p) return "";
@@ -80,12 +88,10 @@
         
         document.getElementById('otherUserDisplay').innerText = otherPhone;
 
-        // ВЫЧИСЛЯЕМ ЧАТ ОДИН РАЗ И НАВСЕГДА (BigInt фикс)
         const n1 = BigInt(getRaw(myPhone));
         const n2 = BigInt(getRaw(otherPhone));
         const finalChatId = n1 < n2 ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
 
-        // Загрузка сообщений
         db.ref('PrivateChats/' + finalChatId).on('value', snap => {
             const container = document.getElementById('messages');
             container.innerHTML = '';
@@ -93,7 +99,6 @@
                 const msg = child.val();
                 const isMine = getFull(msg.senderId) === myPhone;
                 
-                // Ставим прочитано если пришло мне
                 if (!isMine && !msg.isRead) {
                     db.ref(`PrivateChats/${finalChatId}/${child.key}/isRead`).set(true);
                 }
@@ -121,8 +126,6 @@
             };
 
             db.ref('PrivateChats/' + finalChatId).push(msgData);
-            
-            // Превьюшки
             db.ref(`UserChats/${myPhone}/${otherPhone}`).update({ phone: otherPhone, lastMessage: text, timestamp: msgData.timestamp });
             db.ref(`UserChats/${otherPhone}/${myPhone}`).update({ phone: myPhone, lastMessage: text, timestamp: msgData.timestamp });
 
@@ -133,11 +136,10 @@
             if (confirm("Удалить всё?")) {
                 db.ref('PrivateChats/' + finalChatId).remove();
                 db.ref(`UserChats/${myPhone}/${otherPhone}`).remove();
-                window.location.replace('messages.html');
+                navTo('messages.html');
             }
         }
 
-        // ЖЕСТКИЙ ФИКС ДЛЯ PWA (ЧТОБЫ НЕ ВЫЛЕТАЛО В БРАУЗЕР)
         (function(document,navigator,standalone) {
             if ((standalone in navigator) && navigator[standalone]) {
                 var curnode, location=document.location, stop=/^(a|html)$/i;
