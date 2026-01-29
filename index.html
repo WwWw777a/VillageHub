@@ -7,6 +7,7 @@
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="VillageHub">
     <link rel="apple-touch-icon" href="icon.png">
 
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
@@ -32,7 +33,7 @@
             padding: 16px;
             color: var(--text-primary);
             user-select: none;
-            /* Учет безопасной зоны сверху для iPhone с челкой */
+            /* Отступ под "челку" iPhone */
             padding-top: max(16px, env(safe-area-inset-top));
         }
 
@@ -112,6 +113,7 @@
         .icon-taxi { color: var(--color-taxi); }
         .icon-issues { color: var(--color-issues); }
         .icon-chat { color: var(--color-chat); }
+
     </style>
 </head>
 <body>
@@ -154,10 +156,11 @@
     </div>
 
     <script>
-        // --- ПЕРЕХОД БЕЗ ВЫЛЕТА В SAFARI ---
+        // БЕЗОПАСНАЯ НАВИГАЦИЯ ДЛЯ PWA
         function navTo(url) {
             if (window.navigator.standalone) {
-                window.location.assign(url);
+                // replace() не создает новую запись в истории, что мешает iOS выкинуть в Safari
+                window.location.replace(url);
             } else {
                 window.location.href = url;
             }
@@ -218,12 +221,12 @@
         checkAdmin();
 
         document.getElementById("card_contact_admin").onclick = function() {
-             const adminPhone = "+79002712293"; 
+             const adminPhone = "+79002712293";
              const chatId = savedPhone < adminPhone ? (savedPhone + "_" + adminPhone) : (adminPhone + "_" + savedPhone);
              navTo(`private_chat.html?chatId=${chatId}&otherPhone=${adminPhone}`);
         };
 
-        // ГЛОБАЛЬНЫЙ ПЕРЕХВАТ ДЛЯ STANDALONE РЕЖИМА
+        // ПЕРЕХВАТ ВСЕХ КЛИКОВ (ФИНАЛЬНЫЙ ФИКС)
         (function(document,navigator,standalone) {
             if ((standalone in navigator) && navigator[standalone]) {
                 var curnode, location=document.location, stop=/^(a|html)$/i;
@@ -234,7 +237,7 @@
                     }
                     if('href' in curnode && (curnode.href.indexOf('http') || ~curnode.href.indexOf(location.host))) {
                         e.preventDefault();
-                        location.href = curnode.href;
+                        location.replace(curnode.href);
                     }
                 },false);
             }
