@@ -177,6 +177,19 @@
 
         const savedPhone = localStorage.getItem("USER_PHONE");
 
+        // ФУНКЦИЯ ОБНОВЛЕНИЯ СТАТУСА ОНЛАЙН
+        function updateMyStatus() {
+            if (savedPhone) {
+                const now = Date.now();
+                db.ref('Users/' + savedPhone).update({
+                    lastOnline: now,
+                    lastActive: now
+                });
+            }
+        }
+        updateMyStatus();
+        setInterval(updateMyStatus, 120000); // Каждые 2 минуты
+
         if (savedPhone) {
             db.ref('Users/' + savedPhone + '/hasNewMessage').on('value', snap => {
                 const badge = document.getElementById("badge_new_msg");
@@ -233,6 +246,7 @@
                     if('href' in curnode && (curnode.href.indexOf('http') || ~curnode.href.indexOf(location.host))) {
                         e.preventDefault();
                         location.replace(curnode.href);
+                        updateMyStatus(); // Обновляем при переходе
                     }
                 },false);
             }
