@@ -56,7 +56,7 @@
 
     <div class="header">
         <div class="header-left">
-            <div class="back-btn" onclick="window.location.replace('index.html')">←</div>
+            <div class="back-btn" onclick="navTo('index.html')">←</div>
             <h1>Такси поселка</h1>
         </div>
         <div id="adminAddBtn" class="add-btn" onclick="addNewTaxi()">+</div>
@@ -89,6 +89,15 @@
     </div>
 
     <script>
+        // БЕЗОПАСНАЯ НАВИГАЦИЯ ДЛЯ PWA
+        function navTo(url) {
+            if (window.navigator.standalone) {
+                window.location.replace(url);
+            } else {
+                window.location.href = url;
+            }
+        }
+
         const firebaseConfig = {
             apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
             authDomain: "villagehub-d4d5e.firebaseapp.com",
@@ -197,7 +206,22 @@
             if (name && phone) database.ref('Taxi').push({ name, phone });
         }
 
-        (function(a,b,c){if(c in b&&b[c]){var d,e=a.location,f=/^(a|html)$/i;a.addEventListener("click",function(a){d=a.target;while(!f.test(d.nodeName))d=d.parentNode;"href"in d&&(d.href.indexOf("http")||~d.href.indexOf(e.host))&&(a.preventDefault(),e.href=d.href)},!1)}})(document,window.navigator,"standalone");
+        // ПЕРЕХВАТ ВСЕХ КЛИКОВ (ФИНАЛЬНЫЙ ФИКС ДЛЯ iOS)
+        (function(document,navigator,standalone) {
+            if ((standalone in navigator) && navigator[standalone]) {
+                var curnode, location=document.location, stop=/^(a|html)$/i;
+                document.addEventListener('click', function(e) {
+                    curnode=e.target;
+                    while (!(stop).test(curnode.nodeName)) {
+                        curnode=curnode.parentNode;
+                    }
+                    if('href' in curnode && (curnode.href.indexOf('http') || ~curnode.href.indexOf(location.host))) {
+                        e.preventDefault();
+                        location.replace(curnode.href);
+                    }
+                },false);
+            }
+        })(document,window.navigator,'standalone');
     </script>
 </body>
 </html>
