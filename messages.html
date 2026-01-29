@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Мои переписки</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <style>
+        body { font-family: -apple-system, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+        .header { background: #2196F3; color: white; padding: 15px; display: flex; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; }
+        .container { padding: 10px; }
+        .chat-item { background: white; border-radius: 12px; padding: 15px; margin-bottom: 8px; display: flex; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; }
+        .chat-info { flex-grow: 1; overflow: hidden; }
+        .chat-phone { font-weight: bold; font-size: 16px; margin-bottom: 4px; }
+        .chat-last-msg { color: #757575; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .btn-delete { color: #f44336; padding: 10px; font-size: 20px; cursor: pointer; }
+        .empty-state { text-align: center; color: #999; margin-top: 50px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <span class="back-btn" onclick="location.href='index.html'">←</span>
+        <h1 style="font-size: 18px; margin: 0;">Мои переписки</h1>
+    </div>
+    <div class="container" id="chatsList"></div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
+            authDomain: "villagehub-d4d5e.firebaseapp.com",
+            databaseURL: "https://villagehub-d4d5e-default-rtdb.firebaseio.com",
+            projectId: "villagehub-d4d5e",
+            storageBucket: "villagehub-d4d5e.firebasestorage.app",
+            messagingSenderId: "131056250064",
+            appId: "1:131056250064:web:84c0c67819e9828ec642d5"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const myPhone = localStorage.getItem("USER_PHONE");
+
+        if (!myPhone) { location.href = 'login.html'; }
+
+        // Загрузка списка чатов (UserChats)
+        db.ref('UserChats/' + myPhone).on('value', snap => {
+            const list = document.getElementById('chatsList');
+            list.innerHTML = '';
+            if (!snap.exists()) {
+                list.innerHTML = '<div class="empty-state">Нет активных переписок</div>';
+                return;
+            }
+
+            let chats = [];
+            snap.forEach(child => {
+                chats.push(child.val());
+            });
+
+            // Сортировка: новые сверху
+            chats.sort((a, b) => b.timestamp - a.timestamp);
+
+            chats.forEach(chat => {
+                const chatId = myPhone < chat.phone ? `${myPhone}_${chat.phone}` : `${chat.phone}_${myPhone}`;
+                const div = document.createElement('div');
+                div.className = 'chat-item';
+                div.onclick = () => location.href = `private_chat.html?chatId=${chatId}&otherPhone=${chat.phone}`;
+                div.innerHTML = `
+                    <div class="chat-info">
+                        <div class="chat-phone">${chat.phone}</div>
+                        <div class="chat-last-msg">${chat.lastMessage}</div>
+                    </div>
+                    <div class="btn-delete" onclick="event.stopPropagation(); deleteChat('${chat.phone}')">🗑</div>
+                `;
+                list.appendChild(div);
+            });
+        });
+
+        function deleteChat(otherPhone) {
+            if (confirm("Удалить переписку из списка?")) {
+                db.ref(`UserChats/${myPhone}/${otherPhone}`).remove();
+            }
+        }
+    </script>
+</body>
+</html>
