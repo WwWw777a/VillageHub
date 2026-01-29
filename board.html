@@ -2,12 +2,18 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Доска объявлений</title>
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="VillageHub">
+    <link rel="apple-touch-icon" href="icon.png">
+
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
-        body { font-family: -apple-system, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+        body { font-family: -apple-system, sans-serif; background: #f5f5f5; margin: 0; padding: 0; padding-top: env(safe-area-inset-top); }
         .header { background: #1e88e5; color: white; padding: 15px; display: flex; align-items: center; position: sticky; top: 0; z-index: 100; }
         .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; }
         .header h1 { font-size: 18px; margin: 0; flex-grow: 1; }
@@ -38,14 +44,14 @@
 <body>
 
     <div class="header">
-        <span class="back-btn" onclick="location.href='index.html'">←</span>
+        <span class="back-btn" onclick="window.location.replace('index.html')">←</span>
         <h1>Доска объявлений</h1>
         <button class="rules-btn" onclick="openRules()">Правила</button>
     </div>
 
     <div class="grid" id="adsGrid"></div>
 
-    <button class="fab" id="addBtn" onclick="location.href='add_ad.html'">+</button>
+    <button class="fab" id="addBtn" onclick="window.location.replace('add_ad.html')">+</button>
 
     <div id="rulesModal" class="modal">
         <div class="modal-content">
@@ -76,7 +82,6 @@
         const database = firebase.database();
         const userRole = localStorage.getItem("USER_ROLE");
 
-        // Загрузка объявлений
         database.ref('Ads').on('value', (snap) => {
             const grid = document.getElementById('adsGrid');
             grid.innerHTML = '';
@@ -84,29 +89,28 @@
             
             snap.forEach((child) => {
                 const ad = child.val();
-                
-                // Обработка Base64 фото из массива imageUrls
                 let displayImg = "https://via.placeholder.com/300?text=Нет+фото";
                 if (ad.imageUrls && Array.isArray(ad.imageUrls) && ad.imageUrls.length > 0) {
                     displayImg = "data:image/jpeg;base64," + ad.imageUrls[0];
                 } else if (ad.imageUrls && typeof ad.imageUrls === 'object') {
-                    // На случай если Firebase сохранил массив как объект
                     const firstKey = Object.keys(ad.imageUrls)[0];
                     displayImg = "data:image/jpeg;base64," + ad.imageUrls[firstKey];
                 }
 
                 const date = ad.timestamp ? new Date(ad.timestamp).toLocaleDateString() : '';
                 
-                grid.innerHTML += `
-                    <div class="ad-card" onclick="location.href='ad_detail.html?id=${child.key}'">
-                        <img src="${displayImg}" class="ad-img" onerror="this.src='https://via.placeholder.com/300?text=Ошибка+загрузки'">
-                        <div class="ad-info">
-                            <div class="price">${ad.price} ₽</div>
-                            <div class="ad-title">${ad.title || 'Без названия'}</div>
-                            <div class="ad-meta">${date} • ${ad.author || 'Продавец'}</div>
-                        </div>
+                const card = document.createElement('div');
+                card.className = 'ad-card';
+                card.onclick = () => window.location.replace('ad_detail.html?id=' + child.key);
+                card.innerHTML = `
+                    <img src="${displayImg}" class="ad-img" onerror="this.src='https://via.placeholder.com/300?text=Ошибка+загрузки'">
+                    <div class="ad-info">
+                        <div class="price">${ad.price} ₽</div>
+                        <div class="ad-title">${ad.title || 'Без названия'}</div>
+                        <div class="ad-meta">${date} • ${ad.author || 'Продавец'}</div>
                     </div>
                 `;
+                grid.appendChild(card);
             });
         });
 
@@ -139,6 +143,8 @@
         }
 
         function closeRules() { document.getElementById('rulesModal').style.display = 'none'; }
+
+        (function(a,b,c){if(c in b&&b[c]){var d,e=a.location,f=/^(a|html)$/i;a.addEventListener("click",function(a){d=a.target;while(!f.test(d.nodeName))d=d.parentNode;"href"in d&&(d.href.indexOf("http")||~d.href.indexOf(e.host))&&(a.preventDefault(),e.href=d.href)},!1)}})(document,window.navigator,"standalone");
     </script>
 </body>
 </html>
