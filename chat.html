@@ -10,18 +10,19 @@
         * { box-sizing: border-box; }
         body { font-family: -apple-system, sans-serif; background: #f5f5f5; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        .header { background: white; padding: 15px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 120; position: relative; flex-shrink: 0; }
-        .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; position: relative; z-index: 130; }
+        /* Фиксированная шапка */
+        .header { background: white; padding: 15px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 1000; position: relative; flex-shrink: 0; }
+        .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; position: relative; z-index: 1001; }
         .header h1 { font-size: 18px; margin: 0; flex-grow: 1; }
 
         /* ЗАКРЕП СТРОГО В ОДНУ СТРОКУ */
-        #pinnedLayout { background: #FFF8E1; padding: 8px 15px; display: none; align-items: center; border-bottom: 1px solid #FFECB3; cursor: pointer; flex-shrink: 0; position: relative; z-index: 110; }
+        #pinnedLayout { background: #FFF8E1; padding: 8px 15px; display: none; align-items: center; border-bottom: 1px solid #FFECB3; cursor: pointer; flex-shrink: 0; position: relative; z-index: 900; }
         .pinned-line { width: 4px; height: 32px; background: #2196F3; margin-right: 10px; flex-shrink: 0; }
         .pinned-info { flex-grow: 1; overflow: hidden; }
         .pinned-title { color: #2196F3; font-weight: bold; font-size: 11px; }
         #tvPinnedText { font-size: 13px; color: #333; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; width: 100%; display: block; }
 
-        #chatMessages { flex-grow: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; scroll-behavior: smooth; padding-bottom: 10px; }
+        #chatMessages { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; scroll-behavior: smooth; padding-bottom: 10px; }
 
         .unread-header { background: #E0E0E0; color: #666; text-align: center; font-size: 12px; padding: 5px; margin: 10px 0; border-radius: 4px; }
 
@@ -42,8 +43,7 @@
         #btnScrollDown { position: fixed; right: 16px; bottom: 85px; width: 42px; height: 42px; background: white; border-radius: 50%; display: none; align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(0,0,0,0.2); cursor: pointer; z-index: 100; }
         #btnScrollDown span { color: #2196F3; font-size: 24px; font-weight: bold; }
 
-        /* ПОЛЕ ВВОДА ВСЕГДА ВНИЗУ */
-        .bottom-area { background: white; border-top: 1px solid #ddd; flex-shrink: 0; padding-bottom: env(safe-area-inset-bottom); width: 100%; position: relative; z-index: 120; }
+        .bottom-area { background: white; border-top: 1px solid #ddd; flex-shrink: 0; padding-bottom: env(safe-area-inset-bottom); width: 100%; position: relative; z-index: 1100; }
         #replyPreview { background: #f0f0f0; padding: 8px 15px; display: none; border-left: 4px solid #F57C00; align-items: center; }
         
         .input-row { display: flex; align-items: center; padding: 10px 15px; gap: 10px; }
@@ -51,9 +51,9 @@
         #sendBtn { background: none; border: none; cursor: pointer; padding: 5px; display: flex; align-items: center; }
         #sendBtn svg { fill: #F57C00; width: 28px; height: 28px; }
 
-        .action-sheet { position: fixed; bottom: 0; left: 0; width: 100%; background: white; z-index: 1000; border-radius: 20px 20px 0 0; display: none; flex-direction: column; padding: 15px 0; max-height: 70vh; }
-        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; }
-        .emoji-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; padding: 15px; overflow-y: auto; }
+        .action-sheet { position: fixed; bottom: 0; left: 0; width: 100%; background: white; z-index: 2000; border-radius: 20px 20px 0 0; display: none; flex-direction: column; padding: 15px 0; max-height: 70vh; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); }
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1999; }
+        .emoji-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; padding: 15px; overflow-y: auto; border-bottom: 1px solid #eee; }
     </style>
 </head>
 <body>
@@ -96,8 +96,9 @@
     <div id="actionSheet" class="action-sheet">
         <div id="emojiGrid" class="emoji-grid"></div>
         <div style="padding: 15px 20px; color: #2196F3; font-weight: bold; border-top: 1px solid #eee;" onclick="prepareReply()">Ответить</div>
-        <div id="adminPinBtn" style="padding: 15px 20px;" onclick="pinMsg()">📌 Закрепить</div>
-        <div id="deleteMsgBtn" style="padding: 15px 20px; color: red;" onclick="deleteMsg()">Удалить</div>
+        <div id="adminPinBtn" style="padding: 15px 20px; display: none;" onclick="pinMsg()">📌 Закрепить</div>
+        <div id="adminUnpinBtn" style="padding: 15px 20px; display: none; color: orange;" onclick="unpinMsg()">📍 Открепить</div>
+        <div id="deleteMsgBtn" style="padding: 15px 20px; color: red; display: none;" onclick="deleteMsg()">Удалить</div>
     </div>
 
     <script>
@@ -116,7 +117,7 @@
         const myPhone = localStorage.getItem("USER_PHONE");
         const myName = localStorage.getItem("USER_NAME");
         const myRole = localStorage.getItem("USER_ROLE");
-        const iAmAdmin = (myRole === "АДМИН" || myRole === "admin");
+        const iAmPrivileged = (myRole === "АДМИН" || myRole === "admin" || myRole === "МОДЕРАТОР");
 
         let lastReadTimestamp = parseInt(localStorage.getItem("CHAT_LAST_READ") || "0");
         let selectedMsg = null;
@@ -137,18 +138,15 @@
         db.ref('Chats').limitToLast(100).on('value', snap => {
             container.innerHTML = '';
             let unreadShown = false;
-            
             snap.forEach(child => {
                 const msg = child.val();
                 msg.id = child.key;
-
                 if (!unreadShown && msg.timestamp > lastReadTimestamp && msg.senderId !== myPhone && lastReadTimestamp !== 0) {
                     container.innerHTML += '<div class="unread-header" id="unread_anchor">Непрочитанные сообщения</div>';
                     unreadShown = true;
                 }
                 renderMessage(msg);
             });
-
             if (isFirstLoad) {
                 const anchor = document.getElementById('unread_anchor');
                 if (anchor) anchor.scrollIntoView({ block: "center" });
@@ -165,24 +163,15 @@
             const div = document.createElement('div');
             div.className = `msg-container ${isMine ? 'msg-sent' : 'msg-received'}`;
             div.id = "msg_" + msg.id;
-            
             let roleClass = msg.role === 'АДМИН' ? 'role-admin' : (msg.role === 'МОДЕРАТОР' ? 'role-mod' : 'role-user');
             let replyHtml = msg.replyToText ? `<div class="reply-box"><b>${msg.replyToAuthor}</b><br>${msg.replyToText}</div>` : '';
-            
             let reactionsHtml = '';
             if(msg.reactionsCounts) {
                 let rText = '';
                 for(let e in msg.reactionsCounts) if(msg.reactionsCounts[e] > 0) rText += `${e} ${msg.reactionsCounts[e]} `;
                 if(rText) reactionsHtml = `<div class="reactions-list">${rText}</div>`;
             }
-
-            div.innerHTML = `
-                ${!isMine ? `<div class="author ${roleClass}">${msg.author}</div>` : ''}
-                ${replyHtml}
-                <div>${msg.text}</div>
-                ${reactionsHtml}
-                <div class="time">${msg.time}</div>
-            `;
+            div.innerHTML = `${!isMine ? `<div class="author ${roleClass}">${msg.author}</div>` : ''}${replyHtml}<div>${msg.text}</div>${reactionsHtml}<div class="time">${msg.time}</div>`;
             div.onclick = () => openActions(msg);
             container.appendChild(div);
         }
@@ -223,14 +212,9 @@
             let last = null; snap.forEach(c => last = c.val());
             document.getElementById('tvPinnedText').innerText = last.text;
             lastPinnedId = last.originalId;
-
             layout.onclick = () => {
                 const target = document.getElementById("msg_" + lastPinnedId);
-                if (target) {
-                    target.scrollIntoView({ behavior: "smooth", block: "center" });
-                    target.classList.add('highlight-msg');
-                    setTimeout(() => target.classList.remove('highlight-msg'), 1500);
-                }
+                if (target) { target.scrollIntoView({ behavior: "smooth", block: "center" }); target.classList.add('highlight-msg'); setTimeout(() => target.classList.remove('highlight-msg'), 1500); }
             };
         });
 
@@ -238,14 +222,16 @@
             selectedMsg = msg;
             document.getElementById('overlay').style.display = 'block';
             document.getElementById('actionSheet').style.display = 'flex';
-            document.getElementById('adminPinBtn').style.display = iAmAdmin ? 'block' : 'none';
-            document.getElementById('deleteMsgBtn').style.display = (iAmAdmin || msg.senderId === myPhone) ? 'block' : 'none';
+            
+            document.getElementById('adminPinBtn').style.display = (iAmPrivileged) ? 'block' : 'none';
+            document.getElementById('adminUnpinBtn').style.display = (iAmPrivileged) ? 'block' : 'none';
+            document.getElementById('deleteMsgBtn').style.display = (iAmPrivileged || msg.senderId === myPhone) ? 'block' : 'none';
 
             const grid = document.getElementById('emojiGrid');
             grid.innerHTML = '';
             emojiList.forEach(emoji => {
                 const s = document.createElement('span');
-                s.style.fontSize = "28px"; s.style.cursor="pointer"; s.innerText = emoji;
+                s.className = 'emoji-item'; s.innerText = emoji;
                 s.onclick = () => toggleReaction(emoji);
                 grid.appendChild(s);
             });
@@ -282,8 +268,13 @@
             closeActions();
         }
 
+        function unpinMsg() {
+            db.ref(`PinnedMessages`).remove();
+            closeActions();
+        }
+
         function deleteMsg() {
-            if(confirm("Удалить?")) { db.ref(`Chats/${selectedMsg.id}`).remove(); closeActions(); }
+            if(confirm("Удалить это сообщение?")) { db.ref(`Chats/${selectedMsg.id}`).remove(); closeActions(); }
         }
     </script>
 </body>
