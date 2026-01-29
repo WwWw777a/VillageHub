@@ -129,8 +129,8 @@
 
             <div class="input-row" id="inputRow">
                 <input type="text" id="msgInput" placeholder="Написать сообщение..." autocomplete="off" onblur="window.scrollTo(0,0)">
-                <button id="sendBtn" onclick="sendChatMessage()">
-                    <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                <button id="sendBtn" onclick="handleSendClick()">
+                    <svg id="sendIcon" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                 </button>
             </div>
         </div>
@@ -142,6 +142,7 @@
         <div id="mainActions">
             <div class="action-item" style="color: #2196F3; font-weight: bold;" onclick="prepareReply()">Ответить</div>
             <div class="action-item" onclick="writePrivate()">Написать лично</div>
+            <div id="editBtn" class="action-item" style="display: none; color: #4CAF50;" onclick="prepareEdit()">Редактировать</div>
             <div id="adminPinBtn" class="action-item" style="display: none;" onclick="pinMsg()">📌 Закрепить</div>
             <div id="adminUnpinBtn" class="action-item" style="display: none; color: orange;" onclick="unpinMsg()">📍 Открепить</div>
             <div id="deleteMsgBtn" class="action-item" style="display: none; color: red;" onclick="deleteMsg()">Удалить</div>
@@ -177,13 +178,14 @@
         const db = firebase.database();
 
         const myPhone = localStorage.getItem("USER_PHONE");
-        const myName = localStorage.getItem("USER_NAME");
+        const myName = localStorage.getItem("USER_NAME") || "Пользователь";
         const myRole = (localStorage.getItem("USER_ROLE") || "Житель");
         const iAmPrivileged = (myRole === "АДМИН" || myRole === "admin" || myRole === "МОДЕРАТОР");
 
         let lastReadTimestamp = parseInt(localStorage.getItem("CHAT_LAST_READ") || "0");
         let selectedMsg = null;
         let replyingTo = null;
+        let editingMsgId = null; // Новая переменная для режима редактирования
         let lastPinnedId = "";
         let isFirstLoad = true;
 
@@ -195,11 +197,9 @@
             const row = document.getElementById('inputRow');
             if (snap.exists()) {
                 const ban = snap.val();
-                const now = Date.now();
-                if (ban.timestamp === -1 || ban.timestamp > now) {
+                if (ban.timestamp === -1 || ban.timestamp > Date.now()) {
                     if (ban.type === 'GLOBAL') { alert('Вы заблокированы в данном приложении за нарушения'); location.href = 'login.html'; return; }
-                    if (ban.type === 'CHAT_FULL') { row.innerHTML = '<div class="ban-text">Вы заблокированы в чате</div>'; } 
-                    else { const date = ban.timestamp === -1 ? 'НАВСЕГДА' : new Date(ban.timestamp).toLocaleString(); row.innerHTML = `<div class="ban-text">Вы заблокированы за нарушение до ${date}</div>`; }
+                    row.innerHTML = `<div class="ban-text">Вы заблокированы ${ban.type==='CHAT_FULL'?'в чате':'до '+new Date(ban.timestamp).toLocaleString()}</div>`;
                 } else { db.ref('BannedUsers/' + myPhone).remove(); }
             }
         });
@@ -246,6 +246,15 @@
         function scrollToBottom() { container.scrollTop = container.scrollHeight; }
         container.onscroll = () => { document.getElementById('btnScrollDown').style.display = (container.scrollHeight - container.scrollTop > 800) ? 'flex' : 'none'; };
 
+        // Логика кнопки отправки
+        function handleSendClick() {
+            if (editingMsgId) {
+                saveEdit();
+            } else {
+                sendChatMessage();
+            }
+        }
+
         function sendChatMessage() {
             const input = document.getElementById('msgInput');
             const text = input.value.trim();
@@ -255,14 +264,34 @@
             input.value = ''; cancelReply(); scrollToBottom();
         }
 
+        // Функции редактирования
+        function prepareEdit() {
+            editingMsgId = selectedMsg.id;
+            const input = document.getElementById('msgInput');
+            input.value = selectedMsg.text;
+            document.getElementById('sendIcon').style.fill = "#4CAF50"; // Зеленый цвет для режима правки
+            closeActions();
+            input.focus();
+        }
+
+        function saveEdit() {
+            const input = document.getElementById('msgInput');
+            const newText = input.value.trim();
+            if(newText && editingMsgId) {
+                db.ref('Chats/' + editingMsgId).update({ text: newText });
+            }
+            editingMsgId = null;
+            input.value = '';
+            document.getElementById('sendIcon').style.fill = "#F57C00";
+        }
+
         db.ref('PinnedMessages').on('value', snap => {
             const layout = document.getElementById('pinnedLayout');
             if(!snap.exists()) { layout.style.display = 'none'; return; }
             layout.style.display = 'flex';
             let last = null; snap.forEach(c => last = c.val());
             document.getElementById('tvPinnedText').innerText = last.text;
-            lastPinnedId = last.originalId;
-            layout.onclick = () => { const target = document.getElementById("msg_" + lastPinnedId); if (target) { target.scrollIntoView({ behavior: "smooth", block: "center" }); target.classList.add('highlight-msg'); setTimeout(() => target.classList.remove('highlight-msg'), 1500); } };
+            layout.onclick = () => { const target = document.getElementById("msg_" + last.originalId); if (target) { target.scrollIntoView({ behavior: "smooth", block: "center" }); target.classList.add('highlight-msg'); setTimeout(() => target.classList.remove('highlight-msg'), 1500); } };
         });
 
         function openActions(msg) {
@@ -270,18 +299,23 @@
             document.getElementById('overlay').style.display = 'block';
             document.getElementById('actionSheet').style.display = 'flex';
             backToMainActions();
+            
+            const isMine = msg.senderId === myPhone;
+            document.getElementById('editBtn').style.display = isMine ? 'block' : 'none';
             document.getElementById('adminPinBtn').style.display = iAmPrivileged ? 'block' : 'none';
             document.getElementById('adminUnpinBtn').style.display = iAmPrivileged ? 'block' : 'none';
-            document.getElementById('deleteMsgBtn').style.display = (iAmPrivileged || msg.senderId === myPhone) ? 'block' : 'none';
-            document.getElementById('adminBanBtn').style.display = (iAmPrivileged && msg.senderId !== myPhone) ? 'block' : 'none';
+            document.getElementById('deleteMsgBtn').style.display = (iAmPrivileged || isMine) ? 'block' : 'none';
+            document.getElementById('adminBanBtn').style.display = (iAmPrivileged && !isMine) ? 'block' : 'none';
+
             const grid = document.getElementById('emojiGrid');
             grid.innerHTML = '';
             emojiList.forEach(emoji => { const s = document.createElement('span'); s.className = 'emoji-item'; s.innerText = emoji; s.onclick = () => toggleReaction(emoji); grid.appendChild(s); });
         }
 
         function toggleReaction(emoji) {
-            const refCount = db.ref(`Chats/${selectedMsg.id}/reactionsCounts/${emoji}`);
-            const refDetail = db.ref(`ReactionDetails/${selectedMsg.id}/${emoji}/${myPhone}`);
+            const msgId = selectedMsg.id;
+            const refCount = db.ref(`Chats/${msgId}/reactionsCounts/${emoji}`);
+            const refDetail = db.ref(`ReactionDetails/${msgId}/${emoji}/${myPhone}`);
             refDetail.once('value').then(snap => { if(snap.exists()) { refDetail.remove(); refCount.transaction(c => (c || 1) - 1); } else { refDetail.set(myName); refCount.transaction(c => (c || 0) + 1); } closeActions(); });
         }
 
