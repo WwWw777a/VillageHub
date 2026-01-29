@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>VillageHub</title>
-
+    
+    <link rel="manifest" href="manifest.json">
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VillageHub">
@@ -13,7 +15,16 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
-        body { font-family: -apple-system, sans-serif; background: #f5f5f5; margin: 0; padding: 0; padding-top: env(safe-area-inset-top); }
+        :root {
+            --safe-top: env(safe-area-inset-top, 0px);
+        }
+        body { 
+            font-family: -apple-system, sans-serif; 
+            background: #f5f5f5; 
+            margin: 0; 
+            padding: 0; 
+            padding-top: max(16px, var(--safe-top)); 
+        }
         .header { background: #2196F3; color: white; padding: 15px; display: flex; align-items: center; }
         .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; }
         .container { padding: 15px; }
@@ -58,7 +69,6 @@
     </div>
 
     <script>
-        // ФУНКЦИЯ БЕЗОПАСНОЙ НАВИГАЦИИ
         function navTo(url) {
             if (window.navigator.standalone) {
                 window.location.replace(url);
@@ -84,7 +94,8 @@
         let currentPhotos = [];
 
         function updateCount(elementId, input) {
-            document.getElementById(elementId).innerText = input.value.length + " / " + input.getAttribute('maxlength');
+            const el = document.getElementById(elementId);
+            if(el) el.innerText = input.value.length + " / " + input.getAttribute('maxlength');
         }
 
         if (editId) {
@@ -183,7 +194,6 @@
             }
         }
 
-        // ПЕРЕХВАТ ВСЕХ КЛИКОВ (ФИНАЛЬНЫЙ ФИКС ДЛЯ iOS)
         (function(document,navigator,standalone) {
             if ((standalone in navigator) && navigator[standalone]) {
                 var curnode, location=document.location, stop=/^(a|html)$/i;
