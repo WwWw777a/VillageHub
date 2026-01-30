@@ -9,9 +9,12 @@
     <style>
         * { box-sizing: border-box; }
         body { font-family: -apple-system, sans-serif; background: #f5f5f5; margin: 0; display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
-        .header { background: #2196F3; color: white; padding: 15px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex-shrink: 0; z-index: 100; }
+        .header { background: #2196F3; color: white; padding: 10px 15px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex-shrink: 0; z-index: 100; }
         .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; }
-        .user-phone { flex-grow: 1; font-weight: bold; font-size: 18px; }
+        .header-info { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .user-phone { font-weight: bold; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .user-status { font-size: 12px; color: #e0e0e0; }
+        .user-status.online { color: #00e676; font-weight: bold; }
         .clear-btn { font-size: 20px; cursor: pointer; padding: 5px; }
         #messages { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; -webkit-overflow-scrolling: touch; background: #e5ddd5; }
         .msg { max-width: 80%; padding: 10px 14px; border-radius: 16px; position: relative; font-size: 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); word-wrap: break-word; }
@@ -29,7 +32,10 @@
 <body>
     <div class="header">
         <span class="back-btn" onclick="location.href='messages.html'">←</span>
-        <div class="user-phone" id="otherUserPhoneDisplay">Загрузка...</div>
+        <div class="header-info">
+            <div class="user-phone" id="otherUserPhoneDisplay">Загрузка...</div>
+            <div class="user-status" id="otherUserStatus">офлайн</div>
+        </div>
         <div class="clear-btn" onclick="clearEntireChat()">🗑</div>
     </div>
     <div id="messages"></div>
@@ -59,26 +65,53 @@
 
         if (!myPhone || !otherPhone) { location.href = 'index.html'; }
 
-        // ЗАГРУЗКА ИМЕНИ В ШАПКУ
-        db.ref('Users').child(otherPhone).child('name').on('value', snap => {
-            document.getElementById('otherUserPhoneDisplay').innerText = snap.exists() ? snap.val() : otherPhone;
+        // --- ПОЛУЧЕНИЕ ИМЕНИ И СТАТУСА ---
+        const nameDisplay = document.getElementById('otherUserPhoneDisplay');
+        const statusDisplay = document.getElementById('otherUserStatus');
+
+        db.ref('Users').child(otherPhone).on('value', snap => {
+            if (snap.exists()) {
+                const data = snap.val();
+                nameDisplay.innerText = data.name || otherPhone;
+
+                // Проверка статуса Онлайн
+                const lastOnline = data.lastOnline || 0;
+                const now = Date.now();
+                // Если был активен в последние 5 минут (300000 мс)
+                if (now - lastOnline < 300000) {
+                    statusDisplay.innerText = "в сети";
+                    statusDisplay.classList.add('online');
+                } else {
+                    statusDisplay.classList.remove('online');
+                    if (lastOnline > 0) {
+                        const date = new Date(lastOnline);
+                        statusDisplay.innerText = "был(а) " + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    } else {
+                        statusDisplay.innerText = "офлайн";
+                    }
+                }
+            }
         });
+
+        // Свой статус онлайн
+        function updateMyStatus() {
+            db.ref('Users').child(myPhone).update({ lastOnline: Date.now() });
+        }
+        updateMyStatus();
+        setInterval(updateMyStatus, 60000); // Обновляем каждую минуту
 
         const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
 
-        // Загрузка сообщений
         db.ref('PrivateChats').child(chatId).on('value', snap => {
             const container = document.getElementById('messages');
             container.innerHTML = '';
             snap.forEach(child => {
                 const msg = child.val();
-                
                 if (msg.senderId !== myPhone && !msg.isRead) {
                     child.ref.update({ isRead: true });
                     db.ref('UserChats').child(myPhone).child(otherPhone).update({ unreadCount: 0, hasNewMessage: false });
                     db.ref('Users').child(myPhone).update({ hasNewNotification: false, hasNewMessage: false });
                 }
-
                 const div = document.createElement('div');
                 div.className = `msg ${msg.senderId === myPhone ? 'sent' : 'received'}`;
                 const ticks = msg.senderId === myPhone ? `<span class="ticks ${msg.isRead ? 'read' : 'unread'}">${msg.isRead ? '✔✔' : '✔'}</span>` : '';
@@ -92,27 +125,13 @@
             const input = document.getElementById('msgInput');
             const text = input.value.trim();
             if (!text) return;
-
             const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             const ts = Date.now();
-
-            const newMsg = {
-                senderId: myPhone,
-                text: text,
-                time: time,
-                timestamp: ts,
-                isRead: false
-            };
+            const newMsg = { senderId: myPhone, text: text, time: time, timestamp: ts, isRead: false };
 
             db.ref('PrivateChats').child(chatId).push(newMsg);
+            db.ref('UserChats').child(myPhone).child(otherPhone).update({ phone: otherPhone, lastMessage: text, timestamp: ts });
 
-            db.ref('UserChats').child(myPhone).child(otherPhone).update({ 
-                phone: otherPhone, 
-                lastMessage: text, 
-                timestamp: ts 
-            });
-
-            // Транзакция для Android (цифры + флаг)
             const receiverChatRef = db.ref('UserChats').child(otherPhone).child(myPhone);
             receiverChatRef.transaction((current) => {
                 if (current) {
@@ -127,13 +146,7 @@
                 return current;
             });
 
-            // Глобальный флаг в Users (конвертик)
-            db.ref('Users').child(otherPhone).update({
-                hasNewNotification: true,
-                hasNewMessage: true,
-                lastNotificationTs: ts
-            });
-
+            db.ref('Users').child(otherPhone).update({ hasNewNotification: true, hasNewMessage: true, lastNotificationTs: ts });
             input.value = '';
         }
 
