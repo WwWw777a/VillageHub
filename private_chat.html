@@ -8,57 +8,26 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        :root {
-            --safe-top: env(safe-area-inset-top, 0px);
-            --safe-bottom: env(safe-area-inset-bottom, 0px);
-            --header-h: calc(60px + var(--safe-top));
-            --footer-h: calc(70px + var(--safe-bottom));
-        }
-        html, body {
-            margin: 0; padding: 0; height: 100%; width: 100%;
-            overflow: hidden; background: #e5ddd5; position: fixed;
-        }
+        :root { --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px); --header-h: calc(60px + var(--safe-top)); --footer-h: calc(70px + var(--safe-bottom)); }
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #e5ddd5; position: fixed; }
         body { font-family: -apple-system, sans-serif; display: flex; flex-direction: column; }
-        .header {
-            background: #2196F3; color: white; padding-top: var(--safe-top);
-            height: var(--header-h); display: flex; align-items: center;
-            padding-left: 15px; padding-right: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            z-index: 1000; position: fixed; top: 0; width: 100%;
-        }
+        .header { background: #2196F3; color: white; padding-top: var(--safe-top); height: var(--header-h); display: flex; align-items: center; padding-left: 15px; padding-right: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 1000; position: fixed; top: 0; width: 100%; }
         .back-btn { font-size: 28px; cursor: pointer; margin-right: 12px; padding: 5px; }
-        .header-info { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
-        .user-phone { font-weight: bold; font-size: 17px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .user-status { font-size: 12px; color: #e0e0e0; line-height: 1.2; }
+        .header-info { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
+        .user-phone { font-weight: bold; font-size: 17px; }
+        .user-status { font-size: 12px; color: #e0e0e0; }
         .online-text { color: #00e676 !important; font-weight: bold; }
-        .clear-btn { font-size: 20px; cursor: pointer; padding: 10px; }
-        #messages {
-            flex: 1; overflow-y: auto; padding: 10px 15px;
-            display: flex; flex-direction: column; gap: 8px; background: #e5ddd5;
-            margin-top: var(--header-h); margin-bottom: var(--footer-h);
-            -webkit-overflow-scrolling: touch;
-        }
+        #messages { flex: 1; overflow-y: auto; padding: 10px 15px; display: flex; flex-direction: column; gap: 8px; margin-top: var(--header-h); margin-bottom: var(--footer-h); -webkit-overflow-scrolling: touch; }
         .msg { max-width: 80%; padding: 10px 14px; border-radius: 16px; font-size: 15px; word-wrap: break-word; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
         .sent { align-self: flex-end; background: #DCF8C6; border-bottom-right-radius: 2px; }
         .received { align-self: flex-start; background: white; border-bottom-left-radius: 2px; }
         .msg-footer { display: flex; justify-content: flex-end; align-items: center; gap: 4px; font-size: 10px; color: #888; margin-top: 4px; }
         .ticks { font-weight: bold; font-size: 14px; margin-left: 4px; }
         .read { color: #2196F3; } .unread { color: #BDBDBD; }
-        .bottom-area {
-            background: #f0f0f0; border-top: 1px solid #ddd;
-            padding: 8px 10px calc(var(--safe-bottom) + 8px) 10px;
-            display: flex; align-items: center; gap: 8px;
-            position: fixed; bottom: 0; width: 100%; z-index: 1000; height: var(--footer-h);
-        }
-        input {
-            flex: 1; border: 1px solid #ccc; background: #fff; outline: none;
-            font-size: 16px; padding: 10px 15px; border-radius: 20px; -webkit-appearance: none;
-        }
-        .send-btn {
-            background: #2196F3; border: none; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            width: 40px; height: 40px; border-radius: 50%;
-        }
-        .send-btn svg { fill: white; width: 22px; height: 22px; margin-left: 2px; }
+        .bottom-area { background: #f0f0f0; border-top: 1px solid #ddd; padding: 8px 10px calc(var(--safe-bottom) + 8px) 10px; display: flex; align-items: center; gap: 8px; position: fixed; bottom: 0; width: 100%; z-index: 1000; height: var(--footer-h); }
+        input { flex: 1; border: 1px solid #ccc; background: #fff; outline: none; font-size: 16px; padding: 10px 15px; border-radius: 20px; }
+        .send-btn { background: #2196F3; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; }
+        .send-btn svg { fill: white; width: 22px; height: 22px; }
     </style>
 </head>
 <body>
@@ -68,101 +37,46 @@
             <div class="user-phone" id="otherUserPhoneDisplay">Загрузка...</div>
             <div class="user-status" id="otherUserStatus">офлайн</div>
         </div>
-        <div class="clear-btn" onclick="clearEntireChat()">🗑</div>
+        <div class="clear-btn" onclick="if(confirm('Очистить?')) db.ref('PrivateChats/'+chatId).remove()">🗑</div>
     </div>
     <div id="messages"></div>
     <div class="bottom-area">
         <input type="text" id="msgInput" placeholder="Сообщение" autocomplete="off">
-        <button class="send-btn" onclick="sendMsg()">
-            <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-        </button>
+        <button class="send-btn" onclick="sendMsg()"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
     </div>
 
     <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
-            authDomain: "villagehub-d4d5e.firebaseapp.com",
-            databaseURL: "https://villagehub-d4d5e-default-rtdb.firebaseio.com",
-            projectId: "villagehub-d4d5e",
-            storageBucket: "villagehub-d4d5e.firebasestorage.app",
-            messagingSenderId: "131056250064",
-            appId: "1:131056250064:web:84c0c67819e9828ec642d5"
-        };
+        const firebaseConfig = { apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y", authDomain: "villagehub-d4d5e.firebaseapp.com", databaseURL: "https://villagehub-d4d5e-default-rtdb.firebaseio.com", projectId: "villagehub-d4d5e", storageBucket: "villagehub-d4d5e.firebasestorage.app", messagingSenderId: "131056250064", appId: "1:131056250064:web:84c0c67819e9828ec642d5" };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-
-        const myPhone = localStorage.getItem("USER_PHONE") ? localStorage.getItem("USER_PHONE").trim() : "";
-        const urlParams = new URLSearchParams(window.location.search);
-        const otherPhone = urlParams.get('otherPhone') ? urlParams.get('otherPhone').trim() : "";
-
-        if (!myPhone || !otherPhone) { location.href = 'index.html'; }
-
-        // Статус Онлайн
-        db.ref(".info/connected").on("value", s => {
-            if (s.val() === true) {
-                const myRef = db.ref('Users/' + myPhone);
-                myRef.update({ isOnline: true });
-                myRef.child('isOnline').onDisconnect().set(false);
-                myRef.child('lastOnline').onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
-            }
-        });
-
-        // Собеседник
-        db.ref('Users/' + otherPhone).on('value', snap => {
-            if (snap.exists()) {
-                const data = snap.val();
-                document.getElementById('otherUserPhoneDisplay').innerText = data.name || otherPhone;
-                const status = document.getElementById('otherUserStatus');
-                if (data.isOnline) {
-                    status.innerText = "в сети"; status.classList.add('online-text');
-                } else {
-                    status.classList.remove('online-text');
-                    status.innerText = data.lastOnline ? "был(а) " + new Date(data.lastOnline).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "офлайн";
-                }
-            }
-        });
-
+        const myPhone = (localStorage.getItem("USER_PHONE") || "").trim();
+        const otherPhone = (new URLSearchParams(window.location.search).get('otherPhone') || "").trim();
         const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
         const container = document.getElementById('messages');
 
-        // СЛУШАТЕЛЬ (ЖЕСТКАЯ ЛОГИКА ГАЛОЧЕК)
+        // ГАЛОЧКИ: Только отрисовка
         db.ref('PrivateChats').child(chatId).on('value', snap => {
-            const messageMap = new Map();
+            let html = '';
             let hasNewIncoming = false;
-
             snap.forEach(child => {
                 const msg = child.val();
-                const msgKey = child.key;
-                messageMap.set(msgKey, msg);
-
-                // ТОЛЬКО ЕСЛИ КТО-ТО ПРИСЛАЛ МНЕ (НЕ Я)
-                if (msg.senderId !== myPhone && msg.isRead === false) {
-                    db.ref(`PrivateChats/${chatId}/${msgKey}/isRead`).set(true);
+                const isMine = (msg.senderId === myPhone);
+                
+                // Если прислали мне - запоминаем, что надо прочитать
+                if (!isMine && msg.isRead === false) {
+                    child.ref.child('isRead').set(true);
                     hasNewIncoming = true;
                 }
-            });
 
-            if (hasNewIncoming) {
-                db.ref(`UserChats/${myPhone}/${otherPhone}`).update({ unreadCount: 0, hasNewMessage: false });
-                db.ref(`Users/${myPhone}`).update({ hasNewMessage: false });
-            }
-
-            container.innerHTML = '';
-            messageMap.forEach((msg) => {
-                const isMine = (msg.senderId === myPhone);
-                const div = document.createElement('div');
-                div.className = `msg ${isMine ? 'sent' : 'received'}`;
-                
-                let ticksHtml = '';
-                if (isMine) {
-                    const isReadStatus = (msg.isRead === true);
-                    ticksHtml = `<span class="ticks ${isReadStatus ? 'read' : 'unread'}">${isReadStatus ? '✔✔' : '✔'}</span>`;
-                }
-                
-                div.innerHTML = `<div>${msg.text}</div><div class="msg-footer">${msg.time}${ticksHtml}</div>`;
-                container.appendChild(div);
+                const tickHtml = isMine ? `<span class="ticks ${msg.isRead ? 'read' : 'unread'}">${msg.isRead ? '✔✔' : '✔'}</span>` : '';
+                html += `<div class="msg ${isMine ? 'sent' : 'received'}"><div>${msg.text}</div><div class="msg-footer">${msg.time}${tickHtml}</div></div>`;
             });
+            container.innerHTML = html;
             container.scrollTo(0, container.scrollHeight);
+            if (hasNewIncoming) {
+                db.ref('UserChats/'+myPhone+'/'+otherPhone).update({unreadCount: 0, hasNewMessage: false});
+                db.ref('Users/'+myPhone).update({hasNewMessage: false});
+            }
         });
 
         function sendMsg() {
@@ -171,36 +85,21 @@
             if (!text) return;
             const ts = Date.now();
             const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            
-            // Новое сообщение ВСЕГДА false
             const newMsg = { senderId: myPhone, text: text, time: time, timestamp: ts, isRead: false };
             db.ref('PrivateChats/' + chatId).push(newMsg);
-            
-            db.ref('UserChats/' + myPhone + '/' + otherPhone).update({ phone: otherPhone, lastMessage: text, timestamp: ts });
-            db.ref('UserChats/' + otherPhone + '/' + myPhone).transaction(c => {
-                if (c) { 
-                    c.unreadCount = (c.unreadCount || 0) + 1; 
-                    c.lastMessage = text; 
-                    c.timestamp = ts; 
-                    c.hasNewMessage = true; 
-                    c.phone = myPhone; 
-                    return c;
-                }
-                return { phone: myPhone, lastMessage: text, timestamp: ts, unreadCount: 1, hasNewMessage: true };
-            });
-            db.ref('Users/' + otherPhone).update({ hasNewMessage: true });
-            input.value = ''; input.focus();
+            db.ref('UserChats/'+myPhone+'/'+otherPhone).update({phone: otherPhone, lastMessage: text, timestamp: ts});
+            db.ref('UserChats/'+otherPhone+'/'+myPhone).update({phone: myPhone, lastMessage: text, timestamp: ts, hasNewMessage: true});
+            db.ref('Users/'+otherPhone).update({hasNewMessage: true});
+            input.value = '';
         }
 
-        function clearEntireChat() { if (confirm("Очистить?")) db.ref('PrivateChats/' + chatId).remove(); }
-        document.getElementById('msgInput').addEventListener('keypress', e => { if (e.key === 'Enter') sendMsg(); });
-
-        if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', () => {
-                document.body.style.height = window.visualViewport.height + 'px';
-                container.scrollTop = container.scrollHeight;
-            });
-        }
+        db.ref('Users/'+otherPhone).on('value', s => {
+            const d = s.val(); if(!d) return;
+            document.getElementById('otherUserPhoneDisplay').innerText = d.name || otherPhone;
+            document.getElementById('otherUserStatus').innerText = d.isOnline ? "в сети" : "офлайн";
+            document.getElementById('otherUserStatus').className = "user-status " + (d.isOnline ? "online-text" : "");
+        });
+        document.getElementById('msgInput').onkeypress = e => { if(e.key === 'Enter') sendMsg() };
     </script>
 </body>
 </html>
