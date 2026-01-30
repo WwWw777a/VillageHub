@@ -60,10 +60,10 @@
         if (!myPhone || !otherPhone) { location.href = 'index.html'; }
         document.getElementById('otherUserPhoneDisplay').innerText = otherPhone;
 
-        // Создаем ID чата как в Android (сравнение строк)
+        // ID чата строго как в Android (сравнение строк с +7)
         const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
 
-        // Загрузка сообщений через .child() для безопасности знака "+"
+        // Загрузка сообщений через .child() для безопасной работы с "+" в названии
         db.ref('PrivateChats').child(chatId).on('value', snap => {
             const container = document.getElementById('messages');
             container.innerHTML = '';
@@ -71,6 +71,7 @@
                 const msg = child.val();
                 const isMine = msg.senderId === myPhone;
 
+                // Отметка о прочтении
                 if (!isMine && !msg.isRead) {
                     child.ref.update({ isRead: true });
                 }
@@ -100,12 +101,20 @@
                 isRead: false
             };
 
-            // Пишем в PrivateChats
+            // Пишем в PrivateChats (в папку с плюсами)
             db.ref('PrivateChats').child(chatId).push(newMsg);
 
-            // Пишем в UserChats (как в Android)
-            db.ref('UserChats').child(myPhone).child(otherPhone).update({ phone: otherPhone, lastMessage: text, timestamp: ts });
-            db.ref('UserChats').child(otherPhone).child(myPhone).update({ phone: myPhone, lastMessage: text, timestamp: ts });
+            // Пишем в UserChats (в папки с плюсами)
+            db.ref('UserChats').child(myPhone).child(otherPhone).update({ 
+                phone: otherPhone, 
+                lastMessage: text, 
+                timestamp: ts 
+            });
+            db.ref('UserChats').child(otherPhone).child(myPhone).update({ 
+                phone: myPhone, 
+                lastMessage: text, 
+                timestamp: ts 
+            });
 
             input.value = '';
         }
