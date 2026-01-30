@@ -50,56 +50,79 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        const myPhone = localStorage.getItem("USER_PHONE"); // Оригинал с +
+        const myPhone = localStorage.getItem("USER_PHONE"); // Оригинал с +7
         const urlParams = new URLSearchParams(window.location.search);
-        const otherPhone = urlParams.get('otherPhone'); // Оригинал с +
+        const otherPhone = urlParams.get('otherPhone'); // Оригинал с +7
 
         if (!myPhone || !otherPhone) { location.href = 'index.html'; }
         document.getElementById('displayPhone').innerText = otherPhone;
 
-        // Технические ключи БЕЗ ПЛЮСА (только для путей веток чатов)
+        // ВАЖНО: Ключи для путей в базе БЕЗ плюса
         const myKey = myPhone.replace(/\+/g, '');
         const otherKey = otherPhone.replace(/\+/g, '');
+        
+        // ID чата — всегда одинаковый для обоих участников
         const chatId = myKey < otherKey ? `${myKey}_${otherKey}` : `${otherKey}_${myKey}`;
 
-        // СТАТУС ОНЛАЙН - ТЕПЕРЬ СТРОГО С ПЛЮСОМ (чтобы не плодить копии)
+        // Обновление статуса: ИСПОЛЬЗУЕМ СТРОГО ОРИГИНАЛЬНЫЙ myPhone (с +7)
         function updateStatus() {
-            if (myPhone) db.ref('Users/' + myPhone).update({ lastOnline: Date.now(), lastActive: Date.now() });
+            if (myPhone) db.ref('Users/' + myPhone).update({ 
+                lastOnline: Date.now(), 
+                lastActive: Date.now() 
+            });
         }
         updateStatus(); setInterval(updateStatus, 120000);
 
+        // ЗАГРУЗКА ИСТОРИИ
         db.ref('PrivateMessages/' + chatId).on('value', snap => {
             const container = document.getElementById('messages');
             container.innerHTML = '';
             snap.forEach(child => {
                 const data = child.val();
                 const isMine = data.sender === myPhone;
+                
+                // Отмечаем прочитанным
                 if (!isMine && !data.isRead) {
                     db.ref(`PrivateMessages/${chatId}/${child.key}/isRead`).set(true);
                 }
+
                 const div = document.createElement('div');
                 div.className = `msg ${isMine ? 'sent' : 'received'}`;
                 const ticks = isMine ? `<span class="ticks ${data.isRead ? 'read' : 'unread'}">${data.isRead ? '✔✔' : '✔'}</span>` : '';
+                
                 div.innerHTML = `<div>${data.text}</div><div class="msg-footer">${data.time || ''} ${ticks}</div>`;
                 container.appendChild(div);
             });
             container.scrollTop = container.scrollHeight;
         });
 
+        // ОТПРАВКА
         function sendMsg() {
             const input = document.getElementById('msgInput');
             const text = input.value.trim();
             if (!text) return;
+
             const timestamp = Date.now();
             const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-            const newMsg = { sender: myPhone, text: text, time: timeStr, timestamp: timestamp, isRead: false };
+            const newMsg = {
+                sender: myPhone, // Сохраняем с +7 для логики приложения
+                text: text,
+                time: timeStr,
+                timestamp: timestamp,
+                isRead: false
+            };
+
+            // 1. Пишем в общую ветку сообщений (через чистый chatId)
             db.ref('PrivateMessages/' + chatId).push(newMsg);
 
+            // 2. Пишем в ветку "Последние чаты" для списка сообщений
             const previewMe = { phone: otherPhone, lastText: text, ts: timestamp };
             const previewOther = { phone: myPhone, lastText: text, ts: timestamp };
+
             db.ref(`UserRecentChats/${myKey}/${otherKey}`).set(previewMe);
             db.ref(`UserRecentChats/${otherKey}/${myKey}`).set(previewOther);
+
             input.value = '';
         }
 
@@ -110,7 +133,10 @@
                 location.href = 'messages.html';
             }
         }
-        document.getElementById('msgInput').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMsg(); });
+
+        document.getElementById('msgInput').addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') sendMsg();
+        });
     </script>
 </body>
 </html>
