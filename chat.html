@@ -195,18 +195,32 @@
         const myRole = (localStorage.getItem("USER_ROLE") || "Житель");
         const iAmPrivileged = (myRole === "АДМИН" || myRole === "admin" || myRole === "МОДЕРАТОР");
 
-        // ФУНКЦИЯ ОБНОВЛЕНИЯ СТАТУСА ОНЛАЙН
-        function updateMyStatus() {
-            if (myPhone) {
-                const now = Date.now();
-                db.ref('Users/' + myPhone).update({
-                    lastOnline: now,
-                    lastActive: now
-                });
-            }
+        // --- ЛОГИКА ОНЛАЙНА (Android + iPhone) ---
+        if (myPhone) {
+            const presenceRef = db.ref('Users/' + myPhone + '/isOnline');
+            const lastSeenRef = db.ref('Users/' + myPhone + '/lastOnline');
+            const connectedRef = db.ref('.info/connected');
+
+            // 1. Статус при подключении
+            connectedRef.on('value', (snap) => {
+                if (snap.val() === true) {
+                    presenceRef.set(true);
+                    presenceRef.onDisconnect().set(false);
+                    lastSeenRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
+                }
+            });
+
+            // 2. Статус при сворачивании (iPhone)
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    presenceRef.set(false);
+                    lastSeenRef.set(firebase.database.ServerValue.TIMESTAMP);
+                } else {
+                    presenceRef.set(true);
+                }
+            });
         }
-        updateMyStatus();
-        setInterval(updateMyStatus, 120000);
+        // ------------------------------------------
 
         let lastReadTimestamp = parseInt(localStorage.getItem("CHAT_LAST_READ") || "0");
         let selectedMsg = null, replyingTo = null, editingMsgId = null, lastPinnedId = "", isFirstLoad = true;
