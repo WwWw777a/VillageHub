@@ -69,18 +69,17 @@
         const otherPhone = urlParams.get('otherPhone');
         if (!myPhone || !otherPhone) { location.href = 'index.html'; }
 
-        function setupOnline() {
-            const myRef = db.ref('Users/' + myPhone);
-            db.ref(".info/connected").on("value", s => {
-                if (s.val() === true) {
-                    myRef.update({ isOnline: true });
-                    myRef.child('isOnline').onDisconnect().set(false);
-                    myRef.child('lastOnline').onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
-                }
-            });
-        }
-        setupOnline();
+        // Онлайн-статус
+        const myRef = db.ref('Users/' + myPhone);
+        db.ref(".info/connected").on("value", s => {
+            if (s.val() === true) {
+                myRef.update({ isOnline: true });
+                myRef.child('isOnline').onDisconnect().set(false);
+                myRef.child('lastOnline').onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
+            }
+        });
 
+        // Имя и статус собеседника
         db.ref('Users/' + otherPhone).on('value', snap => {
             if (snap.exists()) {
                 const data = snap.val();
@@ -94,25 +93,26 @@
         const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
         const container = document.getElementById('messages');
 
-        // СЛУШАТЕЛЬ С ПОЛНОЙ БЛОКИРОВКОЙ ДУБЛЕЙ
+        // СЛУШАТЕЛЬ БЕЗ ДУБЛЕЙ
         db.ref('PrivateChats').child(chatId).on('value', snap => {
-            const msgMap = new Map();
+            const tempMap = new Map();
             snap.forEach(child => {
                 const msg = child.val();
-                msgMap.set(child.key, msg); // Перезаписывает по ключу, исключая дубли
+                const key = child.key;
+                tempMap.set(key, msg); // Гарантирует уникальность по ключу Firebase
 
-                if (msg.senderId !== myPhone && !msg.isRead) {
-                    child.ref.update({ isRead: true });
+                if (msg.senderId !== myPhone && msg.isRead === false) {
+                    child.ref.child('isRead').set(true);
                     db.ref('UserChats/' + myPhone + '/' + otherPhone).update({ unreadCount: 0, hasNewMessage: false });
-                    db.ref('Users/' + myPhone).update({ hasNewNotification: false, hasNewMessage: false });
                 }
             });
 
             container.innerHTML = '';
-            msgMap.forEach((msg) => {
+            tempMap.forEach((msg) => {
+                const isMine = msg.senderId === myPhone;
                 const div = document.createElement('div');
-                div.className = `msg ${msg.senderId === myPhone ? 'sent' : 'received'}`;
-                const ticks = msg.senderId === myPhone ? `<span class="ticks ${msg.isRead ? 'read' : 'unread'}">${msg.isRead ? '✔✔' : '✔'}</span>` : '';
+                div.className = `msg ${isMine ? 'sent' : 'received'}`;
+                const ticks = isMine ? `<span class="ticks ${msg.isRead ? 'read' : 'unread'}">${msg.isRead ? '✔✔' : '✔'}</span>` : '';
                 div.innerHTML = `<div>${msg.text}</div><div class="msg-footer">${msg.time} ${ticks}</div>`;
                 container.appendChild(div);
             });
@@ -123,36 +123,26 @@
             const input = document.getElementById('msgInput');
             const text = input.value.trim();
             if (!text) return;
-            const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             const ts = Date.now();
+            const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            // Структура строго как в Android
             const newMsg = { senderId: myPhone, text: text, time: time, timestamp: ts, isRead: false };
-            db.ref('PrivateChats').child(chatId).push(newMsg);
-            db.ref('UserChats').child(myPhone).child(otherPhone).update({ phone: otherPhone, lastMessage: text, timestamp: ts });
-            const recRef = db.ref('UserChats').child(otherPhone).child(myPhone);
-            recRef.transaction((c) => {
+            db.ref('PrivateChats/' + chatId).push(newMsg);
+            
+            db.ref('UserChats/' + myPhone + '/' + otherPhone).update({ phone: otherPhone, lastMessage: text, timestamp: ts });
+            db.ref('UserChats/' + otherPhone + '/' + myPhone).transaction(c => {
                 if (c) { c.unreadCount = (c.unreadCount || 0) + 1; c.lastMessage = text; c.timestamp = ts; c.hasNewMessage = true; c.phone = myPhone; }
                 else { return { phone: myPhone, lastMessage: text, timestamp: ts, unreadCount: 1, hasNewMessage: true }; }
                 return c;
             });
-            db.ref('Users').child(otherPhone).update({ hasNewNotification: true, hasNewMessage: true });
+            db.ref('Users/' + otherPhone).update({ hasNewMessage: true });
             input.value = '';
             input.focus();
         }
 
-        function clearEntireChat() {
-            if (confirm("Очистить переписку?")) {
-                db.ref('PrivateChats').child(chatId).remove();
-                db.ref('UserChats').child(myPhone).child(otherPhone).remove();
-                location.href = 'messages.html';
-            }
-        }
+        function clearEntireChat() { if (confirm("Очистить?")) db.ref('PrivateChats/' + chatId).remove() }
         document.getElementById('msgInput').addEventListener('keypress', e => { if (e.key === 'Enter') sendMsg(); });
-        if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', () => {
-                document.body.style.height = window.visualViewport.height + 'px';
-                container.scrollTo(0, container.scrollHeight);
-            });
-        }
     </script>
 </body>
 </html>
