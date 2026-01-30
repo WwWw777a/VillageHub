@@ -17,7 +17,10 @@
         .chat-info { flex-grow: 1; overflow: hidden; }
         .chat-phone { font-weight: bold; font-size: 16px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
         .chat-last-msg { color: #757575; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .unread-dot { width: 10px; height: 10px; background: #2196F3; border-radius: 50%; display: inline-block; }
+        
+        /* Счетчик непрочитанных */
+        .unread-badge { background: #2196F3; color: white; font-size: 12px; font-weight: bold; min-width: 20px; height: 20px; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 0 6px; }
+        
         .btn-delete { color: #f44336; padding: 10px; font-size: 20px; cursor: pointer; }
         .empty-state { text-align: center; color: #999; margin-top: 50px; }
     </style>
@@ -42,10 +45,9 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         
-        const myPhone = localStorage.getItem("USER_PHONE"); // Должен быть +7...
+        const myPhone = localStorage.getItem("USER_PHONE"); 
         if (!myPhone) { location.href = 'login.html'; }
 
-        // Читаем список чатов через .child(), чтобы символ "+" не вызывал ошибок
         db.ref('UserChats').child(myPhone).on('value', snap => {
             const list = document.getElementById('chatsList');
             list.innerHTML = '';
@@ -64,30 +66,20 @@
 
             chats.forEach(chat => {
                 const otherPhone = chat.phone;
-                const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
+                const unreadCount = chat.unreadCount || 0;
+                const unreadHtml = unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : '';
 
-                // Проверка на непрочитанные в оригинальной ветке PrivateChats
-                db.ref('PrivateChats').child(chatId).limitToLast(1).once('value', msgSnap => {
-                    let unreadHtml = '';
-                    msgSnap.forEach(m => {
-                        const lastMsg = m.val();
-                        if (lastMsg.senderId !== myPhone && lastMsg.isRead === false) {
-                            unreadHtml = '<span class="unread-dot"></span>';
-                        }
-                    });
-
-                    const div = document.createElement('div');
-                    div.className = 'chat-item';
-                    div.onclick = () => { location.href = `private_chat.html?otherPhone=${encodeURIComponent(otherPhone)}`; };
-                    div.innerHTML = `
-                        <div class="chat-info">
-                            <div class="chat-phone">${otherPhone} ${unreadHtml}</div>
-                            <div class="chat-last-msg">${chat.lastMessage || ''}</div>
-                        </div>
-                        <div class="btn-delete" onclick="event.stopPropagation(); deleteChat('${otherPhone}')">🗑</div>
-                    `;
-                    list.appendChild(div);
-                });
+                const div = document.createElement('div');
+                div.className = 'chat-item';
+                div.onclick = () => { location.href = `private_chat.html?otherPhone=${encodeURIComponent(otherPhone)}`; };
+                div.innerHTML = `
+                    <div class="chat-info">
+                        <div class="chat-phone">${otherPhone} ${unreadHtml}</div>
+                        <div class="chat-last-msg">${chat.lastMessage || ''}</div>
+                    </div>
+                    <div class="btn-delete" onclick="event.stopPropagation(); deleteChat('${otherPhone}')">🗑</div>
+                `;
+                list.appendChild(div);
             });
         });
 
