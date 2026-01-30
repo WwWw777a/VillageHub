@@ -7,8 +7,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
-        :root { --safe-top: env(safe-area-inset-top, 0px); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        :root { --safe-top: env(safe-area-inset-top, 0px); }
         body, html { margin: 0; padding: 0; height: 100dvh; width: 100vw; background: #f5f5f5; font-family: -apple-system, sans-serif; overflow: hidden; position: fixed; -webkit-text-size-adjust: 100%; }
         .header { background: #2196F3; color: white; padding: 15px; display: flex; align-items: center; position: fixed; top: 0; left: 0; width: 100%; z-index: 1000; height: calc(60px + var(--safe-top)); padding-top: var(--safe-top); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; padding: 5px; }
@@ -27,7 +27,6 @@
         <span class="back-btn" onclick="location.href='index.html'">←</span>
         <h1 style="font-size: 18px; margin: 0;">Мои переписки</h1>
     </div>
-
     <div class="container" id="chatsList"></div>
 
     <script>
@@ -43,13 +42,17 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         
-        const myPhone = localStorage.getItem("USER_PHONE"); // Оригинал с +
-        function safe(p) { return p ? p.replace(/\+/g, '') : ""; }
-        const myKey = safe(myPhone);
+        const myPhone = localStorage.getItem("USER_PHONE"); // С плюсом
+        const myKey = myPhone ? myPhone.replace(/\+/g, '') : "";
 
         if (!myPhone) { location.href = 'login.html'; }
 
-        // ЧИТАЕМ ИЗ НОВОГО УЗЛА UserRecentChats
+        // ОБНОВЛЕНИЕ СТАТУСА - СТРОГО С ПЛЮСОМ
+        function updateStatus() {
+            if (myPhone) db.ref('Users/' + myPhone).update({ lastOnline: Date.now(), lastActive: Date.now() });
+        }
+        updateStatus(); setInterval(updateStatus, 120000);
+
         db.ref('UserRecentChats/' + myKey).on('value', snap => {
             const list = document.getElementById('chatsList');
             list.innerHTML = '';
@@ -57,29 +60,21 @@
                 list.innerHTML = '<div class="empty-state">Нет активных переписок</div>';
                 return;
             }
-
             let chats = [];
             snap.forEach(child => { 
                 let data = child.val();
                 data.otherKey = child.key; 
                 chats.push(data); 
             });
-            
             chats.sort((a, b) => b.ts - a.ts);
-
             chats.forEach(chat => {
                 const chatId = myKey < chat.otherKey ? `${myKey}_${chat.otherKey}` : `${chat.otherKey}_${myKey}`;
-                
-                // Проверяем статус последнего сообщения в PrivateMessages
                 db.ref(`PrivateMessages/${chatId}`).limitToLast(1).once('value', msgSnap => {
                     let unreadHtml = '';
                     msgSnap.forEach(m => {
                         const lastMsg = m.val();
-                        if (lastMsg.sender !== myPhone && lastMsg.isRead === false) {
-                            unreadHtml = '<span class="unread-dot"></span>';
-                        }
+                        if (lastMsg.sender !== myPhone && lastMsg.isRead === false) { unreadHtml = '<span class="unread-dot"></span>'; }
                     });
-
                     const div = document.createElement('div');
                     div.className = 'chat-item';
                     div.onclick = () => { location.href = `private_chat.html?otherPhone=${encodeURIComponent(chat.phone)}`; };
@@ -96,9 +91,7 @@
         });
 
         function deleteChat(otherKey) {
-            if (confirm("Удалить из списка?")) {
-                db.ref(`UserRecentChats/${myKey}/${otherKey}`).remove();
-            }
+            if (confirm("Удалить из списка?")) db.ref(`UserRecentChats/${myKey}/${otherKey}`).remove();
         }
     </script>
 </body>
