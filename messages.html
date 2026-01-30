@@ -43,12 +43,12 @@
         const db = firebase.database();
         
         const myPhone = localStorage.getItem("USER_PHONE"); 
-        // Заменяем + на _ для ПУТИ в базе
-        function fix(p) { return p ? p.replace(/\+/g, '_') : ""; }
+        const fix = (p) => p.replace(/\+/g, '_');
+        const myKey = fix(myPhone || "");
 
         if (!myPhone) { location.href = 'login.html'; }
 
-        db.ref('UserChats/' + fix(myPhone)).on('value', snap => {
+        db.ref('UserChats/' + myKey).on('value', snap => {
             const list = document.getElementById('chatsList');
             list.innerHTML = '';
             if (!snap.exists()) {
@@ -67,9 +67,8 @@
 
             chats.forEach(chat => {
                 const otherPhone = chat.phone;
-                const otherKey = fix(otherPhone);
-                const myKey = fix(myPhone);
-                const chatId = myKey < otherKey ? `${myKey}_${otherKey}` : `${otherKey}_${myKey}`;
+                const otherKey = chat.otherKey;
+                const chatId = myKey < otherKey ? `${myKey}__${otherKey}` : `${otherKey}__${myKey}`;
 
                 db.ref(`PrivateChats/${chatId}`).limitToLast(1).once('value', msgSnap => {
                     let unreadHtml = '';
@@ -97,7 +96,7 @@
 
         function deleteChat(oKey) {
             if (confirm("Удалить из списка?")) {
-                db.ref(`UserChats/${fix(myPhone)}/${oKey}`).remove();
+                db.ref(`UserChats/${myKey}/${oKey}`).remove();
             }
         }
     </script>
