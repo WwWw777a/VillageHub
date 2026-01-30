@@ -26,8 +26,8 @@
             z-index: 1000; position: fixed; top: 0; width: 100%;
         }
         .back-btn { font-size: 28px; cursor: pointer; margin-right: 12px; padding: 5px; }
-        .header-info { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
-        .user-phone { font-weight: bold; font-size: 17px; line-height: 1.2; }
+        .header-info { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+        .user-phone { font-weight: bold; font-size: 17px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .user-status { font-size: 12px; color: #e0e0e0; line-height: 1.2; }
         .online-text { color: #00e676 !important; font-weight: bold; }
         .clear-btn { font-size: 20px; cursor: pointer; padding: 10px; }
@@ -128,22 +128,25 @@
         const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
         const container = document.getElementById('messages');
 
-        // ГЛАВНОЕ ИСПРАВЛЕНИЕ: ГАЛОЧКИ + БЕЗ ДУБЛЕЙ
         db.ref('PrivateChats').child(chatId).on('value', snap => {
             const messageMap = new Map();
+            let hasIncomingNew = false;
             
             snap.forEach(child => {
                 const msg = child.val();
-                const msgId = child.key;
-                messageMap.set(msgId, msg);
+                messageMap.set(child.key, msg);
 
-                // Если сообщение прислали МНЕ и оно не прочитано - читаем его
+                // ГАЛОЧКИ: Читаем только если senderId не мой и isRead еще false
                 if (msg.senderId !== myPhone && msg.isRead === false) {
                     child.ref.child('isRead').set(true);
-                    db.ref('UserChats/' + myPhone + '/' + otherPhone).update({ unreadCount: 0, hasNewMessage: false });
-                    db.ref('Users/' + myPhone).update({ hasNewMessage: false });
+                    hasIncomingNew = true;
                 }
             });
+
+            if (hasIncomingNew) {
+                db.ref('UserChats/' + myPhone + '/' + otherPhone).update({ unreadCount: 0, hasNewMessage: false });
+                db.ref('Users/' + myPhone).update({ hasNewMessage: false });
+            }
 
             container.innerHTML = '';
             messageMap.forEach((msg) => {
