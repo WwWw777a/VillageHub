@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Сообщить о проблеме</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <style>
+        :root { --safe-top: env(safe-area-inset-top, 0px); }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body, html { margin: 0; padding: 0; background: white; font-family: -apple-system, sans-serif; }
+        
+        .header { background: #FF9800; color: white; padding: 15px; display: flex; align-items: center; position: fixed; top: 0; left: 0; width: 100%; z-index: 1000; height: calc(60px + var(--safe-top)); padding-top: var(--safe-top); }
+        .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; padding: 5px; }
+        
+        .container { padding: 20px; padding-top: calc(80px + var(--safe-top)); }
+        h2 { font-size: 18px; margin-bottom: 20px; color: #333; }
+        
+        input, textarea { width: 100%; padding: 14px; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 15px; font-size: 16px; outline: none; background: #fafafa; }
+        textarea { height: 120px; resize: none; }
+        
+        .photo-section { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
+        .btn-photo { background: none; border: none; color: #FF9800; font-weight: bold; font-size: 16px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        #photoStatus { font-size: 14px; color: #757575; }
+        
+        #preview { width: 100%; height: 200px; object-fit: cover; border-radius: 12px; display: none; margin-bottom: 20px; border: 1px solid #ddd; }
+        
+        .btn-send { background: #FF9800; color: white; border: none; padding: 16px; border-radius: 30px; width: 100%; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(255,152,0,0.3); }
+        .btn-send:disabled { background: #ccc; box-shadow: none; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <span class="back-btn" onclick="location.href='issues.html'">←</span>
+        <h1 style="font-size: 18px; margin: 0;">Сообщить о проблеме</h1>
+    </div>
+
+    <div class="container">
+        <h2>Заполните форму о проблеме</h2>
+        
+        <input type="text" id="inTitle" placeholder="Коротко (например: Яма на Ленина)" maxlength="100">
+        <textarea id="inDesc" placeholder="Подробное описание..."></textarea>
+        <input type="text" id="inAuthor" placeholder="Ваше имя">
+
+        <div class="photo-section">
+            <button class="btn-photo" onclick="document.getElementById('fileInput').click()">📷 ФОТО</button>
+            <span id="photoStatus">Фото не выбрано</span>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleFile(this.files[0])">
+        
+        <img id="preview">
+
+        <button class="btn-send" id="btnSend" onclick="sendIssue()">Отправить в приложение</button>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
+            authDomain: "villagehub-d4d5e.firebaseapp.com",
+            databaseURL: "https://villagehub-d4d5e-default-rtdb.firebaseio.com",
+            projectId: "villagehub-d4d5e",
+            storageBucket: "villagehub-d4d5e.firebasestorage.app",
+            messagingSenderId: "131056250064",
+            appId: "1:131056250064:web:84c0c67819e9828ec642d5"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        
+        const myPhone = localStorage.getItem("USER_PHONE");
+        const savedName = localStorage.getItem("USER_NAME");
+        if (savedName) document.getElementById('inAuthor').value = savedName;
+
+        let encodedImage = "";
+
+        function handleFile(file) {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 800;
+                    let width = img.width;
+                    let height = img.height;
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    encodedImage = canvas.toDataURL("image/jpeg", 0.7).split(',')[1];
+                    document.getElementById('preview').src = canvas.toDataURL("image/jpeg");
+                    document.getElementById('preview').style.display = 'block';
+                    document.getElementById('photoStatus').innerText = "Фото прикреплено!";
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function sendIssue() {
+            const title = document.getElementById('inTitle').value.trim();
+            const desc = document.getElementById('inDesc').value.trim();
+            const author = document.getElementById('inAuthor').value.trim();
+            const btn = document.getElementById('btnSend');
+
+            if (!title || !desc || !author) {
+                alert("Заполните все поля!");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "Отправка...";
+
+            const newRef = db.ref('Issues').push();
+            const data = {
+                id: newRef.key,
+                title: title,
+                description: desc,
+                author: author,
+                phone: myPhone || "Неизвестно",
+                image: encodedImage,
+                timestamp: Date.now(),
+                status: "Новая"
+            };
+
+            newRef.set(data).then(() => {
+                alert("Заявка отправлена!");
+                location.href = 'issues.html';
+            }).catch(err => {
+                alert("Ошибка: " + err.message);
+                btn.disabled = false;
+                btn.innerText = "Отправить в приложение";
+            });
+        }
+    </script>
+</body>
+</html>
