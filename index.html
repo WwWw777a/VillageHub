@@ -205,6 +205,9 @@
         const db = firebase.database();
         const myPhone = localStorage.getItem("USER_PHONE");
 
+        // ПОДГОТОВКА ЗВУКА
+        const alertAudio = new Audio('alert.mp3');
+
         // --- ЛОГИКА ОНЛАЙНА ---
         if (myPhone) {
             const presenceRef = db.ref('Users/' + myPhone + '/isOnline');
@@ -235,6 +238,10 @@
             if (alertData && alertData.text) {
                 const lastSeenTime = localStorage.getItem("LAST_ALERT_TIME") || "0";
                 if (alertData.time && alertData.time.toString() !== lastSeenTime) {
+                    
+                    // ВОСПРОИЗВЕДЕНИЕ ЗВУКА
+                    alertAudio.play().catch(e => console.log("Sound interaction required"));
+                    
                     document.getElementById('broadcast_text').innerText = alertData.text;
                     document.getElementById('broadcast_overlay').style.display = 'flex';
                 }
