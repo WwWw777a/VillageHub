@@ -50,7 +50,6 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // 1. ПОЛУЧАЕМ ДАННЫЕ (строго с +7)
         const myPhone = localStorage.getItem("USER_PHONE"); 
         const urlParams = new URLSearchParams(window.location.search);
         const otherPhone = urlParams.get('otherPhone'); 
@@ -58,19 +57,13 @@
         if (!myPhone || !otherPhone) { location.href = 'index.html'; }
         document.getElementById('displayPhone').innerText = otherPhone;
 
-        // 2. ФУНКЦИЯ КОДИРОВАНИЯ ПУТИ (заменяет + на %2B для базы)
+        // Кодируем пути для Firebase (важно для совместимости с Android)
         function fb(p) { return encodeURIComponent(p); }
 
-        // 3. ID ЧАТА (как в Android: сравнение строк с +7)
+        // Создаем ID чата (точно как в Android)
         const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
 
-        // Обновление статуса в ветке Users (оригинальный путь)
-        function updateStatus() {
-            if (myPhone) db.ref('Users/' + fb(myPhone)).update({ lastOnline: Date.now() });
-        }
-        updateStatus(); setInterval(updateStatus, 120000);
-
-        // 4. ЗАГРУЗКА ИЗ PrivateChats (та же ветка, что в Android)
+        // Загрузка
         db.ref('PrivateChats/' + fb(chatId)).on('value', snap => {
             const container = document.getElementById('messages');
             container.innerHTML = '';
@@ -92,7 +85,7 @@
             container.scrollTop = container.scrollHeight;
         });
 
-        // 5. ОТПРАВКА (та же структура, что в Android)
+        // Отправка
         function sendMsg() {
             const input = document.getElementById('msgInput');
             const text = input.value.trim();
@@ -109,10 +102,9 @@
                 isRead: false
             };
 
-            // Пишем в основную ветку
             db.ref('PrivateChats/' + fb(chatId)).push(newMsg);
 
-            // Обновляем список последних чатов (совместимость с Android)
+            // Обновляем список чатов (UserChats)
             db.ref(`UserChats/${fb(myPhone)}/${fb(otherPhone)}`).update({
                 phone: otherPhone,
                 lastMessage: text,
