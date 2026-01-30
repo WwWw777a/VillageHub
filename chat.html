@@ -20,6 +20,7 @@
         :root {
             --safe-top: env(safe-area-inset-top, 0px);
             --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --accent-blue: #2196F3;
         }
 
         body, html { 
@@ -30,6 +31,32 @@
             overflow: hidden; 
             position: fixed; 
             -webkit-text-size-adjust: 100%;
+        }
+
+        /* СТИЛИ УВЕДОМЛЕНИЯ (КАК НА ГЛАВНОЙ) */
+        #broadcast_overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+            background: rgba(0,0,0,0.7); display: none; z-index: 99999;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .broadcast-card {
+            background: white; border-radius: 24px; padding: 24px; 
+            width: 100%; max-width: 400px;
+            max-height: 85vh; display: flex; flex-direction: column;
+            text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease-out; box-sizing: border-box;
+        }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .broadcast-card i { font-size: 40px; display: block; margin-bottom: 12px; font-style: normal; flex-shrink: 0; }
+        .broadcast-card h2 { margin: 0 0 12px 0; font-size: 20px; color: #333; flex-shrink: 0; }
+        #broadcast_text { 
+            font-size: 16px; color: #555; line-height: 1.5; margin-bottom: 20px; 
+            white-space: pre-wrap; word-wrap: break-word; overflow-y: auto;
+            text-align: left; padding-right: 5px; -webkit-overflow-scrolling: touch;
+        }
+        .broadcast-btn {
+            background: var(--accent-blue); color: white; border: none; padding: 14px;
+            border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%; flex-shrink: 0;
         }
 
         .main-wrapper {
@@ -109,6 +136,15 @@
     </style>
 </head>
 <body>
+
+    <div id="broadcast_overlay">
+        <div class="broadcast-card">
+            <i>📢</i>
+            <h2>Объявление</h2>
+            <div id="broadcast_text"></div>
+            <button class="broadcast-btn" onclick="closeBroadcast()">ПОНЯТНО</button>
+        </div>
+    </div>
 
     <div class="main-wrapper">
         <div class="header">
@@ -195,13 +231,58 @@
         const myRole = (localStorage.getItem("USER_ROLE") || "Житель");
         const iAmPrivileged = (myRole === "АДМИН" || myRole === "admin" || myRole === "МОДЕРАТОР");
 
-        // --- ЛОГИКА ОНЛАЙНА (Android + iPhone) ---
+        // --- ЛОГИКА ЗВУКА И РАЗБЛОКИРОВКИ IOS ---
+        let isAudioUnlocked = false;
+        const alertAudio = new Audio('alert.mp3');
+        alertAudio.preload = 'auto';
+
+        function playAlertSound() {
+            if ('mediaSession' in navigator) { navigator.mediaSession.playbackState = 'none'; }
+            alertAudio.play().then(() => {
+                alertAudio.onended = () => { alertAudio.pause(); alertAudio.currentTime = 0; };
+            }).catch(e => console.log("Sound interaction wait..."));
+        }
+
+        function unlockAudio() {
+            if (isAudioUnlocked) return;
+            const silentAudio = new Audio('alert.mp3');
+            silentAudio.muted = true;
+            silentAudio.play().then(() => { silentAudio.pause(); isAudioUnlocked = true; }).catch(() => {});
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+        }
+        document.addEventListener('click', unlockAudio);
+        document.addEventListener('touchstart', unlockAudio);
+
+        // --- ЛОГИКА РАССЫЛКИ ---
+        db.ref('SystemAlerts').on('value', (snap) => {
+            const alertData = snap.val();
+            if (alertData && alertData.text) {
+                const lastSeenTime = localStorage.getItem("LAST_ALERT_TIME") || "0";
+                if (alertData.time && alertData.time.toString() !== lastSeenTime) {
+                    if (!isAudioUnlocked) {
+                        const playOnce = () => { playAlertSound(); document.removeEventListener('click', playOnce); };
+                        document.addEventListener('click', playOnce);
+                    } else { playAlertSound(); }
+                    document.getElementById('broadcast_text').innerText = alertData.text;
+                    document.getElementById('broadcast_overlay').style.display = 'flex';
+                }
+            }
+        });
+
+        function closeBroadcast() {
+            db.ref('SystemAlerts/time').once('value').then((snap) => {
+                const currentTime = snap.val();
+                if (currentTime) { localStorage.setItem("LAST_ALERT_TIME", currentTime.toString()); }
+                document.getElementById('broadcast_overlay').style.display = 'none';
+            });
+        }
+
+        // --- ЛОГИКА ОНЛАЙНА ---
         if (myPhone) {
             const presenceRef = db.ref('Users/' + myPhone + '/isOnline');
             const lastSeenRef = db.ref('Users/' + myPhone + '/lastOnline');
             const connectedRef = db.ref('.info/connected');
-
-            // 1. Статус при подключении
             connectedRef.on('value', (snap) => {
                 if (snap.val() === true) {
                     presenceRef.set(true);
@@ -209,18 +290,13 @@
                     lastSeenRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
                 }
             });
-
-            // 2. Статус при сворачивании (iPhone)
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'hidden') {
                     presenceRef.set(false);
                     lastSeenRef.set(firebase.database.ServerValue.TIMESTAMP);
-                } else {
-                    presenceRef.set(true);
-                }
+                } else { presenceRef.set(true); }
             });
         }
-        // ------------------------------------------
 
         let lastReadTimestamp = parseInt(localStorage.getItem("CHAT_LAST_READ") || "0");
         let selectedMsg = null, replyingTo = null, editingMsgId = null, lastPinnedId = "", isFirstLoad = true;
@@ -261,29 +337,22 @@
             const div = document.createElement('div');
             div.className = `msg-container ${isMine ? 'msg-sent' : 'msg-received'}`;
             div.id = "msg_" + msg.id;
-            
             let roleClass = msg.role === 'АДМИН' ? 'role-admin' : (msg.role === 'МОДЕРАТОР' ? 'role-mod' : 'role-user');
             let replyHtml = msg.replyToText ? `<div class="reply-box"><b>${msg.replyToAuthor}</b><br>${msg.replyToText}</div>` : '';
-            
             db.ref('Users/' + msg.senderId + '/role').once('value').then(roleSnap => {
                 const actualRole = roleSnap.val() || "Житель";
                 let statusStyle = "status-user";
                 if(actualRole === "АДМИН") statusStyle = "status-admin";
                 else if(actualRole === "МОДЕРАТОР") statusStyle = "status-mod";
-                
                 const authorDiv = div.querySelector('.author');
-                if(authorDiv) {
-                    authorDiv.innerHTML = `${msg.author} <span class="${statusStyle}">(${actualRole})</span>`;
-                }
+                if(authorDiv) { authorDiv.innerHTML = `${msg.author} <span class="${statusStyle}">(${actualRole})</span>`; }
             });
-
             let reactionsHtml = '';
             if(msg.reactionsCounts) {
                 let rText = '';
                 for(let e in msg.reactionsCounts) if(msg.reactionsCounts[e] > 0) rText += `${e} ${msg.reactionsCounts[e]} `;
                 if(rText) reactionsHtml = `<div class="reactions-list" onclick="event.stopPropagation(); showWhoReacted('${msg.id}')">${rText}</div>`;
             }
-            
             div.innerHTML = `${!isMine ? `<div class="author ${roleClass}">${msg.author} ...</div>` : ''}${replyHtml}<div>${msg.text}</div>${reactionsHtml}<div class="time">${msg.time}</div>`;
             div.onclick = () => openActions(msg);
             container.appendChild(div);
@@ -313,7 +382,7 @@
             if(!text) return;
             const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             db.ref('Chats').push({ author: myName, role: myRole, text: text, time: timeStr, senderId: myPhone, timestamp: Date.now(), replyToText: replyingTo ? replyingTo.text : "", replyToAuthor: replyingTo ? replyingTo.author : "" });
-            input.value = ''; cancelReply(); scrollToBottom(); updateMyStatus();
+            input.value = ''; cancelReply(); scrollToBottom();
         }
 
         function prepareEdit() {
@@ -349,7 +418,7 @@
 
         function toggleReaction(emoji) {
             const msgId = selectedMsg.id; const refCount = db.ref(`Chats/${msgId}/reactionsCounts/${emoji}`); const refDetail = db.ref(`ReactionDetails/${msgId}/${emoji}/${myPhone}`);
-            refDetail.once('value').then(snap => { if(snap.exists()) { refDetail.remove(); refCount.transaction(c => (c || 1) - 1); } else { refDetail.set(myName); refCount.transaction(c => (c || 0) + 1); } closeActions(); updateMyStatus(); });
+            refDetail.once('value').then(snap => { if(snap.exists()) { refDetail.remove(); refCount.transaction(c => (c || 1) - 1); } else { refDetail.set(myName); refCount.transaction(c => (c || 0) + 1); } closeActions(); });
         }
 
         function showBanMenu() { document.getElementById('mainActions').style.display = 'none'; document.getElementById('banMenu').style.display = 'block'; }
@@ -376,6 +445,7 @@
             if (e.target.closest('#chatMessages')) return;
             if (e.target.closest('.action-sheet')) return;
             if (e.target.closest('.emoji-grid')) return;
+            if (document.getElementById('broadcast_overlay').style.display === 'flex') { e.preventDefault(); return; }
             e.preventDefault();
         }, { passive: false });
 

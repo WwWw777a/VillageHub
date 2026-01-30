@@ -8,15 +8,49 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        :root { --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px); --header-h: calc(60px + var(--safe-top)); --footer-h: calc(70px + var(--safe-bottom)); }
+        :root { 
+            --safe-top: env(safe-area-inset-top, 0px); 
+            --safe-bottom: env(safe-area-inset-bottom, 0px); 
+            --header-h: calc(60px + var(--safe-top)); 
+            --footer-h: calc(70px + var(--safe-bottom)); 
+            --accent-blue: #2196F3;
+        }
         html, body { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #e5ddd5; position: fixed; }
         body { font-family: -apple-system, sans-serif; display: flex; flex-direction: column; }
+        
+        /* СТИЛИ УВЕДОМЛЕНИЯ */
+        #broadcast_overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+            background: rgba(0,0,0,0.7); display: none; z-index: 99999;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .broadcast-card {
+            background: white; border-radius: 24px; padding: 24px; 
+            width: 100%; max-width: 400px;
+            max-height: 80vh; display: flex; flex-direction: column;
+            text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease-out; box-sizing: border-box;
+        }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .broadcast-card i { font-size: 40px; display: block; margin-bottom: 12px; font-style: normal; flex-shrink: 0; }
+        .broadcast-card h2 { margin: 0 0 12px 0; font-size: 20px; color: #333; flex-shrink: 0; }
+        #broadcast_text { 
+            font-size: 16px; color: #555; line-height: 1.5; margin-bottom: 20px; 
+            white-space: pre-wrap; word-wrap: break-word; overflow-y: auto;
+            text-align: left; padding-right: 5px; -webkit-overflow-scrolling: touch;
+        }
+        .broadcast-btn {
+            background: var(--accent-blue); color: white; border: none; padding: 14px;
+            border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%; flex-shrink: 0;
+        }
+
         .header { background: #2196F3; color: white; padding-top: var(--safe-top); height: var(--header-h); display: flex; align-items: center; padding-left: 15px; padding-right: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 1000; position: fixed; top: 0; width: 100%; }
         .back-btn { font-size: 28px; cursor: pointer; margin-right: 12px; padding: 5px; }
         .header-info { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
         .user-phone { font-weight: bold; font-size: 17px; }
         .user-status { font-size: 12px; color: #e0e0e0; }
         .online-text { color: #00e676 !important; font-weight: bold; }
+        
         #messages { flex: 1; overflow-y: auto; padding: 10px 15px; display: flex; flex-direction: column; gap: 8px; margin-top: var(--header-h); margin-bottom: var(--footer-h); -webkit-overflow-scrolling: touch; }
         .msg { max-width: 80%; padding: 10px 14px; border-radius: 16px; font-size: 15px; word-wrap: break-word; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
         .sent { align-self: flex-end; background: #DCF8C6; border-bottom-right-radius: 2px; }
@@ -31,6 +65,15 @@
     </style>
 </head>
 <body>
+    <div id="broadcast_overlay">
+        <div class="broadcast-card">
+            <i>📢</i>
+            <h2>Объявление</h2>
+            <div id="broadcast_text"></div>
+            <button class="broadcast-btn" onclick="closeBroadcast()">ПОНЯТНО</button>
+        </div>
+    </div>
+
     <div class="header">
         <span class="back-btn" onclick="location.href='messages.html'">←</span>
         <div class="header-info">
@@ -54,30 +97,73 @@
         const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
         const container = document.getElementById('messages');
 
-        // --- ЛОГИКА ОНЛАЙНА (Android + iPhone) ---
+        // --- ЛОГИКА ЗВУКА И РАЗБЛОКИРОВКИ IOS ---
+        let isAudioUnlocked = false;
+        const alertAudio = new Audio('alert.mp3');
+        alertAudio.preload = 'auto';
+
+        function unlockAudio() {
+            if (isAudioUnlocked) return;
+            const silentAudio = new Audio('alert.mp3');
+            silentAudio.muted = true;
+            silentAudio.play().then(() => {
+                silentAudio.pause();
+                isAudioUnlocked = true;
+            }).catch(() => {});
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+        }
+        document.addEventListener('click', unlockAudio);
+        document.addEventListener('touchstart', unlockAudio);
+
+        function playAlertSound() {
+            if ('mediaSession' in navigator) { navigator.mediaSession.playbackState = 'none'; }
+            alertAudio.play().then(() => {
+                alertAudio.onended = () => { alertAudio.pause(); alertAudio.currentTime = 0; };
+            }).catch(() => {});
+        }
+
+        // --- СЛУШАТЕЛЬ РАССЫЛКИ ---
+        db.ref('SystemAlerts').on('value', (snap) => {
+            const alertData = snap.val();
+            if (alertData && alertData.text) {
+                const lastSeenTime = localStorage.getItem("LAST_ALERT_TIME") || "0";
+                if (alertData.time && alertData.time.toString() !== lastSeenTime) {
+                    if (!isAudioUnlocked) {
+                        const playOnce = () => { playAlertSound(); document.removeEventListener('click', playOnce); };
+                        document.addEventListener('click', playOnce);
+                    } else { playAlertSound(); }
+                    document.getElementById('broadcast_text').innerText = alertData.text;
+                    document.getElementById('broadcast_overlay').style.display = 'flex';
+                }
+            }
+        });
+
+        function closeBroadcast() {
+            db.ref('SystemAlerts/time').once('value').then((snap) => {
+                const currentTime = snap.val();
+                if (currentTime) { localStorage.setItem("LAST_ALERT_TIME", currentTime.toString()); }
+                document.getElementById('broadcast_overlay').style.display = 'none';
+            });
+        }
+
+        // --- ЛОГИКА ОНЛАЙНА ---
         if (myPhone) {
             const presenceRef = db.ref('Users/' + myPhone + '/isOnline');
             const lastSeenRef = db.ref('Users/' + myPhone + '/lastOnline');
             const connectedRef = db.ref('.info/connected');
-
-            // 1. Статус при подключении (работает через сервер)
             connectedRef.on('value', (snap) => {
                 if (snap.val() === true) {
                     presenceRef.set(true);
-                    // Когда связь оборвется - сервер сам поставит false
                     presenceRef.onDisconnect().set(false);
                     lastSeenRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
                 }
             });
-
-            // 2. Статус при сворачивании (специально для браузеров iPhone)
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'hidden') {
                     presenceRef.set(false);
                     lastSeenRef.set(firebase.database.ServerValue.TIMESTAMP);
-                } else {
-                    presenceRef.set(true);
-                }
+                } else { presenceRef.set(true); }
             });
         }
 
@@ -87,11 +173,7 @@
             snap.forEach(child => {
                 const msg = child.val();
                 const isMine = (msg.senderId === myPhone);
-                
-                if (!isMine && !msg.isRead) {
-                    child.ref.child('isRead').set(true);
-                }
-
+                if (!isMine && !msg.isRead) { child.ref.child('isRead').set(true); }
                 const tickHtml = isMine ? `<span class="ticks ${msg.isRead ? 'read' : 'unread'}">${msg.isRead ? '✔✔' : '✔'}</span>` : '';
                 html += `<div class="msg ${isMine ? 'sent' : 'received'}"><div>${msg.text}</div><div class="msg-footer">${msg.time}${tickHtml}</div></div>`;
             });
