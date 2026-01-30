@@ -96,18 +96,32 @@
         const myPhone = localStorage.getItem("USER_PHONE");
         let sellerPhone = "";
 
-        // ФУНКЦИЯ ОБНОВЛЕНИЯ СТАТУСА ОНЛАЙН
-        function updateMyStatus() {
-            if (myPhone) {
-                const now = Date.now();
-                database.ref('Users/' + myPhone).update({
-                    lastOnline: now,
-                    lastActive: now
-                });
-            }
+        // --- ЛОГИКА ОНЛАЙНА (Android + iPhone) ---
+        if (myPhone) {
+            const presenceRef = database.ref('Users/' + myPhone + '/isOnline');
+            const lastSeenRef = database.ref('Users/' + myPhone + '/lastOnline');
+            const connectedRef = database.ref('.info/connected');
+
+            // 1. Статус при подключении
+            connectedRef.on('value', (snap) => {
+                if (snap.val() === true) {
+                    presenceRef.set(true);
+                    presenceRef.onDisconnect().set(false);
+                    lastSeenRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
+                }
+            });
+
+            // 2. Статус при сворачивании (iPhone)
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    presenceRef.set(false);
+                    lastSeenRef.set(firebase.database.ServerValue.TIMESTAMP);
+                } else {
+                    presenceRef.set(true);
+                }
+            });
         }
-        updateMyStatus();
-        setInterval(updateMyStatus, 120000);
+        // ------------------------------------------
 
         if(adId) {
             database.ref('Ads/' + adId).once('value').then((snap) => {
@@ -131,7 +145,6 @@
                     slider.onscroll = () => {
                         const page = Math.round(slider.scrollLeft / slider.offsetWidth);
                         document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === page));
-                        updateMyStatus(); // Активность при листании фото
                     };
                 }
                 document.getElementById('adPrice').innerText = (ad.price || "0") + " ₽";
@@ -139,20 +152,17 @@
                 document.getElementById('adMeta').innerText = "Продавец: " + authorName + " • " + new Date(ad.timestamp || Date.now()).toLocaleString();
                 document.getElementById('adDesc').innerText = ad.description || "";
                 if (ad.phone) document.getElementById('callBtn').onclick = () => { 
-                    updateMyStatus();
                     window.location.href = "tel:" + ad.phone; 
                 };
             });
         }
         function openChat() {
             if(!sellerPhone || !myPhone) return;
-            updateMyStatus();
             const sDigits = sellerPhone.replace(/\D/g, ''), mDigits = myPhone.replace(/\D/g, '');
             const chatId = BigInt(mDigits) < BigInt(sDigits) ? `${myPhone}_${sellerPhone}` : `${sellerPhone}_${myPhone}`;
             navTo(`private_chat.html?chatId=${chatId}&otherPhone=${encodeURIComponent(sellerPhone)}`);
         }
         function openFS(idx) {
-            updateMyStatus();
             document.getElementById('fsGallery').style.display = 'flex';
             const container = document.getElementById('fsContainer');
             container.scrollLeft = container.offsetWidth * idx;
