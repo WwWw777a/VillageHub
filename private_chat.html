@@ -7,13 +7,13 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
         :root {
             --safe-top: env(safe-area-inset-top, 0px);
             --safe-bottom: env(safe-area-inset-bottom, 0px);
-            --header-height: calc(60px + var(--safe-top));
-            --footer-height: calc(70px + var(--safe-bottom));
+            --header-h: calc(60px + var(--safe-top));
+            --footer-h: calc(70px + var(--safe-bottom));
         }
 
         html, body {
@@ -21,9 +21,9 @@
             padding: 0;
             height: 100%;
             width: 100%;
-            overflow: hidden; /* Запрещаем общий скролл страницы */
-            background: #f5f5f5;
-            position: fixed; /* Фикс для iOS */
+            overflow: hidden;
+            background: #e5ddd5;
+            position: fixed; /* Блокирует прыжки всей страницы на iOS */
         }
 
         body { 
@@ -32,38 +32,43 @@
             flex-direction: column; 
         }
 
-        /* Шапка: всегда сверху */
+        /* ШАПКА: Жесткая фиксация */
         .header { 
             background: #2196F3; 
             color: white; 
             padding-top: var(--safe-top);
-            height: var(--header-height);
+            height: var(--header-h);
             display: flex; 
             align-items: center; 
             padding-left: 15px;
             padding-right: 15px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
             z-index: 1000;
-            flex-shrink: 0; /* Не дает шапке сжиматься */
+            position: fixed;
+            top: 0;
+            width: 100%;
         }
 
-        .back-btn { font-size: 28px; cursor: pointer; margin-right: 15px; padding: 5px; }
-        .header-info { flex-grow: 1; display: flex; flex-direction: column; }
-        .user-phone { font-weight: bold; font-size: 17px; }
-        .user-status { font-size: 12px; color: #e0e0e0; }
+        .back-btn { font-size: 28px; cursor: pointer; margin-right: 12px; padding: 5px; }
+        .header-info { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
+        .user-phone { font-weight: bold; font-size: 17px; line-height: 1.2; }
+        .user-status { font-size: 12px; color: #e0e0e0; line-height: 1.2; }
         .online-text { color: #00e676 !important; font-weight: bold; }
         .clear-btn { font-size: 20px; cursor: pointer; padding: 10px; }
 
-        /* Центр: сообщения со своим скроллом */
+        /* ОКНО СООБЩЕНИЙ: Свободный скролл */
         #messages { 
-            flex-grow: 1; 
+            flex: 1;
             overflow-y: auto; 
-            padding: 15px; 
+            padding: 10px 15px;
             display: flex; 
             flex-direction: column; 
             gap: 8px; 
             background: #e5ddd5; 
-            -webkit-overflow-scrolling: touch; /* Плавный скролл iOS */
+            /* Важные отступы, чтобы сообщения не прятались под панелями */
+            margin-top: var(--header-h);
+            margin-bottom: var(--footer-h);
+            -webkit-overflow-scrolling: touch;
         }
 
         .msg { max-width: 80%; padding: 10px 14px; border-radius: 16px; font-size: 15px; word-wrap: break-word; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
@@ -73,31 +78,44 @@
         .ticks { font-weight: bold; font-size: 14px; }
         .read { color: #2196F3; } .unread { color: #BDBDBD; }
 
-        /* Футер: всегда снизу */
+        /* НИЖНЯЯ ПАНЕЛЬ: Опустили ниже и закрепили */
         .bottom-area { 
-            background: white; 
+            background: #f0f0f0; 
             border-top: 1px solid #ddd; 
-            padding: 10px 10px calc(var(--safe-bottom) + 10px) 10px;
+            padding: 8px 10px calc(var(--safe-bottom) + 8px) 10px;
             display: flex; 
             align-items: center; 
-            gap: 10px; 
+            gap: 8px; 
+            position: fixed;
+            bottom: 0;
+            width: 100%;
             z-index: 1000;
-            flex-shrink: 0; /* Не дает футеру сжиматься */
+            height: var(--footer-h);
         }
 
         input { 
-            flex-grow: 1; 
-            border: 1px solid #eee; 
-            background: #f9f9f9; 
+            flex: 1; 
+            border: 1px solid #ccc; 
+            background: #fff; 
             outline: none; 
             font-size: 16px; 
-            padding: 12px 18px; 
-            border-radius: 25px; 
+            padding: 10px 15px; 
+            border-radius: 20px; 
             -webkit-appearance: none;
         }
 
-        .send-btn { background: none; border: none; cursor: pointer; display: flex; align-items: center; }
-        .send-btn svg { fill: #2196F3; width: 32px; height: 32px; }
+        .send-btn { 
+            background: #2196F3; 
+            border: none; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+        .send-btn svg { fill: white; width: 22px; height: 22px; margin-left: 2px; }
     </style>
 </head>
 <body>
@@ -113,7 +131,7 @@
     <div id="messages"></div>
 
     <div class="bottom-area">
-        <input type="text" id="msgInput" placeholder="Напишите сообщение..." autocomplete="off">
+        <input type="text" id="msgInput" placeholder="Сообщение" autocomplete="off">
         <button class="send-btn" onclick="sendMsg()">
             <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
         </button>
@@ -138,7 +156,7 @@
 
         if (!myPhone || !otherPhone) { location.href = 'index.html'; }
 
-        // --- СТАТУС ОНЛАЙН ---
+        // Онлайн статус
         function setupOnline() {
             const myRef = db.ref('Users/' + myPhone);
             db.ref(".info/connected").on("value", s => {
@@ -151,7 +169,7 @@
         }
         setupOnline();
 
-        // --- ИМЯ И СТАТУС СОБЕСЕДНИКА ---
+        // Собеседник
         db.ref('Users/' + otherPhone).on('value', snap => {
             if (snap.exists()) {
                 const data = snap.val();
@@ -170,6 +188,11 @@
         const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
         const container = document.getElementById('messages');
 
+        // Моментальный скролл вниз
+        function scrollToBottom() {
+            container.scrollTo({ top: container.scrollHeight, behavior: 'instant' });
+        }
+
         // Загрузка сообщений
         db.ref('PrivateChats').child(chatId).on('value', snap => {
             container.innerHTML = '';
@@ -185,7 +208,7 @@
                 div.innerHTML = `<div>${msg.text}</div><div class="msg-footer">${msg.time} ${ticks}</div>`;
                 container.appendChild(div);
             });
-            container.scrollTop = container.scrollHeight;
+            scrollToBottom();
         });
 
         function sendMsg() {
@@ -195,14 +218,10 @@
             const ts = Date.now();
             const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             
-            const newMsg = { senderId: myPhone, text: text, time: time, timestamp: ts, isRead: false };
-            db.ref('PrivateChats/' + chatId).push(newMsg);
-            
-            // Превью чатов
+            db.ref('PrivateChats/' + chatId).push({ senderId: myPhone, text: text, time: time, timestamp: ts, isRead: false });
             db.ref('UserChats/' + myPhone + '/' + otherPhone).update({ phone: otherPhone, lastMessage: text, timestamp: ts });
             
-            const recRef = db.ref('UserChats/' + otherPhone + '/' + myPhone);
-            recRef.transaction(c => {
+            db.ref('UserChats/' + otherPhone + '/' + myPhone).transaction(c => {
                 if (c) { c.unreadCount = (c.unreadCount || 0) + 1; c.lastMessage = text; c.timestamp = ts; c.hasNewMessage = true; c.phone = myPhone; }
                 else { return { phone: myPhone, lastMessage: text, timestamp: ts, unreadCount: 1, hasNewMessage: true }; }
                 return c;
@@ -223,11 +242,12 @@
 
         document.getElementById('msgInput').addEventListener('keypress', e => { if (e.key === 'Enter') sendMsg(); });
 
-        // Важный фикс скролла при появлении клавиатуры
-        const visualViewport = window.visualViewport;
-        if (visualViewport) {
-            visualViewport.addEventListener('resize', () => {
-                container.scrollTop = container.scrollHeight;
+        // ФИКС для клавиатуры iPhone
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => {
+                // Когда клавиатура выезжает, визуально смещаем контейнер
+                document.body.style.height = window.visualViewport.height + 'px';
+                scrollToBottom();
             });
         }
     </script>
