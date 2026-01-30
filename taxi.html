@@ -70,24 +70,41 @@
         .taxi-details p { margin: 5px 0 0 0; color: #777; font-size: 14px; }
         .call-icon { color: #4CAF50; font-size: 26px; }
 
-        /* ОКНО ОБЪЯВЛЕНИЯ (КАК НА ГЛАВНОЙ) */
+        /* ИСПРАВЛЕННОЕ ОКНО ОБЪЯВЛЕНИЯ (КАК НА ГЛАВНОЙ) */
         #broadcast_overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
             background: rgba(0,0,0,0.7); display: none; z-index: 9999;
             align-items: center; justify-content: center; padding: 20px;
         }
         .broadcast-card {
-            background: white; border-radius: 24px; padding: 24px; width: 100%; max-width: 400px;
+            background: white; border-radius: 24px; padding: 24px; 
+            width: 100%; max-width: 400px;
+            max-height: 85vh; /* Ограничение по высоте */
+            display: flex; flex-direction: column;
             text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
             animation: slideUp 0.3s ease-out;
+            box-sizing: border-box;
         }
         @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .broadcast-card i { font-size: 50px; display: block; margin-bottom: 16px; font-style: normal; }
-        .broadcast-card h2 { margin: 0 0 12px 0; font-size: 22px; color: #333; }
-        .broadcast-card p { font-size: 16px; color: #555; line-height: 1.5; margin-bottom: 24px; white-space: pre-wrap; }
+
+        .broadcast-card i { font-size: 40px; display: block; margin-bottom: 12px; font-style: normal; flex-shrink: 0; }
+        .broadcast-card h2 { margin: 0 0 12px 0; font-size: 20px; color: #333; flex-shrink: 0; }
+
+        #broadcast_text { 
+            font-size: 16px; color: #555; line-height: 1.5; 
+            margin-bottom: 20px; 
+            white-space: pre-wrap;       /* Перенос строк */
+            word-wrap: break-word;      /* Перенос длинных слов */
+            overflow-y: auto;           /* Скролл при длинном тексте */
+            text-align: left;           /* Выравнивание по левому краю для чтения */
+            padding-right: 5px;
+            -webkit-overflow-scrolling: touch;
+        }
+
         .broadcast-btn {
-            background: var(--accent-blue); color: white; border: none; padding: 14px 40px;
-            border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%;
+            background: var(--accent-blue); color: white; border: none; padding: 14px;
+            border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; 
+            width: 100%; flex-shrink: 0;
         }
 
         /* МОДАЛКИ ВЫЗОВА */
@@ -114,7 +131,7 @@
         <div class="broadcast-card">
             <i>📢</i>
             <h2>Объявление</h2>
-            <p id="broadcast_text"></p>
+            <div id="broadcast_text"></div>
             <button class="broadcast-btn" onclick="closeBroadcast()">ПОНЯТНО</button>
         </div>
     </div>
@@ -164,18 +181,19 @@
         const database = firebase.database();
         const myPhone = localStorage.getItem("USER_PHONE");
 
-        // --- ЛОГИКА ЗВУКА И ОБЪЯВЛЕНИЙ (КОПИЯ ГЛАВНОЙ) ---
+        // --- ЛОГИКА ЗВУКА И РАЗБЛОКИРОВКИ IOS ---
         let isAudioUnlocked = false;
+        const alertAudio = new Audio('alert.mp3');
+        alertAudio.preload = 'auto';
 
         function playAlertSound() {
-            const tempAudio = new Audio('alert.mp3');
-            tempAudio.preload = 'auto';
             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
-            tempAudio.play().then(() => {
-                tempAudio.onended = () => {
-                    tempAudio.src = ""; tempAudio.load(); tempAudio.remove();
+            alertAudio.play().then(() => {
+                alertAudio.onended = () => {
+                    alertAudio.pause();
+                    alertAudio.currentTime = 0;
                 };
-            }).catch(e => console.log("Waiting for interaction..."));
+            }).catch(e => console.log("Sound interaction wait..."));
         }
 
         function unlockAudio() {
@@ -185,7 +203,6 @@
             silentAudio.play().then(() => {
                 silentAudio.pause();
                 isAudioUnlocked = true;
-                console.log("Audio Unlocked");
             }).catch(() => {});
             document.removeEventListener('click', unlockAudio);
             document.removeEventListener('touchstart', unlockAudio);
@@ -193,6 +210,7 @@
         document.addEventListener('click', unlockAudio);
         document.addEventListener('touchstart', unlockAudio);
 
+        // --- ЛОГИКА РАССЫЛКИ ---
         database.ref('SystemAlerts').on('value', (snap) => {
             const alertData = snap.val();
             if (alertData && alertData.text) {
@@ -200,13 +218,8 @@
                 if (alertData.time && alertData.time.toString() !== lastSeenTime) {
                     
                     if (!isAudioUnlocked) {
-                        const playOnFirstClick = () => {
-                            playAlertSound();
-                            document.removeEventListener('click', playOnFirstClick);
-                            document.removeEventListener('touchstart', playOnFirstClick);
-                        };
-                        document.addEventListener('click', playOnFirstClick);
-                        document.addEventListener('touchstart', playOnFirstClick);
+                        const playOnce = () => { playAlertSound(); document.removeEventListener('click', playOnce); };
+                        document.addEventListener('click', playOnce);
                     } else {
                         playAlertSound();
                     }
@@ -244,7 +257,6 @@
             });
         }
 
-        // --- ЛОГИКА ТАКСИ ---
         const userRole = localStorage.getItem("USER_ROLE");
         if (userRole === "АДМИН") document.getElementById('adminAddBtn').style.display = 'block';
 
