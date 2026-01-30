@@ -204,15 +204,36 @@
         const db = firebase.database();
         const myPhone = localStorage.getItem("USER_PHONE");
 
-        // ПОДГОТОВКА ЗВУКА И РАЗБЛОКИРОВКА ДЛЯ IOS
-        const alertAudio = new Audio('alert.mp3');
-        alertAudio.preload = 'auto';
+        // --- ЛОГИКА ЗВУКА И РАЗБЛОКИРОВКИ IOS ---
+        let isAudioUnlocked = false;
+
+        function playAlertSound() {
+            const tempAudio = new Audio('alert.mp3');
+            tempAudio.preload = 'auto';
+            
+            // Убираем интеграцию с "Плеером" в iOS
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.playbackState = 'none';
+            }
+
+            tempAudio.play().then(() => {
+                tempAudio.onended = () => {
+                    tempAudio.src = "";
+                    tempAudio.load();
+                    tempAudio.remove();
+                };
+            }).catch(e => console.log("Sound play failed", e));
+        }
 
         function unlockAudio() {
-            alertAudio.play().then(() => {
-                alertAudio.pause();
-                alertAudio.currentTime = 0;
-            }).catch(e => console.log("Audio unlock wait..."));
+            if (isAudioUnlocked) return;
+            const silentAudio = new Audio('alert.mp3');
+            silentAudio.muted = true;
+            silentAudio.play().then(() => {
+                silentAudio.pause();
+                isAudioUnlocked = true;
+                console.log("Audio Unlocked");
+            }).catch(() => {});
             document.removeEventListener('click', unlockAudio);
             document.removeEventListener('touchstart', unlockAudio);
         }
@@ -250,8 +271,8 @@
                 const lastSeenTime = localStorage.getItem("LAST_ALERT_TIME") || "0";
                 if (alertData.time && alertData.time.toString() !== lastSeenTime) {
                     
-                    // ВОСПРОИЗВЕДЕНИЕ ЗВУКА (ТЕПЕРЬ РАЗБЛОКИРОВАНО)
-                    alertAudio.play().catch(e => console.log("Audio play failed", e));
+                    // Запуск звука без создания виджета плеера
+                    playAlertSound();
                     
                     document.getElementById('broadcast_text').innerText = alertData.text;
                     document.getElementById('broadcast_overlay').style.display = 'flex';
@@ -335,4 +356,4 @@
         })(document,window.navigator,'standalone');
     </script>
 </body>
-</html> 
+</html>
