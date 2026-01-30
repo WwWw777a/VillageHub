@@ -23,7 +23,7 @@
         .sent { align-self: flex-end; background: #DCF8C6; border-bottom-right-radius: 2px; }
         .received { align-self: flex-start; background: white; border-bottom-left-radius: 2px; }
         .msg-footer { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: 4px; font-size: 10px; color: #888; }
-        .ticks { font-weight: bold; font-size: 14px; line-height: 1; }
+        .ticks { font-weight: bold; font-size: 14px; line-height: 1; margin-left: 4px; }
         .read { color: #2196F3; } .unread { color: #BDBDBD; }
         .bottom-area { background: white; border-top: 1px solid #ddd; flex-shrink: 0; padding-bottom: max(10px, var(--safe-bottom)); z-index: 1000; width: 100%; position: relative; }
         .input-row { display: flex; align-items: center; padding: 10px 15px; gap: 10px; }
@@ -69,7 +69,7 @@
         const otherPhone = urlParams.get('otherPhone');
         if (!myPhone || !otherPhone) { location.href = 'index.html'; }
 
-        // Онлайн-статус
+        // 1. Онлайн-статус
         const myRef = db.ref('Users/' + myPhone);
         db.ref(".info/connected").on("value", s => {
             if (s.val() === true) {
@@ -79,7 +79,7 @@
             }
         });
 
-        // Имя и статус собеседника
+        // 2. Инфо собеседника
         db.ref('Users/' + otherPhone).on('value', snap => {
             if (snap.exists()) {
                 const data = snap.val();
@@ -93,36 +93,44 @@
         const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
         const container = document.getElementById('messages');
 
-        // СЛУШАТЕЛЬ С ПРАВИЛЬНЫМИ ГАЛОЧКАМИ И БЕЗ ДУБЛЕЙ
+        // 3. СЛУШАТЕЛЬ: ГАЛОЧКИ + БЕЗ ДУБЛЕЙ
         db.ref('PrivateChats').child(chatId).on('value', snap => {
             const tempMap = new Map();
+            
             snap.forEach(child => {
                 const msg = child.val();
                 const key = child.key;
                 tempMap.set(key, msg); 
 
-                // ГАЛОЧКИ: Помечаем прочитанным только ВХОДЯЩИЕ (не мои)
+                // Если прислали МНЕ и оно еще не прочитано - читаем
                 if (msg.senderId !== myPhone && msg.isRead === false) {
                     child.ref.child('isRead').set(true);
                     db.ref('UserChats/' + myPhone + '/' + otherPhone).update({ unreadCount: 0, hasNewMessage: false });
                 }
             });
 
+            // Отрисовка
             container.innerHTML = '';
             tempMap.forEach((msg) => {
                 const isMine = msg.senderId === myPhone;
                 const div = document.createElement('div');
                 div.className = `msg ${isMine ? 'sent' : 'received'}`;
                 
-                // Отображаем галочки: одна (V) если false, две (VV) если true
-                const ticks = isMine ? `<span class="ticks ${msg.isRead ? 'read' : 'unread'}">${msg.isRead ? '✔✔' : '✔'}</span>` : '';
+                // ГАЛОЧКИ: Одна галочка если false, Две если true
+                let ticksHtml = '';
+                if (isMine) {
+                    const tickClass = msg.isRead ? 'read' : 'unread';
+                    const tickIcons = msg.isRead ? '✔✔' : '✔';
+                    ticksHtml = `<span class="ticks ${tickClass}">${tickIcons}</span>`;
+                }
                 
-                div.innerHTML = `<div>${msg.text}</div><div class="msg-footer">${msg.time} ${ticks}</div>`;
+                div.innerHTML = `<div>${msg.text}</div><div class="msg-footer">${msg.time}${ticksHtml}</div>`;
                 container.appendChild(div);
             });
             container.scrollTo(0, container.scrollHeight);
         });
 
+        // 4. ОТПРАВКА
         function sendMsg() {
             const input = document.getElementById('msgInput');
             const text = input.value.trim();
@@ -130,21 +138,30 @@
             const ts = Date.now();
             const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             
+            // Отправляем с isRead: false
             const newMsg = { senderId: myPhone, text: text, time: time, timestamp: ts, isRead: false };
             db.ref('PrivateChats/' + chatId).push(newMsg);
             
+            // Обновляем списки
             db.ref('UserChats/' + myPhone + '/' + otherPhone).update({ phone: otherPhone, lastMessage: text, timestamp: ts });
             db.ref('UserChats/' + otherPhone + '/' + myPhone).transaction(c => {
-                if (c) { c.unreadCount = (c.unreadCount || 0) + 1; c.lastMessage = text; c.timestamp = ts; c.hasNewMessage = true; c.phone = myPhone; }
-                else { return { phone: myPhone, lastMessage: text, timestamp: ts, unreadCount: 1, hasNewMessage: true }; }
-                return c;
+                if (c) { 
+                    c.unreadCount = (c.unreadCount || 0) + 1; 
+                    c.lastMessage = text; 
+                    c.timestamp = ts; 
+                    c.hasNewMessage = true; 
+                    c.phone = myPhone; 
+                    return c;
+                }
+                return { phone: myPhone, lastMessage: text, timestamp: ts, unreadCount: 1, hasNewMessage: true };
             });
             db.ref('Users/' + otherPhone).update({ hasNewMessage: true });
+            
             input.value = '';
             input.focus();
         }
 
-        function clearEntireChat() { if (confirm("Очистить?")) db.ref('PrivateChats/' + chatId).remove() }
+        function clearEntireChat() { if (confirm("Очистить?")) db.ref('PrivateChats/' + chatId).remove(); }
         document.getElementById('msgInput').addEventListener('keypress', e => { if (e.key === 'Enter') sendMsg(); });
     </script>
 </body>
