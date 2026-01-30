@@ -3,38 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>VillageHub - Чат</title>
+    <title>Чат</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        :root { --safe-top: env(safe-area-inset-top, 0px); }
-        body { font-family: -apple-system, sans-serif; background: #e5ddd5; margin: 0; display: flex; flex-direction: column; height: 100dvh; overflow: hidden; padding-top: var(--safe-top); }
-        .header { background: #2196F3; color: white; padding: 15px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 10; flex-shrink: 0; }
-        .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; padding: 5px; }
-        .user-phone { flex-grow: 1; font-weight: bold; font-size: 17px; }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, sans-serif; background: #f5f5f5; margin: 0; display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+        .header { background: #2196F3; color: white; padding: 15px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex-shrink: 0; z-index: 100; }
+        .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; }
+        .user-phone { flex-grow: 1; font-weight: bold; font-size: 18px; }
+        .clear-btn { font-size: 20px; cursor: pointer; padding: 5px; }
+
         #messages { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; -webkit-overflow-scrolling: touch; }
-        .msg { max-width: 85%; padding: 8px 12px; border-radius: 12px; font-size: 15px; position: relative; box-shadow: 0 1px 1px rgba(0,0,0,0.1); line-height: 1.4; word-wrap: break-word; }
-        .sent { align-self: flex-end; background: #dcf8c6; border-bottom-right-radius: 2px; }
+        .msg { max-width: 80%; padding: 10px 14px; border-radius: 16px; position: relative; font-size: 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); word-wrap: break-word; }
+        .sent { align-self: flex-end; background: #DCF8C6; border-bottom-right-radius: 2px; }
         .received { align-self: flex-start; background: white; border-bottom-left-radius: 2px; }
-        .msg-footer { display: flex; justify-content: flex-end; align-items: center; gap: 4px; font-size: 10px; color: #888; margin-top: 4px; }
-        .ticks { font-size: 14px; font-weight: bold; }
-        .read { color: #34b7f1; } .unread { color: #999; }
-        .bottom-area { background: #f0f0f0; padding: 10px; display: flex; align-items: center; gap: 10px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
-        input { flex-grow: 1; border: none; background: white; padding: 12px 18px; border-radius: 25px; font-size: 16px; outline: none; }
-        .send-btn { background: #2196F3; color: white; border: none; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; }
+        
+        .msg-footer { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: 4px; font-size: 10px; color: #888; }
+        .ticks { font-weight: bold; font-size: 14px; line-height: 1; }
+        .read { color: #2196F3; }
+        .unread { color: #BDBDBD; }
+
+        .bottom-area { background: white; border-top: 1px solid #ddd; padding: 10px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+        input { flex-grow: 1; border: 1px solid #eee; background: #f9f9f9; outline: none; font-size: 16px; padding: 10px 15px; border-radius: 25px; }
+        .send-btn { background: none; border: none; cursor: pointer; padding: 5px; }
+        .send-btn svg { fill: #2196F3; width: 30px; height: 30px; }
     </style>
 </head>
 <body>
     <div class="header">
-        <div class="back-btn" onclick="location.href='messages.html'">←</div>
-        <div class="user-phone" id="displayPhone">Загрузка...</div>
-        <div onclick="clearChat()" style="cursor:pointer; padding:5px;">🗑</div>
+        <span class="back-btn" onclick="location.href='messages.html'">←</span>
+        <div class="user-phone" id="otherUserPhoneDisplay">Загрузка...</div>
+        <div class="clear-btn" onclick="clearEntireChat()">🗑</div>
     </div>
+
     <div id="messages"></div>
+
     <div class="bottom-area">
-        <input type="text" id="msgInput" placeholder="Сообщение..." autocomplete="off">
-        <button class="send-btn" onclick="sendMsg()">➤</button>
+        <input type="text" id="msgInput" placeholder="Напишите сообщение..." autocomplete="off">
+        <button class="send-btn" onclick="sendMsg()">
+            <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
     </div>
 
     <script>
@@ -50,67 +59,107 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        const myPhone = localStorage.getItem("USER_PHONE"); 
-        const otherPhone = new URLSearchParams(window.location.search).get('otherPhone'); 
-
-        if (!myPhone || !otherPhone) { location.href = 'index.html'; }
-        document.getElementById('displayPhone').innerText = otherPhone;
-
-        // Ключи без плюсов для путей
-        const fix = (p) => p.replace(/\+/g, '_');
-        const myKey = fix(myPhone);
-        const otherKey = fix(otherPhone);
-        const chatId = myKey < otherKey ? `${myKey}__${otherKey}` : `${otherKey}__${myKey}`;
-
-        function updateStatus() {
-            if (myPhone) db.ref('Users/' + myPhone).update({ lastOnline: Date.now() });
+        // Функция приведения номера к единому виду с ПЛЮСОМ (для базы)
+        function formatWithPlus(phone) {
+            if (!phone) return "";
+            let p = phone.trim().replace(/ /g, '+'); // Меняем пробелы на +
+            if (!p.startsWith('+')) p = '+' + p;    // Добавляем + если нет
+            return p;
         }
-        updateStatus(); setInterval(updateStatus, 120000);
 
-        // Загрузка
+        // Функция получения ЧИСТЫХ ЦИФР (для надежного сравнения)
+        function getDigits(phone) {
+            return phone ? phone.replace(/\D/g, '') : "";
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Считываем данные и СРАЗУ чиним их
+        let myPhone = formatWithPlus(localStorage.getItem("USER_PHONE") || "");
+        let otherPhone = formatWithPlus(urlParams.get('otherPhone') || "");
+
+        document.getElementById('otherUserPhoneDisplay').innerText = otherPhone;
+
+        // ПЕРЕСОБИРАЕМ chatId математически (надежнее чем строковое сравнение в Safari)
+        const myDigits = getDigits(myPhone);
+        const otherDigits = getDigits(otherPhone);
+        
+        let chatId = "";
+        // Сравниваем как числа. Кто меньше — тот первый в названии папки.
+        if (BigInt(myDigits) < BigInt(otherDigits)) {
+            chatId = myPhone + "_" + otherPhone;
+        } else {
+            chatId = otherPhone + "_" + myPhone;
+        }
+
+        console.log("Путь в базе:", chatId);
+
+        // Загрузка сообщений
         db.ref('PrivateChats/' + chatId).on('value', snap => {
             const container = document.getElementById('messages');
             container.innerHTML = '';
             snap.forEach(child => {
-                const data = child.val();
-                const isMine = data.senderId === myPhone;
-                if (!isMine && !data.isRead) {
-                    db.ref(`PrivateChats/${chatId}/${child.key}/isRead`).set(true);
+                const msg = child.val();
+                msg.id = child.key;
+
+                // Если отправил не я — ставим прочитано
+                if (formatWithPlus(msg.senderId) !== myPhone && !msg.isRead) {
+                    db.ref(`PrivateChats/${chatId}/${msg.id}/isRead`).setValue(true);
                 }
-                const div = document.createElement('div');
-                div.className = `msg ${isMine ? 'sent' : 'received'}`;
-                const ticks = isMine ? `<span class="ticks ${data.isRead ? 'read' : 'unread'}">${data.isRead ? '✔✔' : '✔'}</span>` : '';
-                div.innerHTML = `<div>${data.text}</div><div class="msg-footer">${data.time || ''} ${ticks}</div>`;
-                container.appendChild(div);
+                renderMessage(msg);
             });
             container.scrollTop = container.scrollHeight;
         });
+
+        function renderMessage(msg) {
+            const isMine = formatWithPlus(msg.senderId) === myPhone;
+            const div = document.createElement('div');
+            div.className = `msg ${isMine ? 'sent' : 'received'}`;
+            const ticks = isMine ? `<span class="ticks ${msg.isRead ? 'read' : 'unread'}">${msg.isRead ? '✔✔' : '✔'}</span>` : '';
+            div.innerHTML = `<div>${msg.text}</div><div class="msg-footer">${msg.time} ${ticks}</div>`;
+            
+            div.oncontextmenu = (e) => {
+                e.preventDefault();
+                if (confirm("Удалить это сообщение?")) {
+                    db.ref(`PrivateChats/${chatId}/${msg.id}`).remove();
+                }
+            };
+            document.getElementById('messages').appendChild(div);
+        }
 
         function sendMsg() {
             const input = document.getElementById('msgInput');
             const text = input.value.trim();
             if (!text) return;
-            const ts = Date.now();
-            const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-            const newMsg = { senderId: myPhone, text: text, time: timeStr, timestamp: ts, isRead: false };
-            
-            // Отправляем
+            const now = new Date();
+            const time = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+            const timestamp = Date.now();
+
+            const newMsg = {
+                senderId: myPhone,
+                text: text,
+                time: time,
+                timestamp: timestamp,
+                isRead: false
+            };
+
             db.ref('PrivateChats/' + chatId).push(newMsg);
-            db.ref(`UserChats/${myKey}/${otherKey}`).update({ phone: otherPhone, lastMessage: text, timestamp: ts });
-            db.ref(`UserChats/${otherKey}/${myKey}`).update({ phone: myPhone, lastMessage: text, timestamp: ts });
+
+            // Обновляем списки превью
+            db.ref(`UserChats/${myPhone}/${otherPhone}`).update({ phone: otherPhone, lastMessage: text, timestamp: timestamp });
+            db.ref(`UserChats/${otherPhone}/${myPhone}`).update({ phone: myPhone, lastMessage: text, timestamp: timestamp });
 
             input.value = '';
         }
 
-        function clearChat() {
-            if(confirm("Удалить переписку?")) {
+        function clearEntireChat() {
+            if (confirm("Полностью очистить переписку?")) {
                 db.ref('PrivateChats/' + chatId).remove();
-                db.ref(`UserChats/${myKey}/${otherKey}`).remove();
+                db.ref(`UserChats/${myPhone}/${otherPhone}`).remove();
                 location.href = 'messages.html';
             }
         }
-        document.getElementById('msgInput').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMsg(); });
     </script>
 </body>
 </html>
