@@ -177,18 +177,38 @@
 
         const savedPhone = localStorage.getItem("USER_PHONE");
 
-        // ФУНКЦИЯ ОБНОВЛЕНИЯ СТАТУСА ОНЛАЙН
-        function updateMyStatus() {
-            if (savedPhone) {
-                const now = Date.now();
-                db.ref('Users/' + savedPhone).update({
-                    lastOnline: now,
-                    lastActive: now
-                });
-            }
+        // --- ЛОГИКА ОНЛАЙНА (ИСПРАВЛЕНА ДЛЯ АЙФОНА) ---
+        if (savedPhone) {
+            const presenceRef = db.ref('Users/' + savedPhone + '/isOnline');
+            const lastSeenRef = db.ref('Users/' + savedPhone + '/lastOnline');
+            const connectedRef = db.ref('.info/connected');
+
+            // 1. Статус соединения (как в Android)
+            connectedRef.on('value', (snap) => {
+                if (snap.val() === true) {
+                    // Мы подключены
+                    presenceRef.set(true);
+                    
+                    // Если связь резко оборвется - сервер сам поставит false
+                    presenceRef.onDisconnect().set(false);
+                    lastSeenRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
+                }
+            });
+
+            // 2. СПЕЦИАЛЬНО ДЛЯ АЙФОНА (Сворачивание)
+            // Когда пользователь сворачивает Safari или переключает вкладку
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    // Принудительно ставим Офлайн
+                    presenceRef.set(false);
+                    lastSeenRef.set(firebase.database.ServerValue.TIMESTAMP);
+                } else {
+                    // При возвращении - Онлайн
+                    presenceRef.set(true);
+                }
+            });
         }
-        updateMyStatus();
-        setInterval(updateMyStatus, 120000); // Каждые 2 минуты
+        // ----------------------------------------------------
 
         if (savedPhone) {
             db.ref('Users/' + savedPhone + '/hasNewMessage').on('value', snap => {
@@ -246,7 +266,6 @@
                     if('href' in curnode && (curnode.href.indexOf('http') || ~curnode.href.indexOf(location.host))) {
                         e.preventDefault();
                         location.replace(curnode.href);
-                        updateMyStatus(); // Обновляем при переходе
                     }
                 },false);
             }
