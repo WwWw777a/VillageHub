@@ -4,55 +4,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>VillageHub</title>
-
-    <link rel="manifest" href="manifest.json">
-
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="VillageHub">
-    <link rel="apple-touch-icon" href="icon.png">
-
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
-        :root {
-            --safe-top: env(safe-area-inset-top, 0px);
-        }
+        :root { --safe-top: env(safe-area-inset-top, 0px); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body, html { 
-            margin: 0; padding: 0; 
-            height: 100dvh; width: 100vw; 
-            background: #f5f5f5; 
-            font-family: -apple-system, sans-serif;
-            overflow: hidden; 
-            position: fixed;
-            -webkit-text-size-adjust: 100%;
+            margin: 0; padding: 0; height: 100dvh; width: 100vw; 
+            background: #f5f5f5; font-family: -apple-system, sans-serif;
+            overflow: hidden; position: fixed; -webkit-text-size-adjust: 100%;
         }
 
         .header { 
             background: #2196F3; color: white; padding: 15px; 
-            display: flex; align-items: center; 
-            position: fixed; top: 0; left: 0; width: 100%;
-            z-index: 1000; height: calc(60px + var(--safe-top));
-            padding-top: var(--safe-top);
+            display: flex; align-items: center; position: fixed; top: 0; left: 0; width: 100%;
+            z-index: 1000; height: calc(60px + var(--safe-top)); padding-top: var(--safe-top);
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; padding: 5px; }
 
         .container { 
-            height: 100dvh;
-            overflow-y: auto;
-            padding: 10px;
-            padding-top: calc(70px + var(--safe-top)); 
-            -webkit-overflow-scrolling: touch;
+            height: 100dvh; overflow-y: auto; padding: 10px;
+            padding-top: calc(70px + var(--safe-top)); -webkit-overflow-scrolling: touch;
         }
 
-        .chat-item { background: white; border-radius: 12px; padding: 15px; margin-bottom: 8px; display: flex; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; }
+        .chat-item { background: white; border-radius: 12px; padding: 15px; margin-bottom: 8px; display: flex; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; position: relative; }
         .chat-info { flex-grow: 1; overflow: hidden; }
-        .chat-phone { font-weight: bold; font-size: 16px; margin-bottom: 4px; }
+        .chat-phone { font-weight: bold; font-size: 16px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
         .chat-last-msg { color: #757575; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        /* ИНДИКАТОР НОВОГО СООБЩЕНИЯ */
+        .unread-dot { width: 10px; height: 10px; background: #2196F3; border-radius: 50%; display: inline-block; }
+        
         .btn-delete { color: #f44336; padding: 10px; font-size: 20px; cursor: pointer; }
         .empty-state { text-align: center; color: #999; margin-top: 50px; }
     </style>
@@ -66,13 +51,7 @@
     <div class="container" id="chatsList"></div>
 
     <script>
-        function navTo(url) {
-            if (window.navigator.standalone) {
-                window.location.replace(url);
-            } else {
-                window.location.href = url;
-            }
-        }
+        function navTo(url) { window.location.href = url; }
 
         const firebaseConfig = {
             apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
@@ -89,21 +68,8 @@
         const myFullPhone = localStorage.getItem("USER_PHONE");
         const myRawPhone = myFullPhone ? myFullPhone.replace(/\D/g, '') : "";
 
-        function updateMyStatus() {
-            if (myRawPhone) {
-                const now = Date.now();
-                db.ref('Users/' + myRawPhone).update({
-                    lastOnline: now,
-                    lastActive: now
-                });
-            }
-        }
-        updateMyStatus();
-        setInterval(updateMyStatus, 120000);
-
         if (!myRawPhone) { navTo('login.html'); }
 
-        // Слушаем чаты по "чистому" номеру (без плюса)
         db.ref('UserChats/' + myRawPhone).on('value', snap => {
             const list = document.getElementById('chatsList');
             list.innerHTML = '';
@@ -115,7 +81,7 @@
             let chats = [];
             snap.forEach(child => { 
                 let data = child.val();
-                data.rawKey = child.key; // сохраняем ключ для удаления
+                data.rawKey = child.key; 
                 chats.push(data); 
             });
             
@@ -123,20 +89,31 @@
 
             chats.forEach(chat => {
                 const otherRaw = chat.phone.replace(/\D/g, '');
-                // Логика формирования ID чата должна совпадать с private_chat.html
                 const chatId = myRawPhone < otherRaw ? `${myRawPhone}_${otherRaw}` : `${otherRaw}_${myRawPhone}`;
                 
-                const div = document.createElement('div');
-                div.className = 'chat-item';
-                div.onclick = () => navTo(`private_chat.html?chatId=${chatId}&otherPhone=${encodeURIComponent(chat.phone)}`);
-                div.innerHTML = `
-                    <div class="chat-info">
-                        <div class="chat-phone">${chat.phone}</div>
-                        <div class="chat-last-msg">${chat.lastMessage}</div>
-                    </div>
-                    <div class="btn-delete" onclick="event.stopPropagation(); deleteChat('${chat.rawKey}')">🗑</div>
-                `;
-                list.appendChild(div);
+                // Проверяем последнее сообщение в PrivateChats для индикатора прочитанности
+                db.ref(`PrivateChats/${chatId}`).limitToLast(1).once('value', msgSnap => {
+                    let unreadHtml = '';
+                    msgSnap.forEach(m => {
+                        const lastMsg = m.val();
+                        // Если последнее сообщение не от меня и оно не прочитано
+                        if (lastMsg.senderId !== myRawPhone && lastMsg.isRead === false) {
+                            unreadHtml = '<span class="unread-dot"></span>';
+                        }
+                    });
+
+                    const div = document.createElement('div');
+                    div.className = 'chat-item';
+                    div.onclick = () => navTo(`private_chat.html?otherPhone=${encodeURIComponent(chat.phone)}`);
+                    div.innerHTML = `
+                        <div class="chat-info">
+                            <div class="chat-phone">${chat.phone} ${unreadHtml}</div>
+                            <div class="chat-last-msg">${chat.lastMessage}</div>
+                        </div>
+                        <div class="btn-delete" onclick="event.stopPropagation(); deleteChat('${chat.rawKey}')">🗑</div>
+                    `;
+                    list.appendChild(div);
+                });
             });
         });
 
