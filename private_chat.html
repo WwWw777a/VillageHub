@@ -12,78 +12,77 @@
         :root {
             --safe-top: env(safe-area-inset-top, 0px);
             --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --header-height: calc(60px + var(--safe-top));
+            --footer-height: calc(70px + var(--safe-bottom));
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden; /* Запрещаем общий скролл страницы */
+            background: #f5f5f5;
+            position: fixed; /* Фикс для iOS */
         }
 
         body { 
             font-family: -apple-system, sans-serif; 
-            background: #f5f5f5; 
-            margin: 0; 
             display: flex; 
             flex-direction: column; 
-            height: 100dvh; 
-            overflow: hidden; 
-            position: fixed; /* Жестко фиксируем body против bouncing-эффекта iOS */
-            width: 100vw;
         }
 
-        /* Закрепленная шапка */
+        /* Шапка: всегда сверху */
         .header { 
             background: #2196F3; 
             color: white; 
-            padding: calc(var(--safe-top) + 5px) 15px 10px 15px; 
+            padding-top: var(--safe-top);
+            height: var(--header-height);
             display: flex; 
             align-items: center; 
+            padding-left: 15px;
+            padding-right: 15px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
-            position: fixed;
-            top: 0;
-            width: 100%;
-            z-index: 1001;
-            height: calc(var(--safe-top) + 60px);
+            z-index: 1000;
+            flex-shrink: 0; /* Не дает шапке сжиматься */
         }
 
         .back-btn { font-size: 28px; cursor: pointer; margin-right: 15px; padding: 5px; }
-        .header-info { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .user-phone { font-weight: bold; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .header-info { flex-grow: 1; display: flex; flex-direction: column; }
+        .user-phone { font-weight: bold; font-size: 17px; }
         .user-status { font-size: 12px; color: #e0e0e0; }
         .online-text { color: #00e676 !important; font-weight: bold; }
         .clear-btn { font-size: 20px; cursor: pointer; padding: 10px; }
 
-        /* Область сообщений */
+        /* Центр: сообщения со своим скроллом */
         #messages { 
-            position: absolute;
-            top: calc(var(--safe-top) + 60px);
-            bottom: calc(var(--safe-bottom) + 75px); /* Увеличили отступ снизу */
-            left: 0;
-            right: 0;
+            flex-grow: 1; 
             overflow-y: auto; 
             padding: 15px; 
             display: flex; 
             flex-direction: column; 
             gap: 8px; 
-            -webkit-overflow-scrolling: touch; 
             background: #e5ddd5; 
+            -webkit-overflow-scrolling: touch; /* Плавный скролл iOS */
         }
 
-        .msg { max-width: 80%; padding: 10px 14px; border-radius: 16px; position: relative; font-size: 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); word-wrap: break-word; }
+        .msg { max-width: 80%; padding: 10px 14px; border-radius: 16px; font-size: 15px; word-wrap: break-word; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
         .sent { align-self: flex-end; background: #DCF8C6; border-bottom-right-radius: 2px; }
         .received { align-self: flex-start; background: white; border-bottom-left-radius: 2px; }
-        .msg-footer { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: 4px; font-size: 10px; color: #888; }
-        .ticks { font-weight: bold; font-size: 14px; line-height: 1; }
+        .msg-footer { display: flex; justify-content: flex-end; align-items: center; gap: 4px; font-size: 10px; color: #888; margin-top: 4px; }
+        .ticks { font-weight: bold; font-size: 14px; }
         .read { color: #2196F3; } .unread { color: #BDBDBD; }
 
-        /* Закрепленная нижняя панель ввода */
+        /* Футер: всегда снизу */
         .bottom-area { 
             background: white; 
             border-top: 1px solid #ddd; 
-            padding: 10px 10px calc(var(--safe-bottom) + 15px) 10px; /* Увеличили padding снизу */
+            padding: 10px 10px calc(var(--safe-bottom) + 10px) 10px;
             display: flex; 
             align-items: center; 
             gap: 10px; 
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            z-index: 1001;
-            min-height: calc(var(--safe-bottom) + 70px);
+            z-index: 1000;
+            flex-shrink: 0; /* Не дает футеру сжиматься */
         }
 
         input { 
@@ -94,18 +93,10 @@
             font-size: 16px; 
             padding: 12px 18px; 
             border-radius: 25px; 
-            -webkit-appearance: none; /* Убираем стандартные стили iOS */
+            -webkit-appearance: none;
         }
 
-        .send-btn { 
-            background: none; 
-            border: none; 
-            cursor: pointer; 
-            padding: 5px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-        }
+        .send-btn { background: none; border: none; cursor: pointer; display: flex; align-items: center; }
         .send-btn svg { fill: #2196F3; width: 32px; height: 32px; }
     </style>
 </head>
@@ -147,54 +138,46 @@
 
         if (!myPhone || !otherPhone) { location.href = 'index.html'; }
 
-        function setupMyOnlineStatus() {
-            const myStatusRef = db.ref('Users/' + myPhone + '/isOnline');
-            const lastOnlineRef = db.ref('Users/' + myPhone + '/lastOnline');
-            const connectedRef = db.ref(".info/connected");
-            connectedRef.on("value", (snap) => {
-                if (snap.val() === true) {
-                    myStatusRef.set(true);
-                    myStatusRef.onDisconnect().set(false);
-                    lastOnlineRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
+        // --- СТАТУС ОНЛАЙН ---
+        function setupOnline() {
+            const myRef = db.ref('Users/' + myPhone);
+            db.ref(".info/connected").on("value", s => {
+                if (s.val() === true) {
+                    myRef.update({ isOnline: true });
+                    myRef.child('isOnline').onDisconnect().set(false);
+                    myRef.child('lastOnline').onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
                 }
             });
         }
-        setupMyOnlineStatus();
+        setupOnline();
 
-        const nameDisplay = document.getElementById('otherUserPhoneDisplay');
-        const statusDisplay = document.getElementById('otherUserStatus');
-
-        db.ref('Users').child(otherPhone).on('value', snap => {
+        // --- ИМЯ И СТАТУС СОБЕСЕДНИКА ---
+        db.ref('Users/' + otherPhone).on('value', snap => {
             if (snap.exists()) {
                 const data = snap.val();
-                nameDisplay.innerText = data.name || otherPhone;
-                if (data.isOnline === true) {
-                    statusDisplay.innerText = "в сети";
-                    statusDisplay.classList.add('online-text');
+                document.getElementById('otherUserPhoneDisplay').innerText = data.name || otherPhone;
+                const status = document.getElementById('otherUserStatus');
+                if (data.isOnline) {
+                    status.innerText = "в сети";
+                    status.classList.add('online-text');
                 } else {
-                    statusDisplay.classList.remove('online-text');
-                    const lastSeen = data.lastOnline;
-                    if (lastSeen) {
-                        const date = new Date(lastSeen);
-                        statusDisplay.innerText = "был(а) " + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    } else {
-                        statusDisplay.innerText = "офлайн";
-                    }
+                    status.classList.remove('online-text');
+                    status.innerText = data.lastOnline ? "был(а) " + new Date(data.lastOnline).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "офлайн";
                 }
             }
         });
 
         const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
+        const container = document.getElementById('messages');
 
+        // Загрузка сообщений
         db.ref('PrivateChats').child(chatId).on('value', snap => {
-            const container = document.getElementById('messages');
             container.innerHTML = '';
             snap.forEach(child => {
                 const msg = child.val();
                 if (msg.senderId !== myPhone && !msg.isRead) {
                     child.ref.update({ isRead: true });
-                    db.ref('UserChats').child(myPhone).child(otherPhone).update({ unreadCount: 0, hasNewMessage: false });
-                    db.ref('Users').child(myPhone).update({ hasNewNotification: false, hasNewMessage: false });
+                    db.ref('UserChats/' + myPhone + '/' + otherPhone).update({ unreadCount: 0, hasNewMessage: false });
                 }
                 const div = document.createElement('div');
                 div.className = `msg ${msg.senderId === myPhone ? 'sent' : 'received'}`;
@@ -209,50 +192,44 @@
             const input = document.getElementById('msgInput');
             const text = input.value.trim();
             if (!text) return;
-            const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             const ts = Date.now();
+            const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
             const newMsg = { senderId: myPhone, text: text, time: time, timestamp: ts, isRead: false };
-
-            db.ref('PrivateChats').child(chatId).push(newMsg);
-            db.ref('UserChats').child(myPhone).child(otherPhone).update({ phone: otherPhone, lastMessage: text, timestamp: ts });
-
-            const receiverChatRef = db.ref('UserChats').child(otherPhone).child(myPhone);
-            receiverChatRef.transaction((current) => {
-                if (current) {
-                    current.unreadCount = (current.unreadCount || 0) + 1;
-                    current.lastMessage = text;
-                    current.timestamp = ts;
-                    current.hasNewMessage = true;
-                    current.phone = myPhone;
-                } else {
-                    return { phone: myPhone, lastMessage: text, timestamp: ts, unreadCount: 1, hasNewMessage: true };
-                }
-                return current;
+            db.ref('PrivateChats/' + chatId).push(newMsg);
+            
+            // Превью чатов
+            db.ref('UserChats/' + myPhone + '/' + otherPhone).update({ phone: otherPhone, lastMessage: text, timestamp: ts });
+            
+            const recRef = db.ref('UserChats/' + otherPhone + '/' + myPhone);
+            recRef.transaction(c => {
+                if (c) { c.unreadCount = (c.unreadCount || 0) + 1; c.lastMessage = text; c.timestamp = ts; c.hasNewMessage = true; c.phone = myPhone; }
+                else { return { phone: myPhone, lastMessage: text, timestamp: ts, unreadCount: 1, hasNewMessage: true }; }
+                return c;
             });
 
-            db.ref('Users').child(otherPhone).update({ hasNewNotification: true, hasNewMessage: true, lastNotificationTs: ts });
+            db.ref('Users/' + otherPhone).update({ hasNewNotification: true, hasNewMessage: true });
             input.value = '';
-            // Фокусируемся обратно после отправки (удобно для iOS)
             input.focus();
         }
 
         function clearEntireChat() {
-            if (confirm("Очистить переписку?")) {
-                db.ref('PrivateChats').child(chatId).remove();
-                db.ref('UserChats').child(myPhone).child(otherPhone).remove();
+            if (confirm("Очистить?")) {
+                db.ref('PrivateChats/' + chatId).remove();
+                db.ref('UserChats/' + myPhone + '/' + otherPhone).remove();
                 location.href = 'messages.html';
             }
         }
-        
-        document.getElementById('msgInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') sendMsg();
-        });
 
-        // Фикс для iOS: прокрутка вниз при открытии клавиатуры
-        window.addEventListener('resize', () => {
-            const container = document.getElementById('messages');
-            container.scrollTop = container.scrollHeight;
-        });
+        document.getElementById('msgInput').addEventListener('keypress', e => { if (e.key === 'Enter') sendMsg(); });
+
+        // Важный фикс скролла при появлении клавиатуры
+        const visualViewport = window.visualViewport;
+        if (visualViewport) {
+            visualViewport.addEventListener('resize', () => {
+                container.scrollTop = container.scrollHeight;
+            });
+        }
     </script>
 </body>
 </html>
