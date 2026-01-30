@@ -61,7 +61,13 @@
                 const unread = chat.unreadCount > 0 ? `<span class="unread-badge">${chat.unreadCount}</span>` : '';
                 const div = document.createElement('div');
                 div.className = 'chat-item';
-                div.onclick = () => { location.href = `private_chat.html?otherPhone=${encodeURIComponent(chat.phone)}`; };
+                
+                // ИСПРАВЛЕНИЕ: Сбрасываем счетчик ПЕРЕД переходом
+                div.onclick = () => { 
+                    db.ref('UserChats').child(myPhone).child(chat.phone).update({ unreadCount: 0, hasNewMessage: false });
+                    location.href = `private_chat.html?otherPhone=${encodeURIComponent(chat.phone)}`; 
+                };
+
                 div.innerHTML = `
                     <div class="chat-info">
                         <div class="chat-phone">${chat.phone} ${unread}</div>
