@@ -975,11 +975,12 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        const savedPhone = localStorage.getItem("USER_PHONE");
+        const myPhone = localStorage.getItem("USER_PHONE");
 
-        if (savedPhone) {
-            const presenceRef = db.ref('Users/' + savedPhone + '/isOnline');
-            const lastSeenRef = db.ref('Users/' + savedPhone + '/lastOnline');
+        // --- ЛОГИКА ОНЛАЙНА ---
+        if (myPhone) {
+            const presenceRef = db.ref('Users/' + myPhone + '/isOnline');
+            const lastSeenRef = db.ref('Users/' + myPhone + '/lastOnline');
             const connectedRef = db.ref('.info/connected');
 
             connectedRef.on('value', (snap) => {
@@ -1000,8 +1001,8 @@
             });
         }
 
-        if (savedPhone) {
-            db.ref('Users/' + savedPhone + '/hasNewMessage').on('value', snap => {
+        if (myPhone) {
+            db.ref('Users/' + myPhone + '/hasNewMessage').on('value', snap => {
                 const badge = document.getElementById("badge_new_msg");
                 const msgIcon = document.getElementById("btn_open_messages");
                 if (snap.val() === true) {
@@ -1015,7 +1016,7 @@
         }
 
         document.getElementById("btn_open_messages").onclick = function() {
-            if(savedPhone) db.ref('Users/' + savedPhone + '/hasNewMessage').set(false);
+            if(myPhone) db.ref('Users/' + myPhone + '/hasNewMessage').set(false);
             navTo("messages.html");
         };
 
@@ -1036,11 +1037,9 @@
         updateGreeting();
         checkAdmin();
 
-        // --- ПЕРЕХОД К АДМИНИСТРАТОРУ С ПРАВИЛЬНЫМИ ГАЛОЧКАМИ ---
         document.getElementById("card_contact_admin").onclick = function() {
              const adminPhone = "+79002712293";
-             if (!savedPhone) return;
-             // Переходим в private_chat.html. Исправленный скрипт чата сам обработает логику отправителя.
+             if (!myPhone) return;
              navTo(`private_chat.html?otherPhone=${encodeURIComponent(adminPhone)}`);
         };
 

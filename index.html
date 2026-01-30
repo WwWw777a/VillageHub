@@ -105,6 +105,27 @@
         .icon-taxi { color: var(--color-taxi); }
         .icon-issues { color: var(--color-issues); }
         .icon-chat { color: var(--color-chat); }
+
+        /* СТИЛИ ДЛЯ ВСПЛЫВАЮЩЕГО УВЕДОМЛЕНИЯ */
+        #broadcast_overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+            background: rgba(0,0,0,0.7); display: none; z-index: 9999;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .broadcast-card {
+            background: white; border-radius: 24px; padding: 24px; width: 100%; max-width: 400px;
+            text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .broadcast-card i { font-size: 50px; display: block; margin-bottom: 16px; font-style: normal; }
+        .broadcast-card h2 { margin: 0 0 12px 0; font-size: 22px; color: #333; }
+        .broadcast-card p { font-size: 16px; color: #555; line-height: 1.5; margin-bottom: 24px; white-space: pre-wrap; }
+        .broadcast-btn {
+            background: var(--accent-blue); color: white; border: none; padding: 14px 40px;
+            border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%;
+        }
+        .broadcast-btn:active { transform: scale(0.98); opacity: 0.9; }
     </style>
 </head>
 <body>
@@ -114,6 +135,15 @@
             window.location.replace("login.html");
         }
     </script>
+
+    <div id="broadcast_overlay">
+        <div class="broadcast-card">
+            <i>📢</i>
+            <h2>Объявление</h2>
+            <p id="broadcast_text"></p>
+            <button class="broadcast-btn" onclick="closeBroadcast()">ПОНЯТНО</button>
+        </div>
+    </div>
 
     <div class="scroll-container">
         <div class="header">
@@ -181,23 +211,40 @@
         if (myPhone) {
             const presenceRef = db.ref('Users/' + myPhone + '/isOnline');
             const lastSeenRef = db.ref('Users/' + myPhone + '/lastOnline');
-            const connectedRef = db.ref('.info/connected');
-
-            connectedRef.on('value', (snap) => {
+            db.ref('.info/connected').on('value', (snap) => {
                 if (snap.val() === true) {
                     presenceRef.set(true);
                     presenceRef.onDisconnect().set(false);
                     lastSeenRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
                 }
             });
-
             document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'hidden') {
-                    presenceRef.set(false);
-                    lastSeenRef.set(firebase.database.ServerValue.TIMESTAMP);
-                } else {
-                    presenceRef.set(true);
+                if (document.visibilityState === 'hidden') presenceRef.set(false);
+                else presenceRef.set(true);
+            });
+        }
+
+        // --- ЛОГИКА РАССЫЛКИ (SystemAlerts) ---
+        db.ref('SystemAlerts').on('value', (snap) => {
+            const alertData = snap.val();
+            if (alertData && alertData.text) {
+                const lastSeenTime = localStorage.getItem("LAST_ALERT_TIME") || "0";
+                // Сравниваем время рассылки, чтобы не показывать старое
+                if (alertData.time && alertData.time.toString() !== lastSeenTime) {
+                    document.getElementById('broadcast_text').innerText = alertData.text;
+                    document.getElementById('broadcast_overlay').style.display = 'flex';
                 }
+            }
+        });
+
+        function closeBroadcast() {
+            // Сохраняем метку времени текущего сообщения
+            db.ref('SystemAlerts/time').once('value').then((snap) => {
+                const currentTime = snap.val();
+                if (currentTime) {
+                    localStorage.setItem("LAST_ALERT_TIME", currentTime.toString());
+                }
+                document.getElementById('broadcast_overlay').style.display = 'none';
             });
         }
 
@@ -244,6 +291,11 @@
         };
 
         document.addEventListener('touchmove', function(e) {
+            // Если открыто уведомление, блокируем прокрутку вообще
+            if (document.getElementById('broadcast_overlay').style.display === 'flex') {
+                e.preventDefault();
+                return;
+            }
             if (e.target.closest('.scroll-container')) return;
             e.preventDefault();
         }, { passive: false });
