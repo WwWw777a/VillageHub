@@ -32,7 +32,7 @@
 </head>
 <body>
     <div class="header">
-        <span class="back-btn" onclick="exitChat()">←</span>
+        <span class="back-btn" onclick="location.href='messages.html'">←</span>
         <div class="header-info">
             <div class="user-phone" id="otherUserPhoneDisplay">Загрузка...</div>
             <div class="user-status" id="otherUserStatus">офлайн</div>
@@ -54,24 +54,22 @@
         const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
         const container = document.getElementById('messages');
 
-        // Указываем, что мы зашли в чат
-        db.ref(`Users/${myPhone}/currentChatId`).set(chatId);
-        db.ref(`Users/${myPhone}/currentChatId`).onDisconnect().remove();
-
-        function exitChat() {
-            db.ref(`Users/${myPhone}/currentChatId`).remove().then(() => {
-                location.href = 'messages.html';
+        // 1. ПРИ ВХОДЕ: Читаем всё один раз
+        db.ref('PrivateChats').child(chatId).once('value', snap => {
+            snap.forEach(child => {
+                const msg = child.val();
+                if (msg.senderId !== myPhone && !msg.isRead) {
+                    child.ref.child('isRead').set(true);
+                }
             });
-        }
+        });
 
+        // 2. СЛУШАТЕЛЬ: Только отрисовка (БЕЗ setValue)
         db.ref('PrivateChats').child(chatId).on('value', snap => {
             let html = '';
             snap.forEach(child => {
                 const msg = child.val();
                 const isMine = (msg.senderId === myPhone);
-                if (!isMine && msg.isRead === false) {
-                    child.ref.child('isRead').set(true);
-                }
                 const tickHtml = isMine ? `<span class="ticks ${msg.isRead ? 'read' : 'unread'}">${msg.isRead ? '✔✔' : '✔'}</span>` : '';
                 html += `<div class="msg ${isMine ? 'sent' : 'received'}"><div>${msg.text}</div><div class="msg-footer">${msg.time}${tickHtml}</div></div>`;
             });
