@@ -13,8 +13,8 @@
         .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; }
         .header-info { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
         .user-phone { font-weight: bold; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .user-status { font-size: 12px; color: #e0e0e0; }
-        .user-status.online { color: #00e676; font-weight: bold; }
+        .user-status { font-size: 12px; color: #e0e0e0; transition: color 0.3s; }
+        .online-text { color: #00e676 !important; font-weight: bold; }
         .clear-btn { font-size: 20px; cursor: pointer; padding: 5px; }
         #messages { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; -webkit-overflow-scrolling: touch; background: #e5ddd5; }
         .msg { max-width: 80%; padding: 10px 14px; border-radius: 16px; position: relative; font-size: 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); word-wrap: break-word; }
@@ -65,7 +65,25 @@
 
         if (!myPhone || !otherPhone) { location.href = 'index.html'; }
 
-        // --- ПОЛУЧЕНИЕ ИМЕНИ И СТАТУСА ---
+        // --- 1. ФУНКЦИЯ МОЕГО ЖИВОГО СТАТУСА (ДЛЯ АНДРОИД И АЙФОН) ---
+        function setupMyOnlineStatus() {
+            const myStatusRef = db.ref('Users/' + myPhone + '/isOnline');
+            const lastOnlineRef = db.ref('Users/' + myPhone + '/lastOnline');
+            const connectedRef = db.ref(".info/connected");
+
+            connectedRef.on("value", (snap) => {
+                if (snap.val() === true) {
+                    // Ставим "в сети" при подключении
+                    myStatusRef.set(true);
+                    // Когда связь оборвется (закрыли вкладку/приложение) - база сама поставит false и время
+                    myStatusRef.onDisconnect().set(false);
+                    lastOnlineRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
+                }
+            });
+        }
+        setupMyOnlineStatus();
+
+        // --- 2. ПОЛУЧЕНИЕ ИМЕНИ И ЖИВОГО СТАТУСА СОБЕСЕДНИКА ---
         const nameDisplay = document.getElementById('otherUserPhoneDisplay');
         const statusDisplay = document.getElementById('otherUserStatus');
 
@@ -74,17 +92,15 @@
                 const data = snap.val();
                 nameDisplay.innerText = data.name || otherPhone;
 
-                // Проверка статуса Онлайн
-                const lastOnline = data.lastOnline || 0;
-                const now = Date.now();
-                // Если был активен в последние 5 минут (300000 мс)
-                if (now - lastOnline < 300000) {
+                // Используем поле isOnline, которое мы видим на ваших скриншотах
+                if (data.isOnline === true) {
                     statusDisplay.innerText = "в сети";
-                    statusDisplay.classList.add('online');
+                    statusDisplay.classList.add('online-text');
                 } else {
-                    statusDisplay.classList.remove('online');
-                    if (lastOnline > 0) {
-                        const date = new Date(lastOnline);
+                    statusDisplay.classList.remove('online-text');
+                    const lastSeen = data.lastOnline;
+                    if (lastSeen) {
+                        const date = new Date(lastSeen);
                         statusDisplay.innerText = "был(а) " + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                     } else {
                         statusDisplay.innerText = "офлайн";
@@ -92,13 +108,6 @@
                 }
             }
         });
-
-        // Свой статус онлайн
-        function updateMyStatus() {
-            db.ref('Users').child(myPhone).update({ lastOnline: Date.now() });
-        }
-        updateMyStatus();
-        setInterval(updateMyStatus, 60000); // Обновляем каждую минуту
 
         const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
 
