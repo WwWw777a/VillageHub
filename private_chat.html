@@ -3,59 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>VillageHub</title>
+    <title>VillageHub - Личные сообщения</title>
     
-    <link rel="manifest" href="manifest.json">
-    
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="VillageHub">
-    <link rel="apple-touch-icon" href="icon.png">
-
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        
-        :root {
-            --safe-top: env(safe-area-inset-top, 0px);
-        }
+        :root { --safe-top: env(safe-area-inset-top, 0px); }
 
         body { 
             font-family: -apple-system, sans-serif; 
-            background: #f5f5f5; 
-            margin: 0; 
-            display: flex; 
-            flex-direction: column; 
-            height: 100dvh; 
-            overflow: hidden;
+            background: #f5f5f5; margin: 0; 
+            display: flex; flex-direction: column; 
+            height: 100dvh; overflow: hidden;
             padding-top: var(--safe-top);
-            -webkit-text-size-adjust: 100%;
         }
 
-        .header { background: #2196F3; color: white; padding: 15px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex-shrink: 0; }
+        .header { background: #2196F3; color: white; padding: 15px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 10; }
         .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; padding: 5px; }
         .user-phone { flex-grow: 1; font-weight: bold; font-size: 18px; }
         .clear-btn { font-size: 20px; cursor: pointer; padding: 10px; }
 
-        #messages { flex-grow: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; -webkit-overflow-scrolling: touch; }
-        .msg { max-width: 80%; padding: 10px 14px; border-radius: 16px; position: relative; font-size: 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); word-wrap: break-word; }
-        .sent { align-self: flex-end; background: #DCF8C6; border-bottom-right-radius: 2px; }
-        .received { align-self: flex-start; background: white; border-bottom-left-radius: 2px; }
+        #messages { 
+            flex-grow: 1; overflow-y: auto; padding: 15px; 
+            display: flex; flex-direction: column; gap: 10px; 
+            -webkit-overflow-scrolling: touch; background: #e5ddd5;
+        }
+        .msg { 
+            max-width: 80%; padding: 10px 14px; border-radius: 12px; 
+            position: relative; font-size: 15px; box-shadow: 0 1px 1px rgba(0,0,0,0.1); 
+            word-wrap: break-word; 
+        }
+        .sent { align-self: flex-end; background: #dcf8c6; }
+        .received { align-self: flex-start; background: white; }
         
         .msg-footer { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: 4px; font-size: 10px; color: #888; }
-        .ticks { font-weight: bold; font-size: 14px; line-height: 1; }
-        .read { color: #2196F3; } .unread { color: #BDBDBD; }
+        .ticks { font-weight: bold; font-size: 14px; }
+        .read { color: #34b7f1; } .unread { color: #999; }
 
-        .bottom-area { background: white; border-top: 1px solid #ddd; padding: 10px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
-        input { flex-grow: 1; border: 1px solid #eee; background: #f9f9f9; outline: none; font-size: 16px; padding: 12px 15px; border-radius: 25px; }
-        .send-btn { background: none; border: none; cursor: pointer; color: #2196F3; font-weight: bold; font-size: 16px; }
+        .bottom-area { 
+            background: #f0f0f0; padding: 10px; display: flex; 
+            align-items: center; gap: 10px; 
+            padding-bottom: max(10px, env(safe-area-inset-bottom));
+        }
+        input { 
+            flex-grow: 1; border: none; background: white; 
+            outline: none; font-size: 16px; padding: 12px 18px; 
+            border-radius: 25px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .send-btn { 
+            background: #2196F3; color: white; border: none; 
+            width: 45px; height: 45px; border-radius: 50%; 
+            font-weight: bold; cursor: pointer; display: flex;
+            align-items: center; justify-content: center;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="back-btn" onclick="navTo('messages.html')">←</div>
-        <div class="user-phone" id="otherUserDisplay">Загрузка...</div>
+        <div class="user-phone" id="otherUserDisplay">Чат</div>
         <div class="clear-btn" onclick="clearEntireChat()">🗑</div>
     </div>
 
@@ -63,13 +70,11 @@
 
     <div class="bottom-area">
         <input type="text" id="msgInput" placeholder="Сообщение..." autocomplete="off">
-        <button class="send-btn" onclick="sendMsg()">ОТПРАВИТЬ</button>
+        <button class="send-btn" onclick="sendMsg()">➤</button>
     </div>
 
     <script>
-        function navTo(url) {
-            if (window.navigator.standalone) { window.location.replace(url); } else { window.location.href = url; }
-        }
+        function navTo(url) { window.location.href = url; }
 
         const firebaseConfig = {
             apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
@@ -83,36 +88,39 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        const myFullPhone = localStorage.getItem("USER_PHONE");
+        // 1. Очистка номеров от лишних символов (ПЛЮСОВ НЕ БУДЕТ В БАЗЕ)
+        function clean(p) { return p ? p.replace(/\D/g, '') : ""; }
+
+        const myRaw = clean(localStorage.getItem("USER_PHONE"));
         const urlParams = new URLSearchParams(window.location.search);
-        const otherFullPhone = urlParams.get('otherPhone');
-
-        // Для путей в базе используем только цифры (без +)
-        function getRaw(p) { return p ? p.replace(/\D/g, '') : ""; }
-        const myRaw = getRaw(myFullPhone);
-        const otherRaw = getRaw(otherFullPhone);
-
-        document.getElementById('otherUserDisplay').innerText = otherFullPhone;
-
-        function updateMyStatus() {
-            if (myRaw) {
-                const now = Date.now();
-                db.ref('Users/' + myRaw).update({ lastOnline: now, lastActive: now });
-            }
+        const otherRaw = clean(urlParams.get('otherPhone'));
+        
+        if (!myRaw || !otherRaw) {
+            alert("Ошибка доступа");
+            navTo('messages.html');
         }
-        updateMyStatus();
-        setInterval(updateMyStatus, 120000);
 
-        // ID чата по возрастанию номеров
-        const finalChatId = myRaw < otherRaw ? `${myRaw}_${otherRaw}` : `${otherRaw}_${myRaw}`;
+        document.getElementById('otherUserDisplay').innerText = '+' + otherRaw;
 
+        // Статус онлайн
+        function updateStatus() {
+            if (myRaw) db.ref('Users/' + myRaw).update({ lastOnline: Date.now(), lastActive: Date.now() });
+        }
+        updateStatus(); setInterval(updateStatus, 60000);
+
+        // Формируем ID чата (всегда меньшее число первым)
+        const finalChatId = (myRaw < otherRaw) ? `${myRaw}_${otherRaw}` : `${otherRaw}_${myRaw}`;
+
+        // СЛУШАТЕЛЬ СООБЩЕНИЙ
         db.ref('PrivateChats/' + finalChatId).on('value', snap => {
             const container = document.getElementById('messages');
             container.innerHTML = '';
+            
             snap.forEach(child => {
                 const msg = child.val();
-                const isMine = getRaw(msg.senderId) === myRaw;
+                const isMine = clean(msg.senderId) === myRaw;
                 
+                // Пометка прочитанным
                 if (!isMine && !msg.isRead) {
                     db.ref(`PrivateChats/${finalChatId}/${child.key}/isRead`).set(true);
                 }
@@ -120,42 +128,59 @@
                 const div = document.createElement('div');
                 div.className = `msg ${isMine ? 'sent' : 'received'}`;
                 const ticks = isMine ? `<span class="ticks ${msg.isRead ? 'read' : 'unread'}">${msg.isRead ? '✔✔' : '✔'}</span>` : '';
-                div.innerHTML = `<div>${msg.text}</div><div class="msg-footer">${msg.time || ''} ${ticks}</div>`;
+                
+                div.innerHTML = `
+                    <div>${msg.text}</div>
+                    <div class="msg-footer">${msg.time || ''} ${ticks}</div>
+                `;
                 container.appendChild(div);
             });
             container.scrollTop = container.scrollHeight;
         });
 
+        // ОТПРАВКА
         function sendMsg() {
             const input = document.getElementById('msgInput');
             const text = input.value.trim();
-            if (!text || !myRaw || !otherRaw) return;
+            if (!text) return;
+
+            const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+            const timestamp = Date.now();
 
             const msgData = {
                 senderId: myRaw,
                 text: text,
-                time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
-                timestamp: Date.now(),
+                time: time,
+                timestamp: timestamp,
                 isRead: false
             };
 
+            // 1. Добавляем в историю сообщений
             db.ref('PrivateChats/' + finalChatId).push(msgData);
             
-            // Ключи UserChats теперь тоже без плюса, чтобы Firebase не ругался
-            db.ref(`UserChats/${myRaw}/${otherRaw}`).update({ phone: otherFullPhone, lastMessage: text, timestamp: msgData.timestamp });
-            db.ref(`UserChats/${otherRaw}/${myRaw}`).update({ phone: myFullPhone, lastMessage: text, timestamp: msgData.timestamp });
+            // 2. Обновляем список последних чатов (используем только цифры для путей!)
+            const chatPreviewForMe = { phone: '+' + otherRaw, lastMessage: text, timestamp: timestamp };
+            const chatPreviewForOther = { phone: '+' + myRaw, lastMessage: text, timestamp: timestamp };
+
+            db.ref(`UserChats/${myRaw}/${otherRaw}`).set(chatPreviewForMe);
+            db.ref(`UserChats/${otherRaw}/${myRaw}`).set(chatPreviewForOther);
 
             input.value = '';
-            updateMyStatus();
+            updateStatus();
         }
 
         function clearEntireChat() {
-            if (confirm("Удалить всё?")) {
+            if (confirm("Удалить всю историю переписки?")) {
                 db.ref('PrivateChats/' + finalChatId).remove();
                 db.ref(`UserChats/${myRaw}/${otherRaw}`).remove();
                 navTo('messages.html');
             }
         }
+
+        // Обработка Enter
+        document.getElementById('msgInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMsg();
+        });
     </script>
 </body>
 </html>
