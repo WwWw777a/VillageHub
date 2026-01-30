@@ -18,6 +18,7 @@
     <style>
         :root {
             --safe-top: env(safe-area-inset-top, 0px);
+            --accent-blue: #2196F3;
         }
 
         body, html { 
@@ -67,6 +68,26 @@
         .ad-title { font-size: 14px; color: #333; height: 36px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; }
         .ad-meta { font-size: 11px; color: #999; margin-top: 6px; }
 
+        /* УВЕДОМЛЕНИЯ (КАК НА ГЛАВНОЙ) */
+        #broadcast_overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+            background: rgba(0,0,0,0.7); display: none; z-index: 9999;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .broadcast-card {
+            background: white; border-radius: 24px; padding: 24px; width: 100%; max-width: 400px;
+            text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .broadcast-card i { font-size: 50px; display: block; margin-bottom: 16px; font-style: normal; }
+        .broadcast-card h2 { margin: 0 0 12px 0; font-size: 22px; color: #333; }
+        .broadcast-card p { font-size: 16px; color: #555; line-height: 1.5; margin-bottom: 24px; white-space: pre-wrap; }
+        .broadcast-btn {
+            background: var(--accent-blue); color: white; border: none; padding: 14px 40px;
+            border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%;
+        }
+
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center; }
         .modal-content { background: white; width: 85%; max-width: 320px; padding: 20px; border-radius: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
         .modal-content h3 { margin: 0 0 10px 0; font-size: 18px; }
@@ -79,6 +100,15 @@
     </style>
 </head>
 <body>
+
+    <div id="broadcast_overlay">
+        <div class="broadcast-card">
+            <i>📢</i>
+            <h2>Объявление</h2>
+            <p id="broadcast_text"></p>
+            <button class="broadcast-btn" onclick="closeBroadcast()">ПОНЯТНО</button>
+        </div>
+    </div>
 
     <div class="header">
         <span class="back-btn" onclick="navTo('index.html')">←</span>
@@ -124,13 +154,71 @@
         const userRole = localStorage.getItem("USER_ROLE");
         const savedPhone = localStorage.getItem("USER_PHONE");
 
-        // --- ЛОГИКА ОНЛАЙНА (Android + iPhone) ---
+        // --- ЛОГИКА ЗВУКА И РАЗБЛОКИРОВКИ IOS ---
+        let isAudioUnlocked = false;
+        const alertAudio = new Audio('alert.mp3');
+        alertAudio.preload = 'auto';
+
+        function playAlertSound() {
+            if ('mediaSession' in navigator) { navigator.mediaSession.playbackState = 'none'; }
+            alertAudio.play().then(() => {
+                alertAudio.onended = () => {
+                    alertAudio.pause();
+                    alertAudio.currentTime = 0;
+                };
+            }).catch(e => console.log("Sound interaction wait..."));
+        }
+
+        function unlockAudio() {
+            if (isAudioUnlocked) return;
+            const silentAudio = new Audio('alert.mp3');
+            silentAudio.muted = true;
+            silentAudio.play().then(() => {
+                silentAudio.pause();
+                isAudioUnlocked = true;
+            }).catch(() => {});
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+        }
+        document.addEventListener('click', unlockAudio);
+        document.addEventListener('touchstart', unlockAudio);
+
+        // --- ЛОГИКА РАССЫЛКИ ---
+        database.ref('SystemAlerts').on('value', (snap) => {
+            const alertData = snap.val();
+            if (alertData && alertData.text) {
+                const lastSeenTime = localStorage.getItem("LAST_ALERT_TIME") || "0";
+                if (alertData.time && alertData.time.toString() !== lastSeenTime) {
+                    
+                    if (!isAudioUnlocked) {
+                        const playOnce = () => { playAlertSound(); document.removeEventListener('click', playOnce); };
+                        document.addEventListener('click', playOnce);
+                    } else {
+                        playAlertSound();
+                    }
+                    
+                    document.getElementById('broadcast_text').innerText = alertData.text;
+                    document.getElementById('broadcast_overlay').style.display = 'flex';
+                }
+            }
+        });
+
+        function closeBroadcast() {
+            database.ref('SystemAlerts/time').once('value').then((snap) => {
+                const currentTime = snap.val();
+                if (currentTime) {
+                    localStorage.setItem("LAST_ALERT_TIME", currentTime.toString());
+                }
+                document.getElementById('broadcast_overlay').style.display = 'none';
+            });
+        }
+
+        // --- ЛОГИКА ОНЛАЙНА ---
         if (savedPhone) {
             const presenceRef = database.ref('Users/' + savedPhone + '/isOnline');
             const lastSeenRef = database.ref('Users/' + savedPhone + '/lastOnline');
             const connectedRef = database.ref('.info/connected');
 
-            // 1. Статус при подключении
             connectedRef.on('value', (snap) => {
                 if (snap.val() === true) {
                     presenceRef.set(true);
@@ -139,7 +227,6 @@
                 }
             });
 
-            // 2. Статус при сворачивании (iPhone)
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'hidden') {
                     presenceRef.set(false);
@@ -149,8 +236,8 @@
                 }
             });
         }
-        // ------------------------------------------
 
+        // --- ЛОГИКА ОБЪЯВЛЕНИЙ ---
         database.ref('Ads').on('value', (snap) => {
             const grid = document.getElementById('adsGrid');
             grid.innerHTML = '';
