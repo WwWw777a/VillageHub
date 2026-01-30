@@ -42,19 +42,13 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         
-        const myPhone = localStorage.getItem("USER_PHONE"); // Строго +7...
+        const myPhone = localStorage.getItem("USER_PHONE"); 
+        // Заменяем + на _ для ПУТИ в базе
+        function fix(p) { return p ? p.replace(/\+/g, '_') : ""; }
+
         if (!myPhone) { location.href = 'login.html'; }
 
-        // Помощник для кодирования путей
-        function fb(p) { return encodeURIComponent(p); }
-
-        function updateStatus() {
-            if (myPhone) db.ref('Users/' + fb(myPhone)).update({ lastOnline: Date.now(), lastActive: Date.now() });
-        }
-        updateStatus(); setInterval(updateStatus, 120000);
-
-        // Читаем из оригинальной ветки UserChats (как на Android)
-        db.ref('UserChats/' + fb(myPhone)).on('value', snap => {
+        db.ref('UserChats/' + fix(myPhone)).on('value', snap => {
             const list = document.getElementById('chatsList');
             list.innerHTML = '';
             if (!snap.exists()) {
@@ -65,18 +59,19 @@
             let chats = [];
             snap.forEach(child => { 
                 let data = child.val();
-                data.encodedOtherPhone = child.key; 
+                data.otherKey = child.key; 
                 chats.push(data); 
             });
 
             chats.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
             chats.forEach(chat => {
-                const otherPhone = chat.phone; // Номер с +7
-                const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
+                const otherPhone = chat.phone;
+                const otherKey = fix(otherPhone);
+                const myKey = fix(myPhone);
+                const chatId = myKey < otherKey ? `${myKey}_${otherKey}` : `${otherKey}_${myKey}`;
 
-                // Проверка непрочитанных
-                db.ref(`PrivateChats/${fb(chatId)}`).limitToLast(1).once('value', msgSnap => {
+                db.ref(`PrivateChats/${chatId}`).limitToLast(1).once('value', msgSnap => {
                     let unreadHtml = '';
                     msgSnap.forEach(m => {
                         const lastMsg = m.val();
@@ -93,16 +88,16 @@
                             <div class="chat-phone">${otherPhone} ${unreadHtml}</div>
                             <div class="chat-last-msg">${chat.lastMessage || ''}</div>
                         </div>
-                        <div class="btn-delete" onclick="event.stopPropagation(); deleteChat('${fb(otherPhone)}')">🗑</div>
+                        <div class="btn-delete" onclick="event.stopPropagation(); deleteChat('${otherKey}')">🗑</div>
                     `;
                     list.appendChild(div);
                 });
             });
         });
 
-        function deleteChat(encodedOther) {
+        function deleteChat(oKey) {
             if (confirm("Удалить из списка?")) {
-                db.ref(`UserChats/${fb(myPhone)}/${encodedOther}`).remove();
+                db.ref(`UserChats/${fix(myPhone)}/${oKey}`).remove();
             }
         }
     </script>
