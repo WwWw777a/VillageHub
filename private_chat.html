@@ -60,25 +60,22 @@
         if (!myPhone || !otherPhone) { location.href = 'index.html'; }
         document.getElementById('otherUserPhoneDisplay').innerText = otherPhone;
 
-        // ID чата строго как в Android (сравнение строк с +7)
         const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
 
-        // Загрузка сообщений через .child() для безопасной работы с "+" в названии
+        // Загрузка сообщений
         db.ref('PrivateChats').child(chatId).on('value', snap => {
             const container = document.getElementById('messages');
             container.innerHTML = '';
             snap.forEach(child => {
                 const msg = child.val();
-                const isMine = msg.senderId === myPhone;
-
-                // Отметка о прочтении
-                if (!isMine && !msg.isRead) {
+                if (msg.senderId !== myPhone && !msg.isRead) {
                     child.ref.update({ isRead: true });
+                    // При входе в чат сбрасываем свой счетчик в UserChats
+                    db.ref('UserChats').child(myPhone).child(otherPhone).update({ unreadCount: 0, hasNewMessage: false });
                 }
-
                 const div = document.createElement('div');
-                div.className = `msg ${isMine ? 'sent' : 'received'}`;
-                const ticks = isMine ? `<span class="ticks ${msg.isRead ? 'read' : 'unread'}">${msg.isRead ? '✔✔' : '✔'}</span>` : '';
+                div.className = `msg ${msg.senderId === myPhone ? 'sent' : 'received'}`;
+                const ticks = msg.senderId === myPhone ? `<span class="ticks ${msg.isRead ? 'read' : 'unread'}">${msg.isRead ? '✔✔' : '✔'}</span>` : '';
                 div.innerHTML = `<div>${msg.text}</div><div class="msg-footer">${msg.time} ${ticks}</div>`;
                 container.appendChild(div);
             });
@@ -101,19 +98,35 @@
                 isRead: false
             };
 
-            // Пишем в PrivateChats (в папку с плюсами)
+            // 1. Сообщение в общую ветку
             db.ref('PrivateChats').child(chatId).push(newMsg);
 
-            // Пишем в UserChats (в папки с плюсами)
+            // 2. Обновляем свой список чатов
             db.ref('UserChats').child(myPhone).child(otherPhone).update({ 
                 phone: otherPhone, 
                 lastMessage: text, 
                 timestamp: ts 
             });
-            db.ref('UserChats').child(otherPhone).child(myPhone).update({ 
-                phone: myPhone, 
-                lastMessage: text, 
-                timestamp: ts 
+
+            // 3. Обновляем список чатов собеседника с зажиганием конвертика
+            const receiverChatRef = db.ref('UserChats').child(otherPhone).child(myPhone);
+            receiverChatRef.transaction((current) => {
+                if (current) {
+                    current.unreadCount = (current.unreadCount || 0) + 1;
+                    current.lastMessage = text;
+                    current.timestamp = ts;
+                    current.hasNewMessage = true;
+                    current.phone = myPhone;
+                } else {
+                    return {
+                        phone: myPhone,
+                        lastMessage: text,
+                        timestamp: ts,
+                        unreadCount: 1,
+                        hasNewMessage: true
+                    };
+                }
+                return current;
             });
 
             input.value = '';
