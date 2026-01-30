@@ -42,10 +42,10 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         
-        const myPhone = localStorage.getItem("USER_PHONE"); 
+        const myPhone = localStorage.getItem("USER_PHONE"); // Должен быть +7...
         if (!myPhone) { location.href = 'login.html'; }
 
-        // Читаем список чатов из оригинальной ветки UserChats
+        // Читаем список чатов через .child(), чтобы символ "+" не вызывал ошибок
         db.ref('UserChats').child(myPhone).on('value', snap => {
             const list = document.getElementById('chatsList');
             list.innerHTML = '';
@@ -66,7 +66,7 @@
                 const otherPhone = chat.phone;
                 const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
 
-                // Проверка на непрочитанные
+                // Проверка на непрочитанные в оригинальной ветке PrivateChats
                 db.ref('PrivateChats').child(chatId).limitToLast(1).once('value', msgSnap => {
                     let unreadHtml = '';
                     msgSnap.forEach(m => {
