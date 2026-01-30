@@ -50,40 +50,36 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        const myPhone = localStorage.getItem("USER_PHONE"); // Оригинал с +7
+        // 1. ПОЛУЧАЕМ ДАННЫЕ (строго с +7)
+        const myPhone = localStorage.getItem("USER_PHONE"); 
         const urlParams = new URLSearchParams(window.location.search);
-        const otherPhone = urlParams.get('otherPhone'); // Оригинал с +7
+        const otherPhone = urlParams.get('otherPhone'); 
 
         if (!myPhone || !otherPhone) { location.href = 'index.html'; }
         document.getElementById('displayPhone').innerText = otherPhone;
 
-        // ВАЖНО: Ключи для путей в базе БЕЗ плюса
-        const myKey = myPhone.replace(/\+/g, '');
-        const otherKey = otherPhone.replace(/\+/g, '');
-        
-        // ID чата — всегда одинаковый для обоих участников
-        const chatId = myKey < otherKey ? `${myKey}_${otherKey}` : `${otherKey}_${myKey}`;
+        // 2. ФУНКЦИЯ КОДИРОВАНИЯ ПУТИ (заменяет + на %2B для базы)
+        function fb(p) { return encodeURIComponent(p); }
 
-        // Обновление статуса: ИСПОЛЬЗУЕМ СТРОГО ОРИГИНАЛЬНЫЙ myPhone (с +7)
+        // 3. ID ЧАТА (как в Android: сравнение строк с +7)
+        const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
+
+        // Обновление статуса в ветке Users (оригинальный путь)
         function updateStatus() {
-            if (myPhone) db.ref('Users/' + myPhone).update({ 
-                lastOnline: Date.now(), 
-                lastActive: Date.now() 
-            });
+            if (myPhone) db.ref('Users/' + fb(myPhone)).update({ lastOnline: Date.now() });
         }
         updateStatus(); setInterval(updateStatus, 120000);
 
-        // ЗАГРУЗКА ИСТОРИИ
-        db.ref('PrivateMessages/' + chatId).on('value', snap => {
+        // 4. ЗАГРУЗКА ИЗ PrivateChats (та же ветка, что в Android)
+        db.ref('PrivateChats/' + fb(chatId)).on('value', snap => {
             const container = document.getElementById('messages');
             container.innerHTML = '';
             snap.forEach(child => {
                 const data = child.val();
-                const isMine = data.sender === myPhone;
+                const isMine = data.senderId === myPhone;
                 
-                // Отмечаем прочитанным
                 if (!isMine && !data.isRead) {
-                    db.ref(`PrivateMessages/${chatId}/${child.key}/isRead`).set(true);
+                    db.ref(`PrivateChats/${fb(chatId)}/${child.key}/isRead`).set(true);
                 }
 
                 const div = document.createElement('div');
@@ -96,47 +92,49 @@
             container.scrollTop = container.scrollHeight;
         });
 
-        // ОТПРАВКА
+        // 5. ОТПРАВКА (та же структура, что в Android)
         function sendMsg() {
             const input = document.getElementById('msgInput');
             const text = input.value.trim();
             if (!text) return;
 
-            const timestamp = Date.now();
+            const ts = Date.now();
             const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
             const newMsg = {
-                sender: myPhone, // Сохраняем с +7 для логики приложения
+                senderId: myPhone,
                 text: text,
                 time: timeStr,
-                timestamp: timestamp,
+                timestamp: ts,
                 isRead: false
             };
 
-            // 1. Пишем в общую ветку сообщений (через чистый chatId)
-            db.ref('PrivateMessages/' + chatId).push(newMsg);
+            // Пишем в основную ветку
+            db.ref('PrivateChats/' + fb(chatId)).push(newMsg);
 
-            // 2. Пишем в ветку "Последние чаты" для списка сообщений
-            const previewMe = { phone: otherPhone, lastText: text, ts: timestamp };
-            const previewOther = { phone: myPhone, lastText: text, ts: timestamp };
-
-            db.ref(`UserRecentChats/${myKey}/${otherKey}`).set(previewMe);
-            db.ref(`UserRecentChats/${otherKey}/${myKey}`).set(previewOther);
+            // Обновляем список последних чатов (совместимость с Android)
+            db.ref(`UserChats/${fb(myPhone)}/${fb(otherPhone)}`).update({
+                phone: otherPhone,
+                lastMessage: text,
+                timestamp: ts
+            });
+            db.ref(`UserChats/${fb(otherPhone)}/${fb(myPhone)}`).update({
+                phone: myPhone,
+                lastMessage: text,
+                timestamp: ts
+            });
 
             input.value = '';
         }
 
         function clearChat() {
             if(confirm("Удалить переписку?")) {
-                db.ref('PrivateMessages/' + chatId).remove();
-                db.ref(`UserRecentChats/${myKey}/${otherKey}`).remove();
+                db.ref('PrivateChats/' + fb(chatId)).remove();
+                db.ref(`UserChats/${fb(myPhone)}/${fb(otherPhone)}`).remove();
                 location.href = 'messages.html';
             }
         }
-
-        document.getElementById('msgInput').addEventListener('keypress', (e) => {
-            if(e.key === 'Enter') sendMsg();
-        });
+        document.getElementById('msgInput').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMsg(); });
     </script>
 </body>
 </html>
