@@ -43,12 +43,10 @@
         const db = firebase.database();
         
         const myPhone = localStorage.getItem("USER_PHONE"); 
-        const fix = (p) => p ? p.replace(/\+/g, '_') : "";
-        const myKey = fix(myPhone);
-
         if (!myPhone) { location.href = 'login.html'; }
 
-        db.ref('UserChats/' + myKey).on('value', snap => {
+        // Читаем список чатов из оригинальной ветки UserChats
+        db.ref('UserChats').child(myPhone).on('value', snap => {
             const list = document.getElementById('chatsList');
             list.innerHTML = '';
             if (!snap.exists()) {
@@ -59,7 +57,6 @@
             let chats = [];
             snap.forEach(child => { 
                 let data = child.val();
-                data.otherKey = child.key; 
                 chats.push(data); 
             });
 
@@ -67,10 +64,10 @@
 
             chats.forEach(chat => {
                 const otherPhone = chat.phone;
-                const otherKey = chat.otherKey;
-                const chatId = myKey < otherKey ? `${myKey}__${otherKey}` : `${otherKey}__${myKey}`;
+                const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
 
-                db.ref(`PrivateChats/${chatId}`).limitToLast(1).once('value', msgSnap => {
+                // Проверка на непрочитанные
+                db.ref('PrivateChats').child(chatId).limitToLast(1).once('value', msgSnap => {
                     let unreadHtml = '';
                     msgSnap.forEach(m => {
                         const lastMsg = m.val();
@@ -87,16 +84,16 @@
                             <div class="chat-phone">${otherPhone} ${unreadHtml}</div>
                             <div class="chat-last-msg">${chat.lastMessage || ''}</div>
                         </div>
-                        <div class="btn-delete" onclick="event.stopPropagation(); deleteChat('${otherKey}')">🗑</div>
+                        <div class="btn-delete" onclick="event.stopPropagation(); deleteChat('${otherPhone}')">🗑</div>
                     `;
                     list.appendChild(div);
                 });
             });
         });
 
-        function deleteChat(oKey) {
+        function deleteChat(oPhone) {
             if (confirm("Удалить из списка?")) {
-                db.ref(`UserChats/${myKey}/${oKey}`).remove();
+                db.ref('UserChats').child(myPhone).child(oPhone).remove();
             }
         }
     </script>
