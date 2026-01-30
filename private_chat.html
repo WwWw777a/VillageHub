@@ -79,7 +79,7 @@
             }
         });
 
-        // 2. Инфо собеседника
+        // 2. Собеседник
         db.ref('Users/' + otherPhone).on('value', snap => {
             if (snap.exists()) {
                 const data = snap.val();
@@ -93,34 +93,39 @@
         const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
         const container = document.getElementById('messages');
 
-        // 3. СЛУШАТЕЛЬ: ГАЛОЧКИ + БЕЗ ДУБЛЕЙ
+        // 3. СЛУШАТЕЛЬ: ГАЛОЧКИ И КОНВЕРТИК
         db.ref('PrivateChats').child(chatId).on('value', snap => {
             const tempMap = new Map();
-            
+            let needsResetBadge = false;
+
             snap.forEach(child => {
                 const msg = child.val();
-                const key = child.key;
-                tempMap.set(key, msg); 
+                tempMap.set(child.key, msg);
 
-                // Если прислали МНЕ и оно еще не прочитано - читаем
+                // ЧИТАЕМ ТОЛЬКО ВХОДЯЩИЕ
                 if (msg.senderId !== myPhone && msg.isRead === false) {
                     child.ref.child('isRead').set(true);
-                    db.ref('UserChats/' + myPhone + '/' + otherPhone).update({ unreadCount: 0, hasNewMessage: false });
+                    needsResetBadge = true;
                 }
             });
 
-            // Отрисовка
+            // Если были новые сообщения, гасим конвертик и обнуляем счетчик
+            if (needsResetBadge) {
+                db.ref('UserChats/' + myPhone + '/' + otherPhone).update({ unreadCount: 0, hasNewMessage: false });
+                db.ref('Users/' + myPhone).update({ hasNewMessage: false });
+            }
+
             container.innerHTML = '';
             tempMap.forEach((msg) => {
                 const isMine = msg.senderId === myPhone;
                 const div = document.createElement('div');
                 div.className = `msg ${isMine ? 'sent' : 'received'}`;
                 
-                // ГАЛОЧКИ: Одна галочка если false, Две если true
                 let ticksHtml = '';
                 if (isMine) {
-                    const tickClass = msg.isRead ? 'read' : 'unread';
-                    const tickIcons = msg.isRead ? '✔✔' : '✔';
+                    // Строгая проверка: если true - синие, если false - серая
+                    const tickClass = (msg.isRead === true) ? 'read' : 'unread';
+                    const tickIcons = (msg.isRead === true) ? '✔✔' : '✔';
                     ticksHtml = `<span class="ticks ${tickClass}">${tickIcons}</span>`;
                 }
                 
@@ -130,7 +135,10 @@
             container.scrollTo(0, container.scrollHeight);
         });
 
-        // 4. ОТПРАВКА
+        // СБРОС КОНВЕРТИКА ПРИ ВХОДЕ (Дополнительно)
+        db.ref('Users/' + myPhone).update({ hasNewMessage: false });
+        db.ref('UserChats/' + myPhone + '/' + otherPhone).update({ unreadCount: 0, hasNewMessage: false });
+
         function sendMsg() {
             const input = document.getElementById('msgInput');
             const text = input.value.trim();
@@ -138,11 +146,10 @@
             const ts = Date.now();
             const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             
-            // Отправляем с isRead: false
+            // ВАЖНО: отправляем строго false
             const newMsg = { senderId: myPhone, text: text, time: time, timestamp: ts, isRead: false };
             db.ref('PrivateChats/' + chatId).push(newMsg);
             
-            // Обновляем списки
             db.ref('UserChats/' + myPhone + '/' + otherPhone).update({ phone: otherPhone, lastMessage: text, timestamp: ts });
             db.ref('UserChats/' + otherPhone + '/' + myPhone).transaction(c => {
                 if (c) { 
