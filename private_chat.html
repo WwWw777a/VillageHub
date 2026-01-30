@@ -28,7 +28,7 @@
 <body>
     <div class="header">
         <div class="back-btn" onclick="location.href='messages.html'">←</div>
-        <div class="user-phone" id="displayPhone">Чат</div>
+        <div class="user-phone" id="displayPhone">Загрузка...</div>
         <div onclick="clearChat()" style="cursor:pointer; padding:5px;">🗑</div>
     </div>
     <div id="messages"></div>
@@ -51,20 +51,17 @@
         const db = firebase.database();
 
         const myPhone = localStorage.getItem("USER_PHONE"); 
-        const urlParams = new URLSearchParams(window.location.search);
-        const otherPhone = urlParams.get('otherPhone'); 
+        const otherPhone = new URLSearchParams(window.location.search).get('otherPhone'); 
 
         if (!myPhone || !otherPhone) { location.href = 'index.html'; }
         document.getElementById('displayPhone').innerText = otherPhone;
 
-        // ЗАМЕНА ПЛЮСА НА ПОДЧЕРКИВАНИЕ ДЛЯ БАЗЫ
-        function fix(p) { return p ? p.replace(/\+/g, '_') : ""; }
-
+        // Ключи без плюсов для путей
+        const fix = (p) => p.replace(/\+/g, '_');
         const myKey = fix(myPhone);
         const otherKey = fix(otherPhone);
-        const chatId = myKey < otherKey ? `${myKey}_${otherKey}` : `${otherKey}_${myKey}`;
+        const chatId = myKey < otherKey ? `${myKey}__${otherKey}` : `${otherKey}__${myKey}`;
 
-        // Статус онлайн
         function updateStatus() {
             if (myPhone) db.ref('Users/' + myPhone).update({ lastOnline: Date.now() });
         }
@@ -89,7 +86,6 @@
             container.scrollTop = container.scrollHeight;
         });
 
-        // Отправка
         function sendMsg() {
             const input = document.getElementById('msgInput');
             const text = input.value.trim();
@@ -98,9 +94,9 @@
             const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
             const newMsg = { senderId: myPhone, text: text, time: timeStr, timestamp: ts, isRead: false };
+            
+            // Отправляем
             db.ref('PrivateChats/' + chatId).push(newMsg);
-
-            // Пишем в UserChats (Ключи без +, значения с +)
             db.ref(`UserChats/${myKey}/${otherKey}`).update({ phone: otherPhone, lastMessage: text, timestamp: ts });
             db.ref(`UserChats/${otherKey}/${myKey}`).update({ phone: myPhone, lastMessage: text, timestamp: ts });
 
