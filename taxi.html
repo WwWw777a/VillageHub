@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>VillageHub</title>
+    <title>VillageHub - Такси</title>
 
     <link rel="manifest" href="manifest.json">
 
@@ -14,8 +14,11 @@
 
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    
     <style>
         :root {
+            --bg-color: #f8f9fa;
+            --accent-blue: #2196F3;
             --safe-top: env(safe-area-inset-top, 0px);
         }
 
@@ -24,7 +27,7 @@
         body, html { 
             margin: 0; padding: 0; 
             height: 100dvh; width: 100vw; 
-            background-color: #f5f5f5;
+            background-color: var(--bg-color);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             overflow: hidden; 
             position: fixed;
@@ -46,7 +49,7 @@
         }
         
         .header-left { display: flex; align-items: center; }
-        .back-btn { font-size: 24px; text-decoration: none; color: #333; margin-right: 20px; cursor: pointer; padding: 5px; }
+        .back-btn { font-size: 24px; color: #333; margin-right: 20px; cursor: pointer; padding: 5px; }
         h1 { font-size: 20px; margin: 0; color: #333; font-weight: bold; }
         .add-btn { font-size: 28px; color: #333; cursor: pointer; display: none; font-weight: bold; padding: 5px; }
 
@@ -63,11 +66,31 @@
             display: flex; align-items: center; justify-content: space-between; 
             box-shadow: 0 2px 10px rgba(0,0,0,0.05); cursor: pointer;
         }
-        .taxi-card:active { background-color: #f0f0f0; }
         .taxi-details h3 { margin: 0; font-size: 18px; color: #333; }
         .taxi-details p { margin: 5px 0 0 0; color: #777; font-size: 14px; }
         .call-icon { color: #4CAF50; font-size: 26px; }
 
+        /* ОКНО ОБЪЯВЛЕНИЯ (КАК НА ГЛАВНОЙ) */
+        #broadcast_overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+            background: rgba(0,0,0,0.7); display: none; z-index: 9999;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .broadcast-card {
+            background: white; border-radius: 24px; padding: 24px; width: 100%; max-width: 400px;
+            text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .broadcast-card i { font-size: 50px; display: block; margin-bottom: 16px; font-style: normal; }
+        .broadcast-card h2 { margin: 0 0 12px 0; font-size: 22px; color: #333; }
+        .broadcast-card p { font-size: 16px; color: #555; line-height: 1.5; margin-bottom: 24px; white-space: pre-wrap; }
+        .broadcast-btn {
+            background: var(--accent-blue); color: white; border: none; padding: 14px 40px;
+            border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%;
+        }
+
+        /* МОДАЛКИ ВЫЗОВА */
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.4); z-index: 2000; justify-content: center; align-items: center;
@@ -85,6 +108,15 @@
             <h1>Такси поселка</h1>
         </div>
         <div id="adminAddBtn" class="add-btn" onclick="addNewTaxi()">+</div>
+    </div>
+
+    <div id="broadcast_overlay">
+        <div class="broadcast-card">
+            <i>📢</i>
+            <h2>Объявление</h2>
+            <p id="broadcast_text"></p>
+            <button class="broadcast-btn" onclick="closeBroadcast()">ПОНЯТНО</button>
+        </div>
     </div>
 
     <div class="container">
@@ -132,7 +164,7 @@
         const database = firebase.database();
         const myPhone = localStorage.getItem("USER_PHONE");
 
-        // --- СТРОГАЯ ЛОГИКА ЗВУКА (КАК НА ГЛАВНОЙ) ---
+        // --- ЛОГИКА ЗВУКА И ОБЪЯВЛЕНИЙ (КОПИЯ ГЛАВНОЙ) ---
         let isAudioUnlocked = false;
 
         function playAlertSound() {
@@ -143,7 +175,7 @@
                 tempAudio.onended = () => {
                     tempAudio.src = ""; tempAudio.load(); tempAudio.remove();
                 };
-            }).catch(e => console.log("Sound play failed", e));
+            }).catch(e => console.log("Waiting for interaction..."));
         }
 
         function unlockAudio() {
@@ -153,7 +185,7 @@
             silentAudio.play().then(() => {
                 silentAudio.pause();
                 isAudioUnlocked = true;
-                console.log("Taxi Audio Unlocked");
+                console.log("Audio Unlocked");
             }).catch(() => {});
             document.removeEventListener('click', unlockAudio);
             document.removeEventListener('touchstart', unlockAudio);
@@ -161,7 +193,6 @@
         document.addEventListener('click', unlockAudio);
         document.addEventListener('touchstart', unlockAudio);
 
-        // --- ЛОГИКА РАССЫЛКИ ДЛЯ ТАКСИ ---
         database.ref('SystemAlerts').on('value', (snap) => {
             const alertData = snap.val();
             if (alertData && alertData.text) {
@@ -169,25 +200,34 @@
                 if (alertData.time && alertData.time.toString() !== lastSeenTime) {
                     
                     if (!isAudioUnlocked) {
-                        const playAfterInteraction = () => {
+                        const playOnFirstClick = () => {
                             playAlertSound();
-                            document.removeEventListener('click', playAfterInteraction);
-                            document.removeEventListener('touchstart', playAfterInteraction);
+                            document.removeEventListener('click', playOnFirstClick);
+                            document.removeEventListener('touchstart', playOnFirstClick);
                         };
-                        document.addEventListener('click', playAfterInteraction);
-                        document.addEventListener('touchstart', playAfterInteraction);
+                        document.addEventListener('click', playOnFirstClick);
+                        document.addEventListener('touchstart', playOnFirstClick);
                     } else {
                         playAlertSound();
                     }
                     
-                    // Сохраняем сразу, чтобы не дублировать
-                    localStorage.setItem("LAST_ALERT_TIME", alertData.time.toString());
-                    alert("📢 ОБЪЯВЛЕНИЕ ПОСЕЛКА:\n\n" + alertData.text);
+                    document.getElementById('broadcast_text').innerText = alertData.text;
+                    document.getElementById('broadcast_overlay').style.display = 'flex';
                 }
             }
         });
 
-        // --- ОСТАЛЬНАЯ ЛОГИКА (ОНЛАЙН И ТАКСИ) ---
+        function closeBroadcast() {
+            database.ref('SystemAlerts/time').once('value').then((snap) => {
+                const currentTime = snap.val();
+                if (currentTime) {
+                    localStorage.setItem("LAST_ALERT_TIME", currentTime.toString());
+                }
+                document.getElementById('broadcast_overlay').style.display = 'none';
+            });
+        }
+
+        // --- ОНЛАЙН СТАТУС ---
         if (myPhone) {
             const presenceRef = database.ref('Users/' + myPhone + '/isOnline');
             const lastSeenRef = database.ref('Users/' + myPhone + '/lastOnline');
@@ -198,15 +238,17 @@
                     lastSeenRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
                 }
             });
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') presenceRef.set(false);
+                else presenceRef.set(true);
+            });
         }
 
+        // --- ЛОГИКА ТАКСИ ---
         const userRole = localStorage.getItem("USER_ROLE");
         if (userRole === "АДМИН") document.getElementById('adminAddBtn').style.display = 'block';
 
-        let currentPhone = "";
-        let currentKey = "";
-        let currentName = "";
-        let pressTimer;
+        let currentPhone = "", currentKey = "", currentName = "", pressTimer;
 
         database.ref('Taxi').on('value', (snapshot) => {
             const listDiv = document.getElementById('taxiList');
