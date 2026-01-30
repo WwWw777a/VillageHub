@@ -219,7 +219,7 @@
                     tempAudio.load();
                     tempAudio.remove();
                 };
-            }).catch(e => console.log("Sound play failed", e));
+            }).catch(e => console.log("Sound play waiting for interaction..."));
         }
 
         function unlockAudio() {
@@ -229,6 +229,7 @@
             silentAudio.play().then(() => {
                 silentAudio.pause();
                 isAudioUnlocked = true;
+                console.log("Audio Unlocked");
             }).catch(() => {});
             document.removeEventListener('click', unlockAudio);
             document.removeEventListener('touchstart', unlockAudio);
@@ -260,22 +261,23 @@
             });
         }
 
-        // --- ЛОГИКА РАССЫЛКИ ---
+        // --- ЛОГИКА РАССЫЛКИ (С ИСПРАВЛЕНИЕМ ЗВУКА ПРИ ПЕРЕХОДЕ) ---
         db.ref('SystemAlerts').on('value', (snap) => {
             const alertData = snap.val();
             if (alertData && alertData.text) {
                 const lastSeenTime = localStorage.getItem("LAST_ALERT_TIME") || "0";
                 if (alertData.time && alertData.time.toString() !== lastSeenTime) {
                     
-                    // ЕСЛИ ЗВУК ЕЩЕ ЗАБЛОКИРОВАН (только зашли на страницу)
+                    // Если звук еще заблокирован (например, только зашли на главную),
+                    // вешаем слушатель на первый клик, чтобы сразу сыграть пропущенное.
                     if (!isAudioUnlocked) {
-                        const playAfterInteraction = () => {
+                        const playOnFirstClick = () => {
                             playAlertSound();
-                            document.removeEventListener('click', playAfterInteraction);
-                            document.removeEventListener('touchstart', playAfterInteraction);
+                            document.removeEventListener('click', playOnFirstClick);
+                            document.removeEventListener('touchstart', playOnFirstClick);
                         };
-                        document.addEventListener('click', playAfterInteraction);
-                        document.addEventListener('touchstart', playAfterInteraction);
+                        document.addEventListener('click', playOnFirstClick);
+                        document.addEventListener('touchstart', playOnFirstClick);
                     } else {
                         playAlertSound();
                     }
