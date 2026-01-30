@@ -69,10 +69,10 @@
             snap.forEach(child => {
                 const msg = child.val();
                 
-                // ИСПРАВЛЕНИЕ: Читаем только ВХОДЯЩИЕ (не свои)
+                // ИСПРАВЛЕНИЕ: Читаем только входящие. Не читаем свои сообщения!
                 if (msg.senderId !== myPhone && !msg.isRead) {
                     child.ref.update({ isRead: true });
-                    // Сбрасываем уведомления ТОЛЬКО у себя
+                    // Сбрасываем счетчик уведомлений у себя
                     db.ref('UserChats').child(myPhone).child(otherPhone).update({ unreadCount: 0, hasNewMessage: false });
                 }
 
@@ -98,20 +98,20 @@
                 text: text,
                 time: time,
                 timestamp: ts,
-                isRead: false // Всегда false при отправке
+                isRead: false
             };
 
             // 1. Сообщение в общую ветку
             db.ref('PrivateChats').child(chatId).push(newMsg);
 
-            // 2. Обновляем свой список чатов
+            // 2. Обновляем свой список чатов (без флагов нового сообщения)
             db.ref('UserChats').child(myPhone).child(otherPhone).update({ 
                 phone: otherPhone, 
                 lastMessage: text, 
                 timestamp: ts 
             });
 
-            // 3. ТРАНЗАКЦИЯ: Зажигаем конвертик у собеседника
+            // 3. ТРАНЗАКЦИЯ: Зажигаем конвертик у собеседника (Android)
             const receiverChatRef = db.ref('UserChats').child(otherPhone).child(myPhone);
             receiverChatRef.transaction((current) => {
                 if (current) {
