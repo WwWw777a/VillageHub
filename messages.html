@@ -8,8 +8,38 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        :root { --safe-top: env(safe-area-inset-top, 0px); }
+        :root { 
+            --safe-top: env(safe-area-inset-top, 0px); 
+            --accent-blue: #2196F3;
+        }
         body, html { margin: 0; padding: 0; height: 100dvh; width: 100vw; background: #f5f5f5; font-family: -apple-system, sans-serif; overflow: hidden; position: fixed; -webkit-text-size-adjust: 100%; }
+        
+        /* СТИЛИ УВЕДОМЛЕНИЯ (КАК НА ГЛАВНОЙ) */
+        #broadcast_overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+            background: rgba(0,0,0,0.7); display: none; z-index: 99999;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .broadcast-card {
+            background: white; border-radius: 24px; padding: 24px; 
+            width: 100%; max-width: 400px;
+            max-height: 80vh; display: flex; flex-direction: column;
+            text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease-out; box-sizing: border-box;
+        }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .broadcast-card i { font-size: 40px; display: block; margin-bottom: 12px; font-style: normal; flex-shrink: 0; }
+        .broadcast-card h2 { margin: 0 0 12px 0; font-size: 20px; color: #333; flex-shrink: 0; }
+        #broadcast_text { 
+            font-size: 16px; color: #555; line-height: 1.5; margin-bottom: 20px; 
+            white-space: pre-wrap; word-wrap: break-word; overflow-y: auto;
+            text-align: left; padding-right: 5px; -webkit-overflow-scrolling: touch;
+        }
+        .broadcast-btn {
+            background: var(--accent-blue); color: white; border: none; padding: 14px;
+            border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%; flex-shrink: 0;
+        }
+
         .header { background: #2196F3; color: white; padding: 15px; display: flex; align-items: center; position: fixed; top: 0; left: 0; width: 100%; z-index: 1000; height: calc(60px + var(--safe-top)); padding-top: var(--safe-top); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; padding: 5px; }
         .container { height: 100dvh; overflow-y: auto; padding: 10px; padding-top: calc(70px + var(--safe-top)); -webkit-overflow-scrolling: touch; }
@@ -23,6 +53,15 @@
     </style>
 </head>
 <body>
+    <div id="broadcast_overlay">
+        <div class="broadcast-card">
+            <i>📢</i>
+            <h2>Объявление</h2>
+            <div id="broadcast_text"></div>
+            <button class="broadcast-btn" onclick="closeBroadcast()">ПОНЯТНО</button>
+        </div>
+    </div>
+
     <div class="header">
         <span class="back-btn" onclick="location.href='index.html'">←</span>
         <h1 style="font-size: 18px; margin: 0;">Мои переписки</h1>
@@ -45,12 +84,61 @@
         const myPhone = localStorage.getItem("USER_PHONE"); 
         if (!myPhone) { location.href = 'login.html'; }
 
-        // --- ЛОГИКА ОНЛАЙНА (ИНТЕГРИРОВАНА) ---
+        // --- ЛОГИКА ЗВУКА И РАЗБЛОКИРОВКИ IOS ---
+        let isAudioUnlocked = false;
+        const alertAudio = new Audio('alert.mp3');
+        alertAudio.preload = 'auto';
+
+        function unlockAudio() {
+            if (isAudioUnlocked) return;
+            const silentAudio = new Audio('alert.mp3');
+            silentAudio.muted = true;
+            silentAudio.play().then(() => {
+                silentAudio.pause();
+                isAudioUnlocked = true;
+            }).catch(() => {});
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+        }
+        document.addEventListener('click', unlockAudio);
+        document.addEventListener('touchstart', unlockAudio);
+
+        function playAlertSound() {
+            if ('mediaSession' in navigator) { navigator.mediaSession.playbackState = 'none'; }
+            alertAudio.play().then(() => {
+                alertAudio.onended = () => { alertAudio.pause(); alertAudio.currentTime = 0; };
+            }).catch(() => {});
+        }
+
+        // --- СЛУШАТЕЛЬ РАССЫЛКИ ---
+        db.ref('SystemAlerts').on('value', (snap) => {
+            const alertData = snap.val();
+            if (alertData && alertData.text) {
+                const lastSeenTime = localStorage.getItem("LAST_ALERT_TIME") || "0";
+                if (alertData.time && alertData.time.toString() !== lastSeenTime) {
+                    if (!isAudioUnlocked) {
+                        const playOnce = () => { playAlertSound(); document.removeEventListener('click', playOnce); };
+                        document.addEventListener('click', playOnce);
+                    } else { playAlertSound(); }
+                    document.getElementById('broadcast_text').innerText = alertData.text;
+                    document.getElementById('broadcast_overlay').style.display = 'flex';
+                }
+            }
+        });
+
+        function closeBroadcast() {
+            db.ref('SystemAlerts/time').once('value').then((snap) => {
+                const currentTime = snap.val();
+                if (currentTime) { localStorage.setItem("LAST_ALERT_TIME", currentTime.toString()); }
+                document.getElementById('broadcast_overlay').style.display = 'none';
+            });
+        }
+
+        // --- ЛОГИКА ОНЛАЙНА ---
         if (myPhone) {
             const presenceRef = db.ref('Users/' + myPhone + '/isOnline');
             const lastSeenRef = db.ref('Users/' + myPhone + '/lastOnline');
             const connectedRef = db.ref('.info/connected');
-
             connectedRef.on('value', (snap) => {
                 if (snap.val() === true) {
                     presenceRef.set(true);
@@ -58,17 +146,13 @@
                     lastSeenRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
                 }
             });
-
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'hidden') {
                     presenceRef.set(false);
                     lastSeenRef.set(firebase.database.ServerValue.TIMESTAMP);
-                } else {
-                    presenceRef.set(true);
-                }
+                } else { presenceRef.set(true); }
             });
         }
-        // --------------------------------------
 
         db.ref('UserChats').child(myPhone).on('value', snap => {
             const list = document.getElementById('chatsList');
@@ -77,26 +161,20 @@
                 list.innerHTML = '<div class="empty-state">Нет активных переписок</div>';
                 return;
             }
-
             let chats = [];
             snap.forEach(child => { chats.push(child.val()); });
             chats.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-
             chats.forEach(chat => {
                 const otherPhone = chat.phone;
                 const unreadCount = chat.unreadCount || 0;
                 const unreadHtml = unreadCount > 0 ? `<span class="unread-badge">${unreadCount}</span>` : '';
-                
                 const div = document.createElement('div');
                 div.className = 'chat-item';
-                
                 div.onclick = () => { 
                     db.ref('UserChats').child(myPhone).child(otherPhone).update({ unreadCount: 0, hasNewMessage: false });
                     location.href = `private_chat.html?otherPhone=${encodeURIComponent(otherPhone)}`; 
                 };
-
                 const nameId = "name_" + otherPhone.replace(/\+/g, '').replace(/[^0-9]/g, '');
-
                 div.innerHTML = `
                     <div class="chat-info">
                         <div class="chat-phone" id="${nameId}">${otherPhone} ${unreadHtml}</div>
@@ -105,7 +183,6 @@
                     <div class="btn-delete" onclick="event.stopPropagation(); deleteChat('${otherPhone}')">🗑</div>
                 `;
                 list.appendChild(div);
-
                 db.ref('Users').child(otherPhone).child('name').once('value', nSnap => {
                     if (nSnap.exists()) {
                         const el = document.getElementById(nameId);
