@@ -106,7 +106,7 @@
         .icon-issues { color: var(--color-issues); }
         .icon-chat { color: var(--color-chat); }
 
-        /* СТИЛИ ДЛЯ ВСПЛЫВАЮЩЕГО УВЕДОМЛЕНИЯ */
+        /* ВСПЛЫВАЮЩЕЕ УВЕДОМЛЕНИЕ */
         #broadcast_overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
             background: rgba(0,0,0,0.7); display: none; z-index: 9999;
@@ -125,7 +125,6 @@
             background: var(--accent-blue); color: white; border: none; padding: 14px 40px;
             border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%;
         }
-        .broadcast-btn:active { transform: scale(0.98); opacity: 0.9; }
     </style>
 </head>
 <body>
@@ -204,32 +203,37 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-
         const myPhone = localStorage.getItem("USER_PHONE");
 
         // --- ЛОГИКА ОНЛАЙНА ---
         if (myPhone) {
             const presenceRef = db.ref('Users/' + myPhone + '/isOnline');
             const lastSeenRef = db.ref('Users/' + myPhone + '/lastOnline');
-            db.ref('.info/connected').on('value', (snap) => {
+            const connectedRef = db.ref('.info/connected');
+
+            connectedRef.on('value', (snap) => {
                 if (snap.val() === true) {
                     presenceRef.set(true);
                     presenceRef.onDisconnect().set(false);
                     lastSeenRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
                 }
             });
+
             document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'hidden') presenceRef.set(false);
-                else presenceRef.set(true);
+                if (document.visibilityState === 'hidden') {
+                    presenceRef.set(false);
+                    lastSeenRef.set(firebase.database.ServerValue.TIMESTAMP);
+                } else {
+                    presenceRef.set(true);
+                }
             });
         }
 
-        // --- ЛОГИКА РАССЫЛКИ (SystemAlerts) ---
+        // --- ЛОГИКА РАССЫЛКИ ---
         db.ref('SystemAlerts').on('value', (snap) => {
             const alertData = snap.val();
             if (alertData && alertData.text) {
                 const lastSeenTime = localStorage.getItem("LAST_ALERT_TIME") || "0";
-                // Сравниваем время рассылки, чтобы не показывать старое
                 if (alertData.time && alertData.time.toString() !== lastSeenTime) {
                     document.getElementById('broadcast_text').innerText = alertData.text;
                     document.getElementById('broadcast_overlay').style.display = 'flex';
@@ -238,7 +242,6 @@
         });
 
         function closeBroadcast() {
-            // Сохраняем метку времени текущего сообщения
             db.ref('SystemAlerts/time').once('value').then((snap) => {
                 const currentTime = snap.val();
                 if (currentTime) {
@@ -291,7 +294,6 @@
         };
 
         document.addEventListener('touchmove', function(e) {
-            // Если открыто уведомление, блокируем прокрутку вообще
             if (document.getElementById('broadcast_overlay').style.display === 'flex') {
                 e.preventDefault();
                 return;
