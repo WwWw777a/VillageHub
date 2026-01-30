@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>VillageHub - Личные сообщения</title>
+    <title>VillageHub - Чат</title>
     
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
@@ -17,6 +17,7 @@
             display: flex; flex-direction: column; 
             height: 100dvh; overflow: hidden;
             padding-top: var(--safe-top);
+            -webkit-text-size-adjust: 100%;
         }
 
         .header { background: #2196F3; color: white; padding: 15px; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 10; }
@@ -34,8 +35,8 @@
             position: relative; font-size: 15px; box-shadow: 0 1px 1px rgba(0,0,0,0.1); 
             word-wrap: break-word; 
         }
-        .sent { align-self: flex-end; background: #dcf8c6; }
-        .received { align-self: flex-start; background: white; }
+        .sent { align-self: flex-end; background: #dcf8c6; border-bottom-right-radius: 2px; }
+        .received { align-self: flex-start; background: white; border-bottom-left-radius: 2px; }
         
         .msg-footer { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: 4px; font-size: 10px; color: #888; }
         .ticks { font-weight: bold; font-size: 14px; }
@@ -88,50 +89,52 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // 1. Очистка номеров от лишних символов (ПЛЮСОВ НЕ БУДЕТ В БАЗЕ)
-        function clean(p) { return p ? p.replace(/\D/g, '') : ""; }
+        // Функция удаления плюса для работы с путями в базе
+        function safe(p) { return p ? p.replace(/\+/g, '') : ""; }
 
-        const myRaw = clean(localStorage.getItem("USER_PHONE"));
+        const myPhone = localStorage.getItem("USER_PHONE"); // Оригинал с +
         const urlParams = new URLSearchParams(window.location.search);
-        const otherRaw = clean(urlParams.get('otherPhone'));
+        const otherPhone = urlParams.get('otherPhone'); // Оригинал с +
         
-        if (!myRaw || !otherRaw) {
-            alert("Ошибка доступа");
+        if (!myPhone || !otherPhone) {
+            alert("Ошибка данных");
             navTo('messages.html');
         }
 
-        document.getElementById('otherUserDisplay').innerText = '+' + otherRaw;
+        document.getElementById('otherUserDisplay').innerText = otherPhone;
+
+        const myKey = safe(myPhone);
+        const otherKey = safe(otherPhone);
 
         // Статус онлайн
         function updateStatus() {
-            if (myRaw) db.ref('Users/' + myRaw).update({ lastOnline: Date.now(), lastActive: Date.now() });
+            if (myKey) db.ref('Users/' + myKey).update({ lastOnline: Date.now(), lastActive: Date.now() });
         }
         updateStatus(); setInterval(updateStatus, 60000);
 
-        // Формируем ID чата (всегда меньшее число первым)
-        const finalChatId = (myRaw < otherRaw) ? `${myRaw}_${otherRaw}` : `${otherRaw}_${myRaw}`;
+        // ID комнаты по алфавиту (числам), чтобы оба попали в одну переписку
+        const chatId = myKey < otherKey ? `${myKey}_${otherKey}` : `${otherKey}_${myKey}`;
 
-        // СЛУШАТЕЛЬ СООБЩЕНИЙ
-        db.ref('PrivateChats/' + finalChatId).on('value', snap => {
+        // ЗАГРУЗКА
+        db.ref('PrivateMessages/' + chatId).on('value', snap => {
             const container = document.getElementById('messages');
             container.innerHTML = '';
             
             snap.forEach(child => {
-                const msg = child.val();
-                const isMine = clean(msg.senderId) === myRaw;
+                const data = child.val();
+                const isMine = data.sender === myPhone;
                 
-                // Пометка прочитанным
-                if (!isMine && !msg.isRead) {
-                    db.ref(`PrivateChats/${finalChatId}/${child.key}/isRead`).set(true);
+                if (!isMine && !data.isRead) {
+                    db.ref(`PrivateMessages/${chatId}/${child.key}/isRead`).set(true);
                 }
 
                 const div = document.createElement('div');
                 div.className = `msg ${isMine ? 'sent' : 'received'}`;
-                const ticks = isMine ? `<span class="ticks ${msg.isRead ? 'read' : 'unread'}">${msg.isRead ? '✔✔' : '✔'}</span>` : '';
+                const ticks = isMine ? `<span class="ticks ${data.isRead ? 'read' : 'unread'}">${data.isRead ? '✔✔' : '✔'}</span>` : '';
                 
                 div.innerHTML = `
-                    <div>${msg.text}</div>
-                    <div class="msg-footer">${msg.time || ''} ${ticks}</div>
+                    <div>${data.text}</div>
+                    <div class="msg-footer">${data.time || ''} ${ticks}</div>
                 `;
                 container.appendChild(div);
             });
@@ -144,40 +147,38 @@
             const text = input.value.trim();
             if (!text) return;
 
-            const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+            const timeStr = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
             const timestamp = Date.now();
 
             const msgData = {
-                senderId: myRaw,
+                sender: myPhone,
                 text: text,
-                time: time,
+                time: timeStr,
                 timestamp: timestamp,
                 isRead: false
             };
 
-            // 1. Добавляем в историю сообщений
-            db.ref('PrivateChats/' + finalChatId).push(msgData);
+            // 1. В историю сообщений
+            db.ref('PrivateMessages/' + chatId).push(msgData);
             
-            // 2. Обновляем список последних чатов (используем только цифры для путей!)
-            const chatPreviewForMe = { phone: '+' + otherRaw, lastMessage: text, timestamp: timestamp };
-            const chatPreviewForOther = { phone: '+' + myRaw, lastMessage: text, timestamp: timestamp };
+            // 2. В список недавних чатов (Ключи без +, значения с +)
+            const previewMe = { phone: otherPhone, lastText: text, ts: timestamp };
+            const previewOther = { phone: myPhone, lastText: text, ts: timestamp };
 
-            db.ref(`UserChats/${myRaw}/${otherRaw}`).set(chatPreviewForMe);
-            db.ref(`UserChats/${otherRaw}/${myRaw}`).set(chatPreviewForOther);
+            db.ref(`UserRecentChats/${myKey}/${otherKey}`).set(previewMe);
+            db.ref(`UserRecentChats/${otherKey}/${myKey}`).set(previewOther);
 
             input.value = '';
-            updateStatus();
         }
 
         function clearEntireChat() {
-            if (confirm("Удалить всю историю переписки?")) {
-                db.ref('PrivateChats/' + finalChatId).remove();
-                db.ref(`UserChats/${myRaw}/${otherRaw}`).remove();
+            if (confirm("Удалить переписку?")) {
+                db.ref('PrivateMessages/' + chatId).remove();
+                db.ref(`UserRecentChats/${myKey}/${otherKey}`).remove();
                 navTo('messages.html');
             }
         }
 
-        // Обработка Enter
         document.getElementById('msgInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMsg();
         });
