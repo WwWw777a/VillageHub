@@ -21,36 +21,40 @@
             display: flex; 
             flex-direction: column; 
             height: 100dvh; 
-            overflow: hidden; /* Запрещаем скролл всему телу */
-            position: fixed; /* Фикс для iOS против дерганья */
-            width: 100%;
+            overflow: hidden; 
+            position: fixed; /* Жестко фиксируем body против bouncing-эффекта iOS */
+            width: 100vw;
         }
 
-        /* Закрепленная шапка с учетом челки iPhone */
+        /* Закрепленная шапка */
         .header { 
             background: #2196F3; 
             color: white; 
-            padding: calc(var(--safe-top) + 10px) 15px 10px 15px; 
+            padding: calc(var(--safe-top) + 5px) 15px 10px 15px; 
             display: flex; 
             align-items: center; 
             box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
             position: fixed;
             top: 0;
             width: 100%;
-            z-index: 1000;
+            z-index: 1001;
+            height: calc(var(--safe-top) + 60px);
         }
 
         .back-btn { font-size: 28px; cursor: pointer; margin-right: 15px; padding: 5px; }
-
         .header-info { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
         .user-phone { font-weight: bold; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .user-status { font-size: 12px; color: #e0e0e0; }
         .online-text { color: #00e676 !important; font-weight: bold; }
         .clear-btn { font-size: 20px; cursor: pointer; padding: 10px; }
 
-        /* Область сообщений со своим скроллом */
+        /* Область сообщений */
         #messages { 
-            flex-grow: 1; 
+            position: absolute;
+            top: calc(var(--safe-top) + 60px);
+            bottom: calc(var(--safe-bottom) + 75px); /* Увеличили отступ снизу */
+            left: 0;
+            right: 0;
             overflow-y: auto; 
             padding: 15px; 
             display: flex; 
@@ -58,34 +62,50 @@
             gap: 8px; 
             -webkit-overflow-scrolling: touch; 
             background: #e5ddd5; 
-            margin-top: calc(var(--safe-top) + 60px); /* Отступ под шапку */
-            margin-bottom: calc(var(--safe-bottom) + 65px); /* Отступ под ввод */
         }
 
         .msg { max-width: 80%; padding: 10px 14px; border-radius: 16px; position: relative; font-size: 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); word-wrap: break-word; }
         .sent { align-self: flex-end; background: #DCF8C6; border-bottom-right-radius: 2px; }
         .received { align-self: flex-start; background: white; border-bottom-left-radius: 2px; }
-        
         .msg-footer { display: flex; justify-content: flex-end; align-items: center; gap: 4px; margin-top: 4px; font-size: 10px; color: #888; }
         .ticks { font-weight: bold; font-size: 14px; line-height: 1; }
         .read { color: #2196F3; } .unread { color: #BDBDBD; }
 
-        /* Закрепленная нижняя панель */
+        /* Закрепленная нижняя панель ввода */
         .bottom-area { 
             background: white; 
             border-top: 1px solid #ddd; 
-            padding: 10px 10px calc(var(--safe-bottom) + 10px) 10px; 
+            padding: 10px 10px calc(var(--safe-bottom) + 15px) 10px; /* Увеличили padding снизу */
             display: flex; 
             align-items: center; 
             gap: 10px; 
             position: fixed;
             bottom: 0;
             width: 100%;
-            z-index: 1000;
+            z-index: 1001;
+            min-height: calc(var(--safe-bottom) + 70px);
         }
 
-        input { flex-grow: 1; border: 1px solid #eee; background: #f9f9f9; outline: none; font-size: 16px; padding: 12px 15px; border-radius: 25px; -webkit-appearance: none; }
-        .send-btn { background: none; border: none; cursor: pointer; padding: 5px; display: flex; align-items: center; justify-content: center; }
+        input { 
+            flex-grow: 1; 
+            border: 1px solid #eee; 
+            background: #f9f9f9; 
+            outline: none; 
+            font-size: 16px; 
+            padding: 12px 18px; 
+            border-radius: 25px; 
+            -webkit-appearance: none; /* Убираем стандартные стили iOS */
+        }
+
+        .send-btn { 
+            background: none; 
+            border: none; 
+            cursor: pointer; 
+            padding: 5px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+        }
         .send-btn svg { fill: #2196F3; width: 32px; height: 32px; }
     </style>
 </head>
@@ -127,7 +147,6 @@
 
         if (!myPhone || !otherPhone) { location.href = 'index.html'; }
 
-        // --- ЖИВОЙ СТАТУС ---
         function setupMyOnlineStatus() {
             const myStatusRef = db.ref('Users/' + myPhone + '/isOnline');
             const lastOnlineRef = db.ref('Users/' + myPhone + '/lastOnline');
@@ -142,7 +161,6 @@
         }
         setupMyOnlineStatus();
 
-        // --- ИМЯ И СТАТУС СОБЕСЕДНИКА ---
         const nameDisplay = document.getElementById('otherUserPhoneDisplay');
         const statusDisplay = document.getElementById('otherUserStatus');
 
@@ -168,7 +186,6 @@
 
         const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
 
-        // Загрузка сообщений
         db.ref('PrivateChats').child(chatId).on('value', snap => {
             const container = document.getElementById('messages');
             container.innerHTML = '';
@@ -215,6 +232,8 @@
 
             db.ref('Users').child(otherPhone).update({ hasNewNotification: true, hasNewMessage: true, lastNotificationTs: ts });
             input.value = '';
+            // Фокусируемся обратно после отправки (удобно для iOS)
+            input.focus();
         }
 
         function clearEntireChat() {
@@ -225,9 +244,14 @@
             }
         }
         
-        // Отправка по Enter
         document.getElementById('msgInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') sendMsg();
+        });
+
+        // Фикс для iOS: прокрутка вниз при открытии клавиатуры
+        window.addEventListener('resize', () => {
+            const container = document.getElementById('messages');
+            container.scrollTop = container.scrollHeight;
         });
     </script>
 </body>
