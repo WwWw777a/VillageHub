@@ -54,28 +54,26 @@
         const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
         const container = document.getElementById('messages');
 
-        // 1. ПРИ ВХОДЕ: Читаем всё один раз
-        db.ref('PrivateChats').child(chatId).once('value', snap => {
-            snap.forEach(child => {
-                const msg = child.val();
-                if (msg.senderId !== myPhone && !msg.isRead) {
-                    child.ref.child('isRead').set(true);
-                }
-            });
-        });
-
-        // 2. СЛУШАТЕЛЬ: Только отрисовка (БЕЗ setValue)
+        // СЛУШАТЕЛЬ
         db.ref('PrivateChats').child(chatId).on('value', snap => {
             let html = '';
             snap.forEach(child => {
                 const msg = child.val();
                 const isMine = (msg.senderId === myPhone);
+                
+                // ГАЛОЧКИ: Читаем входящие
+                if (!isMine && !msg.isRead) {
+                    child.ref.child('isRead').set(true);
+                }
+
                 const tickHtml = isMine ? `<span class="ticks ${msg.isRead ? 'read' : 'unread'}">${msg.isRead ? '✔✔' : '✔'}</span>` : '';
                 html += `<div class="msg ${isMine ? 'sent' : 'received'}"><div>${msg.text}</div><div class="msg-footer">${msg.time}${tickHtml}</div></div>`;
             });
             container.innerHTML = html;
             container.scrollTo(0, container.scrollHeight);
-            db.ref('Users/'+myPhone).update({hasNewMessage: false});
+            
+            // КОНВЕРТ: Сбрасываем флаг, так как мы внутри чата
+            db.ref('Users/'+myPhone).child("hasNewMessage").set(false);
         });
 
         function sendMsg() {
@@ -87,7 +85,8 @@
             db.ref('PrivateChats/' + chatId).push({ senderId: myPhone, text: text, time: time, timestamp: ts, isRead: false });
             db.ref('UserChats/'+myPhone+'/'+otherPhone).update({phone: otherPhone, lastMessage: text, timestamp: ts});
             db.ref('UserChats/'+otherPhone+'/'+myPhone).update({phone: myPhone, lastMessage: text, timestamp: ts, hasNewMessage: true});
-            db.ref('Users/'+otherPhone).update({hasNewMessage: true});
+            // ЗАЖИГАЕМ КОНВЕРТ ПОЛУЧАТЕЛЮ
+            db.ref('Users/'+otherPhone).child("hasNewMessage").set(true);
             input.value = '';
         }
 
