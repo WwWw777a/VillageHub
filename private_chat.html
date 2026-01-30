@@ -70,9 +70,7 @@
         </div>
         <div class="clear-btn" onclick="clearEntireChat()">🗑</div>
     </div>
-
     <div id="messages"></div>
-
     <div class="bottom-area">
         <input type="text" id="msgInput" placeholder="Сообщение" autocomplete="off">
         <button class="send-btn" onclick="sendMsg()">
@@ -93,24 +91,23 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        const myPhone = localStorage.getItem("USER_PHONE") ? localStorage.getItem("USER_PHONE").toString().trim() : "";
+        const myPhone = localStorage.getItem("USER_PHONE") ? localStorage.getItem("USER_PHONE").trim() : "";
         const urlParams = new URLSearchParams(window.location.search);
-        const otherPhone = urlParams.get('otherPhone') ? urlParams.get('otherPhone').toString().trim() : "";
+        const otherPhone = urlParams.get('otherPhone') ? urlParams.get('otherPhone').trim() : "";
 
         if (!myPhone || !otherPhone) { location.href = 'index.html'; }
 
-        function setupOnline() {
-            const myRef = db.ref('Users/' + myPhone);
-            db.ref(".info/connected").on("value", s => {
-                if (s.val() === true) {
-                    myRef.update({ isOnline: true });
-                    myRef.child('isOnline').onDisconnect().set(false);
-                    myRef.child('lastOnline').onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
-                }
-            });
-        }
-        setupOnline();
+        // Статус Онлайн
+        db.ref(".info/connected").on("value", s => {
+            if (s.val() === true) {
+                const myRef = db.ref('Users/' + myPhone);
+                myRef.update({ isOnline: true });
+                myRef.child('isOnline').onDisconnect().set(false);
+                myRef.child('lastOnline').onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
+            }
+        });
 
+        // Собеседник
         db.ref('Users/' + otherPhone).on('value', snap => {
             if (snap.exists()) {
                 const data = snap.val();
@@ -128,44 +125,44 @@
         const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
         const container = document.getElementById('messages');
 
+        // СЛУШАТЕЛЬ (ЖЕСТКАЯ ЛОГИКА ГАЛОЧЕК)
         db.ref('PrivateChats').child(chatId).on('value', snap => {
             const messageMap = new Map();
-            let incomingUpdated = false;
-            
+            let hasNewIncoming = false;
+
             snap.forEach(child => {
                 const msg = child.val();
-                const senderId = msg.senderId.toString().trim();
-                messageMap.set(child.key, msg);
+                const msgKey = child.key;
+                messageMap.set(msgKey, msg);
 
-                // СТРОГОЕ СРАВНЕНИЕ: помечаем прочитанным ТОЛЬКО если отправитель НЕ Я
-                if (senderId !== myPhone && msg.isRead === false) {
-                    child.ref.child('isRead').set(true);
-                    incomingUpdated = true;
+                // ТОЛЬКО ЕСЛИ КТО-ТО ПРИСЛАЛ МНЕ (НЕ Я)
+                if (msg.senderId !== myPhone && msg.isRead === false) {
+                    db.ref(`PrivateChats/${chatId}/${msgKey}/isRead`).set(true);
+                    hasNewIncoming = true;
                 }
             });
 
-            if (incomingUpdated) {
-                db.ref('UserChats/' + myPhone + '/' + otherPhone).update({ unreadCount: 0, hasNewMessage: false });
-                db.ref('Users/' + myPhone).update({ hasNewMessage: false });
+            if (hasNewIncoming) {
+                db.ref(`UserChats/${myPhone}/${otherPhone}`).update({ unreadCount: 0, hasNewMessage: false });
+                db.ref(`Users/${myPhone}`).update({ hasNewMessage: false });
             }
 
             container.innerHTML = '';
             messageMap.forEach((msg) => {
-                const isMine = msg.senderId.toString().trim() === myPhone;
+                const isMine = (msg.senderId === myPhone);
                 const div = document.createElement('div');
                 div.className = `msg ${isMine ? 'sent' : 'received'}`;
                 
                 let ticksHtml = '';
                 if (isMine) {
-                    const tickClass = (msg.isRead === true) ? 'read' : 'unread';
-                    const tickIcons = (msg.isRead === true) ? '✔✔' : '✔';
-                    ticksHtml = `<span class="ticks ${tickClass}">${tickIcons}</span>`;
+                    const isReadStatus = (msg.isRead === true);
+                    ticksHtml = `<span class="ticks ${isReadStatus ? 'read' : 'unread'}">${isReadStatus ? '✔✔' : '✔'}</span>`;
                 }
                 
                 div.innerHTML = `<div>${msg.text}</div><div class="msg-footer">${msg.time}${ticksHtml}</div>`;
                 container.appendChild(div);
             });
-            container.scrollTo({ top: container.scrollHeight, behavior: 'instant' });
+            container.scrollTo(0, container.scrollHeight);
         });
 
         function sendMsg() {
@@ -175,13 +172,21 @@
             const ts = Date.now();
             const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             
-            db.ref('PrivateChats/' + chatId).push({ senderId: myPhone, text: text, time: time, timestamp: ts, isRead: false });
-            db.ref('UserChats/' + myPhone + '/' + otherPhone).update({ phone: otherPhone, lastMessage: text, timestamp: ts });
+            // Новое сообщение ВСЕГДА false
+            const newMsg = { senderId: myPhone, text: text, time: time, timestamp: ts, isRead: false };
+            db.ref('PrivateChats/' + chatId).push(newMsg);
             
+            db.ref('UserChats/' + myPhone + '/' + otherPhone).update({ phone: otherPhone, lastMessage: text, timestamp: ts });
             db.ref('UserChats/' + otherPhone + '/' + myPhone).transaction(c => {
-                if (c) { c.unreadCount = (c.unreadCount || 0) + 1; c.lastMessage = text; c.timestamp = ts; c.hasNewMessage = true; c.phone = myPhone; }
-                else { return { phone: myPhone, lastMessage: text, timestamp: ts, unreadCount: 1, hasNewMessage: true }; }
-                return c;
+                if (c) { 
+                    c.unreadCount = (c.unreadCount || 0) + 1; 
+                    c.lastMessage = text; 
+                    c.timestamp = ts; 
+                    c.hasNewMessage = true; 
+                    c.phone = myPhone; 
+                    return c;
+                }
+                return { phone: myPhone, lastMessage: text, timestamp: ts, unreadCount: 1, hasNewMessage: true };
             });
             db.ref('Users/' + otherPhone).update({ hasNewMessage: true });
             input.value = ''; input.focus();
