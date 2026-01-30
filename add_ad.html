@@ -107,21 +107,35 @@
         };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+        const myPhone = localStorage.getItem("USER_PHONE");
 
-        // ФУНКЦИЯ ОБНОВЛЕНИЯ СТАТУСА ОНЛАЙН
-        const savedPhoneForStatus = localStorage.getItem("USER_PHONE");
-        function updateMyStatus() {
-            if (savedPhoneForStatus) {
-                const now = Date.now();
-                database.ref('Users/' + savedPhoneForStatus).update({
-                    lastOnline: now,
-                    lastActive: now
-                });
-            }
+        // --- ЛОГИКА ОНЛАЙНА (Android + iPhone) ---
+        if (myPhone) {
+            const presenceRef = database.ref('Users/' + myPhone + '/isOnline');
+            const lastSeenRef = database.ref('Users/' + myPhone + '/lastOnline');
+            const connectedRef = database.ref('.info/connected');
+
+            // 1. Статус при подключении
+            connectedRef.on('value', (snap) => {
+                if (snap.val() === true) {
+                    presenceRef.set(true);
+                    presenceRef.onDisconnect().set(false);
+                    lastSeenRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
+                }
+            });
+
+            // 2. Статус при сворачивании (iPhone)
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    presenceRef.set(false);
+                    lastSeenRef.set(firebase.database.ServerValue.TIMESTAMP);
+                } else {
+                    presenceRef.set(true);
+                }
+            });
         }
-        updateMyStatus();
-        setInterval(updateMyStatus, 120000);
-        
+        // ------------------------------------------
+
         const urlParams = new URLSearchParams(window.location.search);
         const editId = urlParams.get('editId');
         let currentPhotos = [];
@@ -166,7 +180,6 @@
                     const base64 = e.target.result.split(',')[1];
                     currentPhotos.push(base64);
                     renderPhotos();
-                    updateMyStatus(); // Активность при загрузке фото
                 };
                 reader.readAsDataURL(file);
             }
@@ -188,7 +201,6 @@
         function removePhoto(idx) {
             currentPhotos.splice(idx, 1);
             renderPhotos();
-            updateMyStatus();
         }
 
         function saveAd() {
@@ -216,7 +228,6 @@
             
             ref.set(data).then(() => {
                 alert(editId ? "Изменения сохранены!" : "Объявление опубликовано!");
-                updateMyStatus();
                 navTo('board.html');
             }).catch(err => alert("Ошибка: " + err.message));
         }
@@ -225,7 +236,6 @@
             if (confirm("Вы уверены, что хотите удалить это объявление?")) {
                 database.ref('Ads/' + editId).remove().then(() => {
                     alert("Удалено");
-                    updateMyStatus();
                     navTo('board.html');
                 });
             }
@@ -240,7 +250,6 @@
                     if('href' in curnode && (curnode.href.indexOf('http') || ~curnode.href.indexOf(location.host))) {
                         e.preventDefault();
                         location.replace(curnode.href);
-                        updateMyStatus();
                     }
                 },false);
             }

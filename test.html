@@ -516,3 +516,273 @@
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>VillageHub</title>
+    
+    <link rel="manifest" href="manifest.json">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="VillageHub">
+    <link rel="apple-touch-icon" href="icon.png">
+
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --safe-top: env(safe-area-inset-top, 0px);
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body, html { 
+            margin: 0; padding: 0; 
+            height: 100%; width: 100vw; 
+            overflow: hidden; background: #f5f5f5;
+            font-family: -apple-system, sans-serif;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        .header { 
+            background: #2196F3; color: white; padding: 15px; 
+            display: flex; align-items: center; 
+            position: fixed; top: 0; left: 0; width: 100%;
+            z-index: 1000; height: calc(60px + var(--safe-top));
+            padding-top: var(--safe-top);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; padding: 5px; }
+
+        .container { 
+            height: 100dvh;
+            overflow-y: auto;
+            padding: 15px;
+            padding-top: calc(75px + var(--safe-top)); 
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .btn-photo { background: #FFA000; color: white; border: none; padding: 12px; border-radius: 20px; width: 220px; font-weight: bold; margin-bottom: 5px; cursor: pointer; }
+        .photo-count { font-size: 12px; color: #666; margin-bottom: 15px; }
+        .photo-preview { width: 100%; background: #eee; min-height: 100px; padding: 10px; display: flex; gap: 10px; overflow-x: auto; margin-bottom: 20px; border-radius: 8px; }
+        .img-item { width: 80px; height: 80px; position: relative; flex-shrink: 0; }
+        .img-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; border: 1px solid #ccc; }
+        .img-item .del { position: absolute; top: -5px; right: -5px; background: #f44336; color: white; width: 22px; height: 22px; text-align: center; font-size: 16px; cursor: pointer; border-radius: 50%; line-height: 20px; font-weight: bold; border: 2px solid white; }
+        input, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 5px; box-sizing: border-box; font-size: 16px; outline: none; }
+        textarea { height: 120px; resize: none; }
+        .char-counter { font-size: 12px; color: #999; text-align: right; margin-bottom: 15px; }
+        .btn-save { background: #4CAF50; color: white; border: none; padding: 15px; border-radius: 30px; width: 100%; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 15px; }
+        .btn-delete { background: #F44336; color: white; border: none; padding: 15px; border-radius: 30px; width: 100%; font-size: 18px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <span class="back-btn" onclick="navTo('board.html')">←</span>
+        <h1 id="pageTitle" style="font-size: 18px; margin: 0;">Новое объявление</h1>
+    </div>
+
+    <div class="container">
+        <button class="btn-photo" onclick="document.getElementById('fileInput').click()">Добавить фото (макс 5)</button>
+        <div class="photo-count" id="countText">Выбрано: 0 из 5</div>
+        <input type="file" id="fileInput" multiple accept="image/*" style="display:none" onchange="handleFiles(this.files)">
+        
+        <div class="photo-preview" id="preview"></div>
+
+        <input type="text" id="inTitle" placeholder="Название" maxlength="180" oninput="updateCount('titleCount', this)">
+        <div class="char-counter" id="titleCount">0 / 180</div>
+
+        <input type="number" id="inPrice" placeholder="Цена">
+        <input type="text" id="inPhone" placeholder="Телефон">
+
+        <textarea id="inDesc" placeholder="Описание" maxlength="2500" oninput="updateCount('descCount', this)"></textarea>
+        <div class="char-counter" id="descCount">0 / 2500</div>
+
+        <button class="btn-save" id="saveBtn" onclick="saveAd()">Опубликовать</button>
+        <button id="delBtn" class="btn-delete" style="display:none" onclick="deleteAd()">Удалить объявление</button>
+    </div>
+
+    <script>
+        function navTo(url) {
+            if (window.navigator.standalone) {
+                window.location.replace(url);
+            } else {
+                window.location.href = url;
+            }
+        }
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
+            authDomain: "villagehub-d4d5e.firebaseapp.com",
+            databaseURL: "https://villagehub-d4d5e-default-rtdb.firebaseio.com",
+            projectId: "villagehub-d4d5e",
+            storageBucket: "villagehub-d4d5e.firebasestorage.app",
+            messagingSenderId: "131056250064",
+            appId: "1:131056250064:web:84c0c67819e9828ec642d5"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // ФУНКЦИЯ ОБНОВЛЕНИЯ СТАТУСА ОНЛАЙН
+        const savedPhoneForStatus = localStorage.getItem("USER_PHONE");
+        function updateMyStatus() {
+            if (savedPhoneForStatus) {
+                const now = Date.now();
+                database.ref('Users/' + savedPhoneForStatus).update({
+                    lastOnline: now,
+                    lastActive: now
+                });
+            }
+        }
+        updateMyStatus();
+        setInterval(updateMyStatus, 120000);
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const editId = urlParams.get('editId');
+        let currentPhotos = [];
+
+        function updateCount(elementId, input) {
+            const el = document.getElementById(elementId);
+            if(el) el.innerText = input.value.length + " / " + input.getAttribute('maxlength');
+        }
+
+        if (editId) {
+            document.getElementById('pageTitle').innerText = "Редактирование";
+            document.getElementById('saveBtn').innerText = "Сохранить";
+            document.getElementById('delBtn').style.display = 'block';
+
+            database.ref('Ads/' + editId).once('value').then(snap => {
+                const ad = snap.val();
+                if (ad) {
+                    const titleEl = document.getElementById('inTitle');
+                    const descEl = document.getElementById('inDesc');
+                    titleEl.value = ad.title || "";
+                    document.getElementById('inPrice').value = ad.price || "";
+                    document.getElementById('inPhone').value = ad.phone || "";
+                    descEl.value = ad.description || "";
+                    updateCount('titleCount', titleEl);
+                    updateCount('descCount', descEl);
+                    currentPhotos = ad.imageUrls || [];
+                    renderPhotos();
+                }
+            });
+        } else {
+            document.getElementById('inPhone').value = localStorage.getItem("USER_PHONE") || "+7";
+        }
+
+        function handleFiles(files) {
+            for (let file of files) {
+                if (currentPhotos.length >= 5) {
+                    alert("Максимум 5 фотографий!");
+                    break;
+                }
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const base64 = e.target.result.split(',')[1];
+                    currentPhotos.push(base64);
+                    renderPhotos();
+                    updateMyStatus(); // Активность при загрузке фото
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function renderPhotos() {
+            const preview = document.getElementById('preview');
+            preview.innerHTML = '';
+            currentPhotos.forEach((img, idx) => {
+                preview.innerHTML += `
+                    <div class="img-item">
+                        <img src="data:image/jpeg;base64,${img}">
+                        <div class="del" onclick="removePhoto(${idx})">×</div>
+                    </div>`;
+            });
+            document.getElementById('countText').innerText = `Выбрано: ${currentPhotos.length} из 5`;
+        }
+
+        function removePhoto(idx) {
+            currentPhotos.splice(idx, 1);
+            renderPhotos();
+            updateMyStatus();
+        }
+
+        function saveAd() {
+            const title = document.getElementById('inTitle').value.trim();
+            const price = document.getElementById('inPrice').value.trim();
+            const phone = document.getElementById('inPhone').value.trim();
+            const description = document.getElementById('inDesc').value.trim();
+
+            if (!title || !price || !phone) {
+                alert("Заполните название, цену и телефон!");
+                return;
+            }
+
+            const data = {
+                title: title,
+                price: price,
+                phone: phone,
+                description: description,
+                imageUrls: currentPhotos,
+                author: localStorage.getItem("USER_NAME") || "Житель",
+                timestamp: Date.now()
+            };
+            
+            const ref = editId ? database.ref('Ads/' + editId) : database.ref('Ads').push();
+            
+            ref.set(data).then(() => {
+                alert(editId ? "Изменения сохранены!" : "Объявление опубликовано!");
+                updateMyStatus();
+                navTo('board.html');
+            }).catch(err => alert("Ошибка: " + err.message));
+        }
+
+        function deleteAd() {
+            if (confirm("Вы уверены, что хотите удалить это объявление?")) {
+                database.ref('Ads/' + editId).remove().then(() => {
+                    alert("Удалено");
+                    updateMyStatus();
+                    navTo('board.html');
+                });
+            }
+        }
+
+        (function(document,navigator,standalone) {
+            if ((standalone in navigator) && navigator[standalone]) {
+                var curnode, location=document.location, stop=/^(a|html)$/i;
+                document.addEventListener('click', function(e) {
+                    curnode=e.target;
+                    while (!(stop).test(curnode.nodeName)) { curnode=curnode.parentNode; }
+                    if('href' in curnode && (curnode.href.indexOf('http') || ~curnode.href.indexOf(location.host))) {
+                        e.preventDefault();
+                        location.replace(curnode.href);
+                        updateMyStatus();
+                    }
+                },false);
+            }
+        })(document,window.navigator,'standalone');
+    </script>
+</body>
+</html>
