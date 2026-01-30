@@ -217,3 +217,302 @@
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>VillageHub</title>
+
+    <link rel="manifest" href="manifest.json">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="VillageHub">
+    <link rel="apple-touch-icon" href="icon.png">
+
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --safe-top: env(safe-area-inset-top, 0px);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body, html { 
+            margin: 0; padding: 0; 
+            height: 100dvh; width: 100vw; 
+            background-color: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden; 
+            position: fixed;
+            -webkit-text-size-adjust: 100%;
+        }
+        
+        .header { 
+            background-color: #ffc107; 
+            padding: 15px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+            position: fixed; 
+            top: 0; left: 0; width: 100%;
+            z-index: 1000; 
+            height: calc(60px + var(--safe-top));
+            padding-top: var(--safe-top);
+        }
+        
+        .header-left { display: flex; align-items: center; }
+        .back-btn { font-size: 24px; text-decoration: none; color: #333; margin-right: 20px; cursor: pointer; padding: 5px; }
+        h1 { font-size: 20px; margin: 0; color: #333; font-weight: bold; }
+        .add-btn { font-size: 28px; color: #333; cursor: pointer; display: none; font-weight: bold; padding: 5px; }
+
+        .container { 
+            height: 100dvh;
+            overflow-y: auto;
+            padding: 15px;
+            padding-top: calc(75px + var(--safe-top)); 
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .taxi-card { 
+            background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; 
+            display: flex; align-items: center; justify-content: space-between; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05); cursor: pointer;
+            transition: background 0.2s;
+        }
+        .taxi-card:active { background-color: #f0f0f0; }
+
+        .taxi-main { display: flex; align-items: center; pointer-events: none; }
+        .taxi-icon { width: 40px; height: 40px; background: #ffcc80; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 15px; font-size: 20px; }
+        .taxi-details h3 { margin: 0; font-size: 18px; color: #333; }
+        .taxi-details p { margin: 5px 0 0 0; color: #777; font-size: 14px; }
+        .call-icon { color: #4CAF50; font-size: 26px; padding: 10px; opacity: 0.6; pointer-events: none; }
+
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4); z-index: 2000; justify-content: center; align-items: center;
+        }
+        .confirm-card {
+            background: white; width: 85%; max-width: 320px; padding: 24px; 
+            border-radius: 2px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .confirm-card h3 { margin: 0 0 16px 0; font-size: 20px; color: #000; font-weight: bold; }
+        .confirm-card p { margin: 0 0 24px 0; font-size: 16px; color: #555; line-height: 1.4; }
+        .confirm-buttons { display: flex; justify-content: flex-end; gap: 30px; }
+        .confirm-btn { background: none; border: none; color: #673AB7; font-weight: bold; font-size: 14px; cursor: pointer; text-transform: uppercase; }
+        .delete-btn { color: #673AB7; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="header-left">
+            <div class="back-btn" onclick="navTo('index.html')">←</div>
+            <h1>Такси поселка</h1>
+        </div>
+        <div id="adminAddBtn" class="add-btn" onclick="addNewTaxi()">+</div>
+    </div>
+
+    <div class="container">
+        <div id="taxiList"></div>
+    </div>
+
+    <div id="callModal" class="modal-overlay">
+        <div class="confirm-card">
+            <h3>Позвонить в такси?</h3>
+            <p id="callBody"></p>
+            <div class="confirm-buttons">
+                <button class="confirm-btn" onclick="closeModals()">НЕТ</button>
+                <button class="confirm-btn" id="btnYesCall">ДА</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="modal-overlay">
+        <div class="confirm-card">
+            <h3>Удалить такси?</h3>
+            <p id="deleteBody"></p>
+            <div class="confirm-buttons">
+                <button class="confirm-btn" onclick="closeModals()">Отмена</button>
+                <button class="confirm-btn delete-btn" id="btnYesDelete">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function navTo(url) {
+            if (window.navigator.standalone) {
+                window.location.replace(url);
+            } else {
+                window.location.href = url;
+            }
+        }
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
+            authDomain: "villagehub-d4d5e.firebaseapp.com",
+            databaseURL: "https://villagehub-d4d5e-default-rtdb.firebaseio.com",
+            projectId: "villagehub-d4d5e",
+            storageBucket: "villagehub-d4d5e.firebasestorage.app",
+            messagingSenderId: "131056250064",
+            appId: "1:131056250064:web:84c0c67819e9828ec642d5"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // ФУНКЦИЯ ОБНОВЛЕНИЯ СТАТУСА ОНЛАЙН
+        const savedPhone = localStorage.getItem("USER_PHONE");
+        function updateMyStatus() {
+            if (savedPhone) {
+                const now = Date.now();
+                database.ref('Users/' + savedPhone).update({
+                    lastOnline: now,
+                    lastActive: now
+                });
+            }
+        }
+        updateMyStatus();
+        setInterval(updateMyStatus, 120000);
+
+        const userRole = localStorage.getItem("USER_ROLE");
+        if (userRole === "АДМИН") {
+            document.getElementById('adminAddBtn').style.display = 'block';
+        }
+
+        let currentPhone = "";
+        let currentKey = "";
+        let pressTimer;
+
+        database.ref('Taxi').on('value', (snapshot) => {
+            const listDiv = document.getElementById('taxiList');
+            listDiv.innerHTML = '';
+            if (!snapshot.exists()) return;
+
+            snapshot.forEach((child) => {
+                const taxi = child.val();
+                const name = taxi.name || "Такси";
+                const phone = taxi.phone || "";
+                const key = child.key;
+                
+                const card = document.createElement('div');
+                card.className = 'taxi-card';
+                card.innerHTML = `
+                    <div class="taxi-main">
+                        <div class="taxi-icon">🔸</div>
+                        <div class="taxi-details">
+                            <h3>${name}</h3>
+                            <p>${phone}</p>
+                        </div>
+                    </div>
+                    <div class="call-icon">📞</div>
+                `;
+
+                card.addEventListener('mousedown', () => startPress(name, phone, key));
+                card.addEventListener('touchstart', (e) => { startPress(name, phone, key); });
+                card.addEventListener('mouseup', () => cancelPress());
+                card.addEventListener('mouseleave', () => cancelPress());
+                card.addEventListener('touchend', () => cancelPress());
+
+                listDiv.appendChild(card);
+            });
+        });
+
+        function startPress(name, phone, key) {
+            pressTimer = setTimeout(() => {
+                if (userRole === "АДМИН") {
+                    showDeleteDialog(name, key);
+                }
+                pressTimer = null;
+            }, 800);
+            currentPhone = phone;
+            currentName = name;
+        }
+
+        function cancelPress() {
+            if (pressTimer) {
+                clearTimeout(pressTimer);
+                showCallDialog(currentName, currentPhone);
+            }
+            pressTimer = null;
+        }
+
+        function showCallDialog(name, phone) {
+            document.getElementById('callBody').innerHTML = `Вы хотите позвонить: ${name}?<br>Номер: ${phone}`;
+            document.getElementById('callModal').style.display = 'flex';
+        }
+
+        function showDeleteDialog(name, key) {
+            currentKey = key;
+            document.getElementById('deleteBody').innerText = `Удалить ${name} из списка?`;
+            document.getElementById('deleteModal').style.display = 'flex';
+        }
+
+        function closeModals() {
+            document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
+        }
+
+        document.getElementById('btnYesCall').onclick = function() {
+            window.location.href = "tel:" + currentPhone;
+            closeModals();
+        };
+
+        document.getElementById('btnYesDelete').onclick = function() {
+            database.ref('Taxi').child(currentKey).remove()
+                .then(() => {
+                    closeModals();
+                    alert("Такси удалено");
+                });
+        };
+
+        function addNewTaxi() {
+            const name = prompt("Название такси:");
+            const phone = prompt("Номер телефона:");
+            if (name && phone) database.ref('Taxi').push({ name, phone });
+        }
+
+        document.addEventListener('touchmove', function(e) {
+            if (e.target.closest('.container')) return;
+            if (e.target.closest('.modal-overlay')) return;
+            e.preventDefault();
+        }, { passive: false });
+
+        (function(document,navigator,standalone) {
+            if ((standalone in navigator) && navigator[standalone]) {
+                var curnode, location=document.location, stop=/^(a|html)$/i;
+                document.addEventListener('click', function(e) {
+                    curnode=e.target;
+                    while (!(stop).test(curnode.nodeName)) {
+                        curnode=curnode.parentNode;
+                    }
+                    if('href' in curnode && (curnode.href.indexOf('http') || ~curnode.href.indexOf(location.host))) {
+                        e.preventDefault();
+                        location.replace(curnode.href);
+                    }
+                },false);
+            }
+        })(document,window.navigator,'standalone');
+    </script>
+</body>
+</html>

@@ -143,20 +143,34 @@
         };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+        const myPhone = localStorage.getItem("USER_PHONE");
 
-        // ФУНКЦИЯ ОБНОВЛЕНИЯ СТАТУСА ОНЛАЙН
-        const savedPhone = localStorage.getItem("USER_PHONE");
-        function updateMyStatus() {
-            if (savedPhone) {
-                const now = Date.now();
-                database.ref('Users/' + savedPhone).update({
-                    lastOnline: now,
-                    lastActive: now
-                });
-            }
+        // --- ЛОГИКА ОНЛАЙНА (Android + iPhone) ---
+        if (myPhone) {
+            const presenceRef = database.ref('Users/' + myPhone + '/isOnline');
+            const lastSeenRef = database.ref('Users/' + myPhone + '/lastOnline');
+            const connectedRef = database.ref('.info/connected');
+
+            // 1. Статус при подключении
+            connectedRef.on('value', (snap) => {
+                if (snap.val() === true) {
+                    presenceRef.set(true);
+                    presenceRef.onDisconnect().set(false);
+                    lastSeenRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
+                }
+            });
+
+            // 2. Статус при сворачивании (iPhone)
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    presenceRef.set(false);
+                    lastSeenRef.set(firebase.database.ServerValue.TIMESTAMP);
+                } else {
+                    presenceRef.set(true);
+                }
+            });
         }
-        updateMyStatus();
-        setInterval(updateMyStatus, 120000);
+        // ------------------------------------------
 
         const userRole = localStorage.getItem("USER_ROLE");
         if (userRole === "АДМИН") {
@@ -265,9 +279,7 @@
                 var curnode, location=document.location, stop=/^(a|html)$/i;
                 document.addEventListener('click', function(e) {
                     curnode=e.target;
-                    while (!(stop).test(curnode.nodeName)) {
-                        curnode=curnode.parentNode;
-                    }
+                    while (!(stop).test(curnode.nodeName)) { curnode=curnode.parentNode; }
                     if('href' in curnode && (curnode.href.indexOf('http') || ~curnode.href.indexOf(location.host))) {
                         e.preventDefault();
                         location.replace(curnode.href);
