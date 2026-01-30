@@ -68,11 +68,7 @@
 
     <script>
         function navTo(url) {
-            if (window.navigator.standalone) {
-                window.location.replace(url);
-            } else {
-                window.location.href = url;
-            }
+            if (window.navigator.standalone) { window.location.replace(url); } else { window.location.href = url; }
         }
 
         const firebaseConfig = {
@@ -87,44 +83,35 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // ФУНКЦИЯ ОБНОВЛЕНИЯ СТАТУСА ОНЛАЙН
-        const savedPhoneForStatus = localStorage.getItem("USER_PHONE");
+        const myFullPhone = localStorage.getItem("USER_PHONE");
+        const urlParams = new URLSearchParams(window.location.search);
+        const otherFullPhone = urlParams.get('otherPhone');
+
+        // Для путей в базе используем только цифры (без +)
+        function getRaw(p) { return p ? p.replace(/\D/g, '') : ""; }
+        const myRaw = getRaw(myFullPhone);
+        const otherRaw = getRaw(otherFullPhone);
+
+        document.getElementById('otherUserDisplay').innerText = otherFullPhone;
+
         function updateMyStatus() {
-            if (savedPhoneForStatus) {
+            if (myRaw) {
                 const now = Date.now();
-                db.ref('Users/' + savedPhoneForStatus).update({
-                    lastOnline: now,
-                    lastActive: now
-                });
+                db.ref('Users/' + myRaw).update({ lastOnline: now, lastActive: now });
             }
         }
         updateMyStatus();
         setInterval(updateMyStatus, 120000);
 
-        function getRaw(p) { return p ? p.replace(/\D/g, '') : "0"; }
-        function getFull(p) {
-            if(!p) return "";
-            let res = p.trim().replace(/ /g, '+');
-            if(!res.startsWith('+')) res = '+' + res;
-            return res;
-        }
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const myPhone = getFull(localStorage.getItem("USER_PHONE"));
-        const otherPhone = getFull(urlParams.get('otherPhone'));
-        
-        document.getElementById('otherUserDisplay').innerText = otherPhone;
-
-        const n1 = BigInt(getRaw(myPhone));
-        const n2 = BigInt(getRaw(otherPhone));
-        const finalChatId = n1 < n2 ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
+        // ID чата по возрастанию номеров
+        const finalChatId = myRaw < otherRaw ? `${myRaw}_${otherRaw}` : `${otherRaw}_${myRaw}`;
 
         db.ref('PrivateChats/' + finalChatId).on('value', snap => {
             const container = document.getElementById('messages');
             container.innerHTML = '';
             snap.forEach(child => {
                 const msg = child.val();
-                const isMine = getFull(msg.senderId) === myPhone;
+                const isMine = getRaw(msg.senderId) === myRaw;
                 
                 if (!isMine && !msg.isRead) {
                     db.ref(`PrivateChats/${finalChatId}/${child.key}/isRead`).set(true);
@@ -142,10 +129,10 @@
         function sendMsg() {
             const input = document.getElementById('msgInput');
             const text = input.value.trim();
-            if (!text) return;
+            if (!text || !myRaw || !otherRaw) return;
 
             const msgData = {
-                senderId: myPhone,
+                senderId: myRaw,
                 text: text,
                 time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
                 timestamp: Date.now(),
@@ -153,34 +140,22 @@
             };
 
             db.ref('PrivateChats/' + finalChatId).push(msgData);
-            db.ref(`UserChats/${myPhone}/${otherPhone}`).update({ phone: otherPhone, lastMessage: text, timestamp: msgData.timestamp });
-            db.ref(`UserChats/${otherPhone}/${myPhone}`).update({ phone: myPhone, lastMessage: text, timestamp: msgData.timestamp });
+            
+            // Ключи UserChats теперь тоже без плюса, чтобы Firebase не ругался
+            db.ref(`UserChats/${myRaw}/${otherRaw}`).update({ phone: otherFullPhone, lastMessage: text, timestamp: msgData.timestamp });
+            db.ref(`UserChats/${otherRaw}/${myRaw}`).update({ phone: myFullPhone, lastMessage: text, timestamp: msgData.timestamp });
 
             input.value = '';
+            updateMyStatus();
         }
 
         function clearEntireChat() {
             if (confirm("Удалить всё?")) {
                 db.ref('PrivateChats/' + finalChatId).remove();
-                db.ref(`UserChats/${myPhone}/${otherPhone}`).remove();
+                db.ref(`UserChats/${myRaw}/${otherRaw}`).remove();
                 navTo('messages.html');
             }
         }
-
-        (function(document,navigator,standalone) {
-            if ((standalone in navigator) && navigator[standalone]) {
-                var curnode, location=document.location, stop=/^(a|html)$/i;
-                document.addEventListener('click', function(e) {
-                    curnode=e.target;
-                    while (!(stop).test(curnode.nodeName)) { curnode=curnode.parentNode; }
-                    if('href' in curnode && (curnode.href.indexOf('http') || ~curnode.href.indexOf(location.host))) {
-                        e.preventDefault();
-                        location.replace(curnode.href);
-                        updateMyStatus();
-                    }
-                },false);
-            }
-        })(document,window.navigator,'standalone');
     </script>
 </body>
 </html>
