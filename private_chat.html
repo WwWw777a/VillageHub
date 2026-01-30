@@ -69,12 +69,11 @@
             snap.forEach(child => {
                 const msg = child.val();
                 
-                // Читаем только входящие
                 if (msg.senderId !== myPhone && !msg.isRead) {
                     child.ref.update({ isRead: true });
-                    // Сбрасываем уведомления у себя
+                    // При чтении обнуляем ВСЕ флаги уведомлений у СЕБЯ
                     db.ref('UserChats').child(myPhone).child(otherPhone).update({ unreadCount: 0, hasNewMessage: false });
-                    db.ref('Users').child(myPhone).update({ hasNewNotification: false });
+                    db.ref('Users').child(myPhone).update({ hasNewNotification: false, hasNewMessage: false });
                 }
 
                 const div = document.createElement('div');
@@ -102,17 +101,17 @@
                 isRead: false
             };
 
-            // 1. Сообщение в общую ветку
+            // 1. Само сообщение
             db.ref('PrivateChats').child(chatId).push(newMsg);
 
-            // 2. Обновляем свой список чатов
+            // 2. Обновляем свой список чатов (без уведомлений)
             db.ref('UserChats').child(myPhone).child(otherPhone).update({ 
                 phone: otherPhone, 
                 lastMessage: text, 
                 timestamp: ts 
             });
 
-            // 3. Зажигаем "конвертик" в списке чатов (UserChats) собеседника
+            // 3. ТРАНЗАКЦИЯ: Зажигаем цифру и флаг в списке чатов Android
             const receiverChatRef = db.ref('UserChats').child(otherPhone).child(myPhone);
             receiverChatRef.transaction((current) => {
                 if (current) {
@@ -133,9 +132,10 @@
                 return current;
             });
 
-            // 4. ГЛАВНОЕ: Зажигаем глобальное оповещение в ветке Users собеседника
+            // 4. ГЛОБАЛЬНЫЙ КОНВЕРТИК: Обновляем ветку Users получателя
             db.ref('Users').child(otherPhone).update({
                 hasNewNotification: true,
+                hasNewMessage: true, // Вторая попытка для Android
                 lastNotificationTs: ts
             });
 
