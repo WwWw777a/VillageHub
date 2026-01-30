@@ -43,8 +43,8 @@
         const db = firebase.database();
         
         const myPhone = localStorage.getItem("USER_PHONE"); 
-        const fix = (p) => p.replace(/\+/g, '_');
-        const myKey = fix(myPhone || "");
+        const fix = (p) => p ? p.replace(/\+/g, '_') : "";
+        const myKey = fix(myPhone);
 
         if (!myPhone) { location.href = 'login.html'; }
 
