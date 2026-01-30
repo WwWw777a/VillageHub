@@ -145,13 +145,49 @@
         const database = firebase.database();
         const myPhone = localStorage.getItem("USER_PHONE");
 
-        // --- ЛОГИКА ОНЛАЙНА (Android + iPhone) ---
+        // --- ЛОГИКА ЗВУКА И УВЕДОМЛЕНИЙ ---
+        const alertAudio = new Audio('alert.mp3');
+        let isAudioUnlocked = false;
+
+        function unlockAudio() {
+            if (isAudioUnlocked) return;
+            alertAudio.play().then(() => {
+                alertAudio.pause();
+                alertAudio.currentTime = 0;
+                isAudioUnlocked = true;
+            }).catch(() => {});
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+        }
+        document.addEventListener('click', unlockAudio);
+        document.addEventListener('touchstart', unlockAudio);
+
+        database.ref('SystemAlerts').on('value', (snap) => {
+            const alertData = snap.val();
+            if (alertData && alertData.text) {
+                const lastSeenTime = localStorage.getItem("LAST_ALERT_TIME") || "0";
+                if (alertData.time && alertData.time.toString() !== lastSeenTime) {
+                    
+                    // Играем звук, если уже кликали по странице
+                    if (isAudioUnlocked) {
+                        alertAudio.play().catch(() => {});
+                    }
+
+                    // Системное окно блокирует всё, пока не нажмут ОК
+                    alert("📢 ОБЪЯВЛЕНИЕ ПОСЕЛКА:\n\n" + alertData.text);
+                    
+                    localStorage.setItem("LAST_ALERT_TIME", alertData.time.toString());
+                }
+            }
+        });
+        // ------------------------------------------
+
+        // --- ЛОГИКА ОНЛАЙНА ---
         if (myPhone) {
             const presenceRef = database.ref('Users/' + myPhone + '/isOnline');
             const lastSeenRef = database.ref('Users/' + myPhone + '/lastOnline');
             const connectedRef = database.ref('.info/connected');
 
-            // 1. Статус при подключении
             connectedRef.on('value', (snap) => {
                 if (snap.val() === true) {
                     presenceRef.set(true);
@@ -160,7 +196,6 @@
                 }
             });
 
-            // 2. Статус при сворачивании (iPhone)
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'hidden') {
                     presenceRef.set(false);
@@ -170,7 +205,6 @@
                 }
             });
         }
-        // ------------------------------------------
 
         const userRole = localStorage.getItem("USER_ROLE");
         if (userRole === "АДМИН") {
