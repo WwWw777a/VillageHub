@@ -54,40 +54,14 @@
         const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
         const container = document.getElementById('messages');
 
-        // --- ЛОГИКА ОНЛАЙНА (Android + iPhone) ---
-        if (myPhone) {
-            const presenceRef = db.ref('Users/' + myPhone + '/isOnline');
-            const lastSeenRef = db.ref('Users/' + myPhone + '/lastOnline');
-            const connectedRef = db.ref('.info/connected');
-
-            // 1. Статус при подключении (работает через сервер)
-            connectedRef.on('value', (snap) => {
-                if (snap.val() === true) {
-                    presenceRef.set(true);
-                    // Когда связь оборвется - сервер сам поставит false
-                    presenceRef.onDisconnect().set(false);
-                    lastSeenRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
-                }
-            });
-
-            // 2. Статус при сворачивании (специально для браузеров iPhone)
-            document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'hidden') {
-                    presenceRef.set(false);
-                    lastSeenRef.set(firebase.database.ServerValue.TIMESTAMP);
-                } else {
-                    presenceRef.set(true);
-                }
-            });
-        }
-
-        // СЛУШАТЕЛЬ СООБЩЕНИЙ
+        // СЛУШАТЕЛЬ
         db.ref('PrivateChats').child(chatId).on('value', snap => {
             let html = '';
             snap.forEach(child => {
                 const msg = child.val();
                 const isMine = (msg.senderId === myPhone);
                 
+                // ГАЛОЧКИ: Читаем входящие
                 if (!isMine && !msg.isRead) {
                     child.ref.child('isRead').set(true);
                 }
@@ -97,6 +71,8 @@
             });
             container.innerHTML = html;
             container.scrollTo(0, container.scrollHeight);
+            
+            // КОНВЕРТ: Сбрасываем флаг, так как мы внутри чата
             db.ref('Users/'+myPhone).child("hasNewMessage").set(false);
         });
 
@@ -109,6 +85,7 @@
             db.ref('PrivateChats/' + chatId).push({ senderId: myPhone, text: text, time: time, timestamp: ts, isRead: false });
             db.ref('UserChats/'+myPhone+'/'+otherPhone).update({phone: otherPhone, lastMessage: text, timestamp: ts});
             db.ref('UserChats/'+otherPhone+'/'+myPhone).update({phone: myPhone, lastMessage: text, timestamp: ts, hasNewMessage: true});
+            // ЗАЖИГАЕМ КОНВЕРТ ПОЛУЧАТЕЛЮ
             db.ref('Users/'+otherPhone).child("hasNewMessage").set(true);
             input.value = '';
         }
@@ -123,3 +100,18 @@
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
