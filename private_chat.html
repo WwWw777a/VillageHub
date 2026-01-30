@@ -53,31 +53,26 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Замена + на _ для ПУТЕЙ
-        const fix = (p) => p ? p.replace(/\+/g, '_') : "";
-
-        const myPhone = localStorage.getItem("USER_PHONE"); // Оригинал с +
+        const myPhone = localStorage.getItem("USER_PHONE"); 
         const urlParams = new URLSearchParams(window.location.search);
-        const otherPhone = urlParams.get('otherPhone'); // Оригинал с +
+        const otherPhone = urlParams.get('otherPhone'); 
 
+        if (!myPhone || !otherPhone) { location.href = 'index.html'; }
         document.getElementById('otherUserPhoneDisplay').innerText = otherPhone;
 
-        const myKey = fix(myPhone);
-        const otherKey = fix(otherPhone);
-        // Формируем chatId из ключей с подчеркиванием
-        const chatId = myKey < otherKey ? `${myKey}__${otherKey}` : `${otherKey}__${myKey}`;
+        // Создаем ID чата как в Android (сравнение строк)
+        const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
 
-        // Загрузка сообщений
-        db.ref('PrivateChats/' + chatId).on('value', snap => {
+        // Загрузка сообщений через .child() для безопасности знака "+"
+        db.ref('PrivateChats').child(chatId).on('value', snap => {
             const container = document.getElementById('messages');
             container.innerHTML = '';
             snap.forEach(child => {
                 const msg = child.val();
-                const msgId = child.key;
                 const isMine = msg.senderId === myPhone;
 
                 if (!isMine && !msg.isRead) {
-                    db.ref(`PrivateChats/${chatId}/${msgId}/isRead`).set(true);
+                    child.ref.update({ isRead: true });
                 }
 
                 const div = document.createElement('div');
@@ -94,29 +89,31 @@
             const text = input.value.trim();
             if (!text) return;
 
-            const now = new Date();
-            const time = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+            const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             const ts = Date.now();
 
             const newMsg = {
-                senderId: myPhone, // Храним с +
+                senderId: myPhone,
                 text: text,
                 time: time,
                 timestamp: ts,
                 isRead: false
             };
 
-            db.ref('PrivateChats/' + chatId).push(newMsg);
-            db.ref(`UserChats/${myKey}/${otherKey}`).update({ phone: otherPhone, lastMessage: text, timestamp: ts });
-            db.ref(`UserChats/${otherKey}/${myKey}`).update({ phone: myPhone, lastMessage: text, timestamp: ts });
+            // Пишем в PrivateChats
+            db.ref('PrivateChats').child(chatId).push(newMsg);
+
+            // Пишем в UserChats (как в Android)
+            db.ref('UserChats').child(myPhone).child(otherPhone).update({ phone: otherPhone, lastMessage: text, timestamp: ts });
+            db.ref('UserChats').child(otherPhone).child(myPhone).update({ phone: myPhone, lastMessage: text, timestamp: ts });
 
             input.value = '';
         }
 
         function clearEntireChat() {
             if (confirm("Очистить переписку?")) {
-                db.ref('PrivateChats/' + chatId).remove();
-                db.ref(`UserChats/${myKey}/${otherKey}`).remove();
+                db.ref('PrivateChats').child(chatId).remove();
+                db.ref('UserChats').child(myPhone).child(otherPhone).remove();
                 location.href = 'messages.html';
             }
         }
