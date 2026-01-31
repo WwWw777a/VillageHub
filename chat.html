@@ -51,7 +51,7 @@
         #broadcast_text { 
             font-size: 16px; color: #555; line-height: 1.5; margin-bottom: 20px; 
             white-space: pre-wrap; word-wrap: break-word; overflow-y: auto;
-            text-align: left; padding-right: 5px; -webkit-overflow-scrolling: touch;
+            text-align: left;
         }
         .broadcast-btn {
             background: var(--accent-blue); color: white; border: none; padding: 14px;
@@ -73,14 +73,14 @@
         .header h1 { font-size: 18px; margin: 0; flex-grow: 1; font-weight: bold; }
         .profile-link { font-size: 24px; cursor: pointer; padding: 5px; }
 
-        #pinnedLayout { 
-            background: #FFF8E1; padding: 8px 15px; 
-            display: none; align-items: center; 
-            border-bottom: 1px solid #FFECB3; flex-shrink: 0; cursor: pointer;
-            position: relative; z-index: 9000;
+        /* СТИЛИ АВАТАРОВ */
+        .msg-wrapper { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 4px; width: 100%; }
+        .msg-sent .msg-wrapper { flex-direction: row-reverse; }
+        .user-avatar { 
+            width: 35px; height: 35px; border-radius: 50%; 
+            background: #eee; object-fit: cover; cursor: pointer;
+            flex-shrink: 0; border: 1px solid #ddd;
         }
-        .pinned-line { width: 4px; height: 24px; background: #2196F3; margin-right: 10px; border-radius: 2px; flex-shrink: 0; }
-        #tvPinnedText { font-size: 13px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; }
 
         #chatMessages { 
             flex-grow: 1; overflow-y: auto; 
@@ -90,54 +90,15 @@
             overscroll-behavior-y: contain;
         }
 
-        /* --- СТИЛИ АВАТАРОВ --- */
-        .msg-wrapper { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 4px; width: 100%; }
-        .msg-sent .msg-wrapper { flex-direction: row-reverse; }
-        .user-avatar { 
-            width: 35px; height: 35px; border-radius: 50%; 
-            background: #eee; object-fit: cover; cursor: pointer;
-            flex-shrink: 0; border: 1px solid #ddd;
-        }
-
         .msg-container { max-width: 85%; padding: 10px 14px; border-radius: 16px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-size: 15px; transition: background 0.5s; }
         .msg-sent { align-self: flex-end; background: #DCF8C6; border-bottom-right-radius: 2px; }
         .msg-received { align-self: flex-start; background: white; border-bottom-left-radius: 2px; }
-        .highlight-msg { background: #FFF59D !important; border: 1px solid #FFD600; }
         
         .author { font-size: 12px; font-weight: bold; margin-bottom: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
         .status-admin { color: #F44336; font-weight: bold; }
         .status-mod { color: #2196F3; font-weight: bold; }
-        .status-user { color: inherit; font-weight: normal; }
-
-        .role-admin { color: #2E7D32; }
-        .role-mod { color: #D32F2F; }
-        .role-user { color: #F57C00; }
         .time { font-size: 10px; color: #888; text-align: right; margin-top: 4px; }
         
-        .reply-box { background: rgba(0,0,0,0.05); border-left: 3px solid #F57C00; padding: 4px 8px; margin-bottom: 6px; border-radius: 4px; font-size: 13px; }
-        .reactions-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; background: rgba(0,0,0,0.03); border-radius: 10px; padding: 2px 8px; width: fit-content; font-size: 12px; cursor: pointer; }
-
-        #btnScrollDown { 
-            position: fixed; right: 20px; bottom: calc(85px + var(--safe-bottom)); 
-            width: 44px; height: 44px; background: white; 
-            border-radius: 50%; display: none; align-items: center; justify-content: center; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; z-index: 8000; 
-        }
-
-        .bottom-area { 
-            background: white; border-top: 1px solid #ddd; 
-            flex-shrink: 0; padding-bottom: max(10px, var(--safe-bottom)); 
-            z-index: 11000; width: 100%; position: relative;
-        }
-        #replyPreview { background: #f0f0f0; padding: 10px 15px; display: none; border-left: 4px solid #F57C00; align-items: center; }
-        .input-row { display: flex; align-items: center; padding: 10px 15px; gap: 10px; }
-        #msgInput { flex-grow: 1; border: 1px solid #eee; background: #f9f9f9; outline: none; font-size: 16px; padding: 12px 15px; border-radius: 25px; }
-        #sendBtn { background: none; border: none; cursor: pointer; padding: 5px; display: flex; }
-        #sendBtn svg { fill: #F57C00; width: 32px; height: 32px; }
-
-        .ban-text { color: red; font-weight: bold; font-size: 14px; text-align: center; width: 100%; padding: 10px; }
-
-        /* --- ОКНО ПРОФИЛЯ --- */
         #profile_overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
             background: rgba(0,0,0,0.9); display: none; z-index: 30000;
@@ -148,7 +109,13 @@
         .profile-name { font-size: 20px; font-weight: bold; margin-bottom: 5px; color: #000; }
         .profile-bio { font-size: 14px; color: #666; margin: 10px 0 20px; background: #f9f9f9; padding: 10px; border-radius: 10px; text-align: left; max-height: 150px; overflow-y: auto; }
 
-        .action-sheet { position: fixed; bottom: 0; left: 0; width: 100%; background: white; z-index: 20000; border-radius: 20px 20px 0 0; display: none; flex-direction: column; padding: 10px 0; max-height: 85vh; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); }
+        .bottom-area { background: white; border-top: 1px solid #ddd; flex-shrink: 0; padding-bottom: max(10px, var(--safe-bottom)); z-index: 11000; width: 100%; }
+        .input-row { display: flex; align-items: center; padding: 10px 15px; gap: 10px; }
+        #msgInput { flex-grow: 1; border: 1px solid #eee; background: #f9f9f9; outline: none; font-size: 16px; padding: 12px 15px; border-radius: 25px; }
+        #sendBtn { background: none; border: none; cursor: pointer; }
+        .ban-text { color: red; font-weight: bold; font-size: 14px; text-align: center; width: 100%; padding: 10px; }
+
+        .action-sheet { position: fixed; bottom: 0; left: 0; width: 100%; background: white; z-index: 20000; border-radius: 20px 20px 0 0; display: none; flex-direction: column; padding: 10px 0; max-height: 85vh; }
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 15000; }
         .emoji-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; padding: 15px; overflow-y: auto; border-bottom: 1px solid #eee; }
         .action-item { padding: 16px 20px; font-size: 17px; cursor: pointer; border-bottom: 1px solid #f2f2f2; }
@@ -179,27 +146,17 @@
             <h1>Чат поселка</h1>
             <div class="profile-link" onclick="navTo('profile.html')">👤</div>
         </div>
-        <div id="pinnedLayout">
-            <div class="pinned-line"></div>
-            <div class="pinned-info">
-                <div class="pinned-title">Закрепленное сообщение</div>
-                <div id="tvPinnedText">...</div>
-            </div>
-        </div>
         <div id="chatMessages"></div>
         <div id="btnScrollDown" onclick="scrollToBottom()"><span>⬇</span></div>
         <div class="bottom-area">
-            <div id="replyPreview">
-                <div style="flex-grow: 1; overflow: hidden;">
-                    <div id="replyPreviewName" style="font-weight: bold; color: #F57C00; font-size: 11px;"></div>
-                    <div id="replyPreviewText" style="font-size: 13px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div>
-                </div>
-                <span onclick="cancelReply()" style="cursor:pointer; padding: 5px; font-size: 20px;">✕</span>
+            <div id="replyPreview" style="display:none; background:#f0f0f0; padding:10px; border-left:4px solid #F57C00;">
+                <div id="replyPreviewName" style="font-weight:bold; font-size:11px;"></div>
+                <div id="replyPreviewText" style="font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
             </div>
             <div class="input-row" id="inputRow">
                 <input type="text" id="msgInput" placeholder="Написать сообщение..." autocomplete="off">
                 <button id="sendBtn" onclick="handleSendClick()">
-                    <svg id="sendIcon" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="#F57C00"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                 </button>
             </div>
         </div>
@@ -209,27 +166,15 @@
     <div id="actionSheet" class="action-sheet" onclick="event.stopPropagation()">
         <div id="emojiGrid" class="emoji-grid"></div>
         <div id="mainActions">
-            <div class="action-item" style="color: #2196F3; font-weight: bold;" onclick="prepareReply()">Ответить</div>
+            <div class="action-item" onclick="prepareReply()">Ответить</div>
             <div class="action-item" onclick="writePrivate()">Написать лично</div>
-            <div id="editBtn" class="action-item" style="display: none; color: #4CAF50;" onclick="prepareEdit()">Редактировать</div>
-            <div id="adminPinBtn" class="action-item" style="display: none;" onclick="pinMsg()">📌 Закрепить</div>
-            <div id="adminUnpinBtn" class="action-item" style="display: none; color: orange;" onclick="unpinMsg()">📍 Открепить</div>
-            <div id="deleteMsgBtn" class="action-item" style="display: none; color: red;" onclick="deleteMsg()">Удалить</div>
-            <div id="adminBanBtn" class="action-item" style="display: none; color: red; font-weight: bold;" onclick="showBanMenu()">ЗАБЛОКИРОВАТЬ ⛔</div>
+            <div id="deleteMsgBtn" class="action-item" style="display:none; color:red;" onclick="deleteMsg()">Удалить</div>
+            <div id="adminBanBtn" class="action-item" style="display:none; color:red; font-weight:bold;" onclick="showBanMenu()">ЗАБЛОКИРОВАТЬ ⛔</div>
         </div>
         <div id="banMenu" style="display: none;">
-            <div class="action-item" onclick="showBanDuration()">Только чтение (Мут)</div>
-            <div class="action-item" onclick="confirmBan('CHAT_FULL', -1)">Полный бан чата (Кик)</div>
-            <div class="action-item" onclick="confirmBan('GLOBAL', -1)">Глобальный бан</div>
-            <div class="action-item" style="color: gray;" onclick="backToMainActions()">⬅ Назад</div>
-        </div>
-        <div id="durationMenu" style="display: none;">
-            <div class="action-item" onclick="confirmBan('CHAT_WRITE', 1)">На 1 час</div>
-            <div class="action-item" onclick="confirmBan('CHAT_WRITE', 6)">На 6 часов</div>
-            <div class="action-item" onclick="confirmBan('CHAT_WRITE', 12)">На 12 часов</div>
             <div class="action-item" onclick="confirmBan('CHAT_WRITE', 24)">На 24 часа</div>
-            <div class="action-item" onclick="confirmBan('CHAT_WRITE', -1)">Навсегда</div>
-            <div class="action-item" style="color: gray;" onclick="showBanMenu()">⬅ Назад</div>
+            <div class="action-item" onclick="confirmBan('CHAT_FULL', -1)">Навсегда</div>
+            <div class="action-item" style="color: gray;" onclick="backToMainActions()">Назад</div>
         </div>
     </div>
 
@@ -251,44 +196,79 @@
         const myRole = (localStorage.getItem("USER_ROLE") || "Житель");
         const iAmPrivileged = (myRole === "АДМИН" || myRole === "admin" || myRole === "МОДЕРАТОР");
 
+        let usersCache = {}; 
         const container = document.getElementById('chatMessages');
+        let selectedMsg = null, replyingTo = null;
+        const emojiList = ["👍", "❤️", "🔥", "😂", "😮", "😢", "🙏", "👏", "🎉", "✨", "👎", "😡", "💩", "👀"];
 
-        // Рендер сообщений
-        db.ref('Chats').limitToLast(100).on('value', snap => {
+        db.ref('Chats').limitToLast(50).on('value', snap => {
             container.innerHTML = '';
-            snap.forEach(child => {
-                const msg = child.val(); msg.id = child.key;
-                renderMessage(msg);
-            });
+            snap.forEach(child => renderMessage(child.val(), child.key));
             scrollToBottom();
         });
 
-        function renderMessage(msg) {
+        function renderMessage(msg, id) {
             const isMine = msg.senderId === myPhone;
             const div = document.createElement('div');
-            div.className = `msg-container ${isMine ? 'msg-sent' : 'msg-received'}`;
-            div.id = "msg_" + msg.id;
-
-            let replyHtml = msg.replyToText ? `<div class="reply-box"><b>${msg.replyToAuthor}</b><br>${msg.replyToText}</div>` : '';
+            div.className = isMine ? 'msg-sent' : 'msg-received';
+            div.style.display = "flex";
+            div.style.flexDirection = "column";
             
-            // Загружаем инфо пользователя один раз
-            db.ref('Users/' + msg.senderId).once('value', userSnap => {
-                const u = userSnap.val() || {};
-                const avatar = u.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.author);
-                const role = u.role || "Житель";
-                
-                div.innerHTML = `
+            let replyHtml = msg.replyToText ? `<div class="reply-box"><b>${msg.replyToAuthor}</b><br>${msg.replyToText}</div>` : '';
+            const tempAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.author);
+
+            div.innerHTML = `
                 <div class="msg-wrapper">
-                    <img class="user-avatar" src="${avatar}" onclick="event.stopPropagation(); showUserProfile('${msg.senderId}')">
-                    <div style="flex-grow:1" onclick="openActionsByData('${msg.id}', '${msg.senderId}', '${role}')">
-                        ${!isMine ? `<div class="author">${msg.author} <span class="status-${role.toLowerCase()}">(${role})</span></div>` : ''}
+                    <img class="user-avatar" id="av_${id}" src="${tempAvatar}" onclick="event.stopPropagation(); showUserProfile('${msg.senderId}')">
+                    <div class="msg-container" id="msg_${id}" onclick="openActionsByData('${id}', '${msg.senderId}', '${msg.author}', '${msg.text}')">
+                        ${!isMine ? `<div class="author" id="auth_${id}">${msg.author}</div>` : ''}
                         ${replyHtml}
                         <div>${msg.text}</div>
                         <div class="time">${msg.time}</div>
                     </div>
                 </div>`;
-            });
             container.appendChild(div);
+
+            if (usersCache[msg.senderId]) {
+                applyUserData(id, usersCache[msg.senderId]);
+            } else {
+                db.ref('Users/' + msg.senderId).once('value', s => {
+                    const u = s.val() || {};
+                    usersCache[msg.senderId] = u;
+                    applyUserData(id, u);
+                });
+            }
+        }
+
+        function applyUserData(msgId, user) {
+            const img = document.getElementById('av_' + msgId);
+            const auth = document.getElementById('auth_' + msgId);
+            const msgBox = document.getElementById('msg_' + msgId);
+            if (img && user.avatar) img.src = user.avatar;
+            if (msgBox) msgBox.setAttribute('data-role', user.role || "Житель");
+            if (auth && user.role) {
+                auth.innerHTML = `${user.name || auth.innerText} <span class="status-${user.role.toLowerCase()}">(${user.role})</span>`;
+            }
+        }
+
+        function handleSendClick() { sendChatMessage(); }
+
+        function sendChatMessage() {
+            const input = document.getElementById('msgInput');
+            const text = input.value.trim();
+            if(!text) return;
+            const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            db.ref('Chats').push({
+                author: myName, role: myRole, text: text, time: time,
+                senderId: myPhone, timestamp: Date.now(),
+                replyToText: replyingTo ? replyingTo.text : "",
+                replyToAuthor: replyingTo ? replyingTo.author : ""
+            }).then(() => {
+                input.value = '';
+                replyingTo = null;
+                document.getElementById('replyPreview').style.display = 'none';
+            });
         }
 
         function showUserProfile(phone) {
@@ -303,61 +283,41 @@
         }
 
         function closeUserProfile() { document.getElementById('profile_overlay').style.display = 'none'; }
-
-        // ОТПРАВКА СООБЩЕНИЙ (ИСПРАВЛЕНО)
-        function handleSendClick() { if (editingMsgId) saveEdit(); else sendChatMessage(); }
-
-        function sendChatMessage() {
-            const input = document.getElementById('msgInput'); 
-            const text = input.value.trim();
-            if(!text) return;
-            
-            const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            
-            // Чистая отправка в базу
-            db.ref('Chats').push({ 
-                author: myName, 
-                role: myRole, 
-                text: text, 
-                time: timeStr, 
-                senderId: myPhone, 
-                timestamp: Date.now(), 
-                replyToText: replyingTo ? replyingTo.text : "", 
-                replyToAuthor: replyingTo ? replyingTo.author : "" 
-            }).then(() => {
-                input.value = ''; 
-                cancelReply(); 
-                scrollToBottom();
-            }).catch(e => alert("Ошибка: " + e.message));
-        }
-
-        function openActionsByData(id, senderId, targetRole) {
-            selectedMsg = {id, senderId};
+        function openActionsByData(id, senderId, author, text) {
+            selectedMsg = {id, senderId, author, text};
             document.getElementById('overlay').style.display = 'block';
             document.getElementById('actionSheet').style.display = 'flex';
-            const isMine = senderId === myPhone;
-            const isTargetPrivileged = (targetRole === 'АДМИН' || targetRole === 'admin' || targetRole === 'МОДЕРАТОР');
-
-            document.getElementById('editBtn').style.display = isMine ? 'block' : 'none';
-            document.getElementById('deleteMsgBtn').style.display = (iAmPrivileged || isMine) ? 'block' : 'none';
-            
-            if (myRole === 'АДМИН' || myRole === 'admin') {
-                document.getElementById('adminBanBtn').style.display = !isMine ? 'block' : 'none';
-            } else if (myRole === 'МОДЕРАТОР') {
-                document.getElementById('adminBanBtn').style.display = (!isMine && !isTargetPrivileged) ? 'block' : 'none';
-            } else {
-                document.getElementById('adminBanBtn').style.display = 'none';
+            const targetRole = document.getElementById("msg_" + id).getAttribute('data-role') || "Житель";
+            document.getElementById('deleteMsgBtn').style.display = (senderId === myPhone || iAmPrivileged) ? 'block' : 'none';
+            if (iAmPrivileged && senderId !== myPhone) {
+                const isTargetAdmin = (targetRole === 'АДМИН' || targetRole === 'admin');
+                document.getElementById('adminBanBtn').style.display = (myRole.includes('АДМИН') || !isTargetAdmin) ? 'block' : 'none';
             }
+            const grid = document.getElementById('emojiGrid'); grid.innerHTML = '';
+            emojiList.forEach(emoji => {
+                const s = document.createElement('span'); s.innerText = emoji; s.style.fontSize="24px"; s.style.cursor="pointer";
+                s.onclick = () => { db.ref(`Chats/${id}/reactionsCounts/${emoji}`).transaction(c => (c || 0) + 1); closeActions(); };
+                grid.appendChild(s);
+            });
         }
 
-        // --- ВСЕ ОСТАЛЬНЫЕ ФУНКЦИИ ИЗ ТВОЕГО КОДА ---
         function closeActions() { document.getElementById('overlay').style.display = 'none'; document.getElementById('actionSheet').style.display = 'none'; }
-        function prepareReply() { replyingTo = selectedMsg; document.getElementById('replyPreview').style.display = 'flex'; document.getElementById('replyPreviewName').innerText = selectedMsg.author; document.getElementById('replyPreviewText').innerText = selectedMsg.text; closeActions(); }
-        function cancelReply() { replyingTo = null; document.getElementById('replyPreview').style.display = 'none'; }
+        function prepareReply() { replyingTo = selectedMsg; document.getElementById('replyPreview').style.display = 'block'; document.getElementById('replyPreviewName').innerText = selectedMsg.author; document.getElementById('replyPreviewText').innerText = selectedMsg.text; closeActions(); }
+        function writePrivate() { navTo(`private_chat.html?otherPhone=${selectedMsg.senderId}`); }
+        function deleteMsg() { if(confirm("Удалить?")) db.ref(`Chats/${selectedMsg.id}`).remove(); closeActions(); }
+        function showBanMenu() { document.getElementById('mainActions').style.display = 'none'; document.getElementById('banMenu').style.display = 'block'; }
+        function backToMainActions() { document.getElementById('mainActions').style.display = 'block'; document.getElementById('banMenu').style.display = 'none'; }
+        function confirmBan(type, h) { const ts = h === -1 ? -1 : Date.now() + (h * 3600000); db.ref('BannedUsers/' + selectedMsg.senderId).set({ type, timestamp: ts }).then(closeActions); }
         function scrollToBottom() { container.scrollTop = container.scrollHeight; }
-        
-        // (Остальное: звук, рассылка, онлайн - остается один в один как у тебя)
-        // ... (Код для краткости опущен, но он должен быть в файле)
+
+        db.ref('SystemAlerts').on('value', snap => {
+            const data = snap.val();
+            if(data && data.text && data.time != localStorage.getItem("LAST_ALERT_TIME")) {
+                document.getElementById('broadcast_text').innerText = data.text;
+                document.getElementById('broadcast_overlay').style.display = 'flex';
+            }
+        });
+        function closeBroadcast() { db.ref('SystemAlerts/time').once('value', s => { localStorage.setItem("LAST_ALERT_TIME", s.val()); document.getElementById('broadcast_overlay').style.display = 'none'; }); }
     </script>
 </body>
 </html>
