@@ -18,6 +18,11 @@
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
+        :root {
+            --safe-top: env(safe-area-inset-top, 0px);
+            --accent-blue: #2196F3;
+        }
+
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
             background-color: #f5f5f5; 
@@ -33,23 +38,41 @@
             height: 100dvh;
             -webkit-text-size-adjust: 100%;
         }
+
+        /* СТИЛИ УВЕДОМЛЕНИЯ (КАК НА ГЛАВНОЙ) */
+        #broadcast_overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+            background: rgba(0,0,0,0.7); display: none; z-index: 100000;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .broadcast-card {
+            background: white; border-radius: 24px; padding: 24px; 
+            width: 100%; max-width: 400px;
+            max-height: 85vh; display: flex; flex-direction: column;
+            text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease-out; box-sizing: border-box;
+        }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .broadcast-card i { font-size: 40px; display: block; margin-bottom: 12px; font-style: normal; flex-shrink: 0; }
+        .broadcast-card h2 { margin: 0 0 12px 0; font-size: 20px; color: #333; flex-shrink: 0; }
+        #broadcast_text { 
+            font-size: 16px; color: #555; line-height: 1.5; margin-bottom: 20px; 
+            white-space: pre-wrap; word-wrap: break-word; overflow-y: auto;
+            text-align: left; padding-right: 5px; -webkit-overflow-scrolling: touch;
+        }
+        .broadcast-btn {
+            background: var(--accent-blue); color: white; border: none; padding: 14px;
+            border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%; flex-shrink: 0;
+        }
         
         .map-icon { width: 250px; height: auto; margin-bottom: 15px; }
-        
         .subtitle { color: #666; margin-bottom: 25px; font-size: 18px; font-weight: bold; }
         .input-group { width: 100%; max-width: 350px; margin-bottom: 15px; position: relative; }
         input { width: 100%; padding: 16px; border: 1.5px solid #8e8e8e; border-radius: 12px; background-color: #f5f5f5; font-size: 16px; box-sizing: border-box; color: #333; outline: none; }
         
         .password-toggle {
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 20px;
-            cursor: pointer;
-            color: #757575;
-            user-select: none;
-            z-index: 10;
+            position: absolute; right: 15px; top: 50%; transform: translateY(-50%);
+            font-size: 20px; cursor: pointer; color: #757575; user-select: none; z-index: 10;
         }
 
         .btn-login { width: 100%; max-width: 350px; background-color: #1e7ad3; color: white; border: none; border-radius: 30px; padding: 16px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 15px; }
@@ -71,18 +94,22 @@
 </head>
 <body>
 
+    <div id="broadcast_overlay">
+        <div class="broadcast-card">
+            <i>📢</i>
+            <h2>Объявление</h2>
+            <div id="broadcast_text"></div>
+            <button class="broadcast-btn" onclick="closeBroadcast()">ПОНЯТНО</button>
+        </div>
+    </div>
+
     <img src="logo.png" class="map-icon" alt="logo">
     
     <p class="subtitle">Регистрация / Вход</p>
 
     <div class="input-group"><input type="text" id="name" placeholder="Ваше Имя"></div>
-    
-    <div class="input-group">
-        <input type="text" id="phone" placeholder="9..." value="+7">
-    </div>
-    
+    <div class="input-group"><input type="text" id="phone" placeholder="9..." value="+7"></div>
     <div class="input-group"><input type="text" id="secret" placeholder="Секретное слово (для восстановления)"></div>
-    
     <div class="input-group">
         <input type="password" id="password" placeholder="Пароль">
         <span class="password-toggle" onclick="togglePass('password', this)">👁️</span>
@@ -134,30 +161,65 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
+        // --- ЛОГИКА ЗВУКА И РАЗБЛОКИРОВКИ IOS ---
+        let isAudioUnlocked = false;
+        const alertAudio = new Audio('alert.mp3');
+        alertAudio.preload = 'auto';
+
+        function unlockAudio() {
+            if (isAudioUnlocked) return;
+            const silentAudio = new Audio('alert.mp3');
+            silentAudio.muted = true;
+            silentAudio.play().then(() => { silentAudio.pause(); isAudioUnlocked = true; }).catch(() => {});
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+        }
+        document.addEventListener('click', unlockAudio);
+        document.addEventListener('touchstart', unlockAudio);
+
+        function playAlertSound() {
+            if ('mediaSession' in navigator) { navigator.mediaSession.playbackState = 'none'; }
+            alertAudio.play().then(() => {
+                alertAudio.onended = () => { alertAudio.pause(); alertAudio.currentTime = 0; };
+            }).catch(() => {});
+        }
+
+        // --- СЛУШАТЕЛЬ РАССЫЛКИ ---
+        database.ref('SystemAlerts').on('value', (snap) => {
+            const alertData = snap.val();
+            if (alertData && alertData.text) {
+                const lastSeenTime = localStorage.getItem("LAST_ALERT_TIME") || "0";
+                if (alertData.time && alertData.time.toString() !== lastSeenTime) {
+                    if (!isAudioUnlocked) {
+                        const playOnce = () => { playAlertSound(); document.removeEventListener('click', playOnce); };
+                        document.addEventListener('click', playOnce);
+                    } else { playAlertSound(); }
+                    document.getElementById('broadcast_text').innerText = alertData.text;
+                    document.getElementById('broadcast_overlay').style.display = 'flex';
+                }
+            }
+        });
+
+        function closeBroadcast() {
+            database.ref('SystemAlerts/time').once('value').then((snap) => {
+                const currentTime = snap.val();
+                if (currentTime) { localStorage.setItem("LAST_ALERT_TIME", currentTime.toString()); }
+                document.getElementById('broadcast_overlay').style.display = 'none';
+            });
+        }
+
+        // --- ЛОГИКА ВХОДА ---
         function togglePass(inputId, el) {
             const input = document.getElementById(inputId);
-            if (input.type === "password") {
-                input.type = "text";
-                el.innerText = "🔒";
-            } else {
-                input.type = "password";
-                el.innerText = "👁️";
-            }
+            if (input.type === "password") { input.type = "text"; el.innerText = "🔒"; } 
+            else { input.type = "password"; el.innerText = "👁️"; }
         }
 
         const phoneInput = document.getElementById('phone');
-        phoneInput.addEventListener('input', function(e) {
+        phoneInput.addEventListener('input', function() {
             if (!this.value.startsWith('+7')) { this.value = '+7'; }
             let val = this.value.substring(2).replace(/\D/g, '');
             this.value = '+7' + val;
-        });
-
-        phoneInput.addEventListener('keydown', function(e) {
-            if (this.selectionStart <= 2 && (e.key === 'Backspace' || e.key === 'Delete')) { e.preventDefault(); }
-        });
-
-        phoneInput.addEventListener('click', function() {
-            if (this.selectionStart < 2) { this.setSelectionRange(2, 2); }
         });
 
         const VILLAGE_LAT = 44.841121;
@@ -169,7 +231,6 @@
             let clean = input.replace(/[^0-9+]/g, "");
             if (clean.startsWith("8")) clean = "+7" + clean.substring(1);
             else if (clean.startsWith("9")) clean = "+7" + clean;
-            else if (clean.startsWith("7") && !clean.startsWith("+7")) clean = "+" + clean;
             return clean;
         }
 
@@ -194,11 +255,8 @@
             }
             tempUserData = { name, phone, password, secret };
             database.ref('AppSettings/gpsEnabled').once('value').then((snap) => {
-                if (snap.val() !== false) {
-                    document.getElementById('geoHint').style.display = 'flex';
-                } else {
-                    checkBanAndLogin(tempUserData.name, tempUserData.phone, tempUserData.password, tempUserData.secret);
-                }
+                if (snap.val() !== false) { document.getElementById('geoHint').style.display = 'flex'; } 
+                else { checkBanAndLogin(tempUserData.name, tempUserData.phone, tempUserData.password, tempUserData.secret); }
             });
         };
 
@@ -237,30 +295,13 @@
             const phone = formatPhoneNumber(document.getElementById('resetPhone').value.trim());
             const secret = document.getElementById('resetSecret').value.trim();
             const newPass = document.getElementById('resetPass').value.trim();
-
-            if (!phone || !secret || newPass.length < 6) {
-                alert("Заполните все поля (пароль мин. 6 симв.)");
-                return;
-            }
-
+            if (!phone || !secret || newPass.length < 6) { alert("Заполните все поля"); return; }
             const secretHash = hashString(secret);
             const newPassHash = hashString(newPass);
-
             database.ref('Users/' + phone).once('value').then(snap => {
-                if (snap.exists()) {
-                    const userData = snap.val();
-                    if (userData.secretWord === secretHash) {
-                        database.ref('Users/' + phone + '/password').set(newPassHash)
-                        .then(() => {
-                            alert("Пароль успешно изменен!");
-                            closeResetModal();
-                        });
-                    } else {
-                        alert("Неверное секретное слово!");
-                    }
-                } else {
-                    alert("Пользователь не найден!");
-                }
+                if (snap.exists() && snap.val().secretWord === secretHash) {
+                    database.ref('Users/' + phone + '/password').set(newPassHash).then(() => { alert("Пароль изменен!"); closeResetModal(); });
+                } else { alert("Данные неверны!"); }
             });
         };
 
@@ -268,27 +309,15 @@
             localStorage.setItem("USER_PHONE", phone);
             localStorage.setItem("USER_NAME", name);
             localStorage.setItem("USER_ROLE", role);
-            if (window.navigator.standalone) { window.location.replace("index.html"); } else { window.location.href = "index.html"; }
+            location.href = "index.html";
         }
 
         function openResetModal() { document.getElementById('resetModal').style.display = 'flex'; }
         function closeResetModal() { document.getElementById('resetModal').style.display = 'none'; }
-
-        document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
-
-        (function(document,navigator,standalone) {
-            if ((standalone in navigator) && navigator[standalone]) {
-                var curnode, location=document.location, stop=/^(a|html)$/i;
-                document.addEventListener('click', function(e) {
-                    curnode=e.target;
-                    while (!(stop).test(curnode.nodeName)) { curnode=curnode.parentNode; }
-                    if('href' in curnode && (curnode.href.indexOf('http') || ~curnode.href.indexOf(location.host))) {
-                        e.preventDefault();
-                        location.replace(curnode.href);
-                    }
-                },false);
-            }
-        })(document,window.navigator,'standalone');
+        
+        document.addEventListener('touchmove', function(e) {
+            if (document.getElementById('broadcast_overlay').style.display === 'flex') { e.preventDefault(); }
+        }, { passive: false });
     </script>
 </body>
 </html>
