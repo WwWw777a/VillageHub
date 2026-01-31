@@ -23,13 +23,13 @@
             --accent-blue: #2196F3;
         }
 
-        body, html {
-            margin: 0; padding: 0;
-            height: 100dvh; width: 100vw;
+        body, html { 
+            margin: 0; padding: 0; 
+            height: 100dvh; width: 100vw; 
             background: #f5f5f5;
             font-family: -apple-system, sans-serif;
-            overflow: hidden;
-            position: fixed;
+            overflow: hidden; 
+            position: fixed; 
             -webkit-text-size-adjust: 100%;
         }
 
@@ -40,7 +40,7 @@
             align-items: center; justify-content: center; padding: 20px;
         }
         .broadcast-card {
-            background: white; border-radius: 24px; padding: 24px;
+            background: white; border-radius: 24px; padding: 24px; 
             width: 100%; max-width: 400px;
             max-height: 85vh; display: flex; flex-direction: column;
             text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
@@ -49,8 +49,8 @@
         @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .broadcast-card i { font-size: 40px; display: block; margin-bottom: 12px; font-style: normal; flex-shrink: 0; }
         .broadcast-card h2 { margin: 0 0 12px 0; font-size: 20px; color: #333; flex-shrink: 0; }
-        #broadcast_text {
-            font-size: 16px; color: #555; line-height: 1.5; margin-bottom: 20px;
+        #broadcast_text { 
+            font-size: 16px; color: #555; line-height: 1.5; margin-bottom: 20px; 
             white-space: pre-wrap; word-wrap: break-word; overflow-y: auto;
             text-align: left; padding-right: 5px; -webkit-overflow-scrolling: touch;
         }
@@ -65,34 +65,33 @@
             padding-top: var(--safe-top);
         }
 
-        .header {
-            height: 60px; background: white;
+        .header { 
+            height: 60px; background: white; 
             display: flex; align-items: center; padding: 0 15px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex-shrink: 0; z-index: 10000; position: relative;
         }
         .back-btn { font-size: 28px; cursor: pointer; color: #000; margin-right: 15px; padding: 5px; }
         .header h1 { font-size: 18px; margin: 0; flex-grow: 1; font-weight: bold; }
-        
         .profile-link { font-size: 24px; cursor: pointer; padding: 5px; }
 
-        #pinnedLayout {
-            background: #FFF8E1; padding: 8px 15px;
-            display: none; align-items: center;
+        #pinnedLayout { 
+            background: #FFF8E1; padding: 8px 15px; 
+            display: none; align-items: center; 
             border-bottom: 1px solid #FFECB3; flex-shrink: 0; cursor: pointer;
             position: relative; z-index: 9000;
         }
         .pinned-line { width: 4px; height: 24px; background: #2196F3; margin-right: 10px; border-radius: 2px; flex-shrink: 0; }
         #tvPinnedText { font-size: 13px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; }
 
-        #chatMessages {
-            flex-grow: 1; overflow-y: auto;
-            padding: 10px; display: flex;
+        #chatMessages { 
+            flex-grow: 1; overflow-y: auto; 
+            padding: 10px; display: flex; 
             flex-direction: column; gap: 8px;
             -webkit-overflow-scrolling: touch;
             overscroll-behavior-y: contain;
         }
 
-        /* --- НОВЫЕ СТИЛИ ДЛЯ АВАТАРОВ --- */
+        /* --- СТИЛИ АВАТАРОВ --- */
         .msg-wrapper { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 4px; width: 100%; }
         .msg-sent .msg-wrapper { flex-direction: row-reverse; }
         .user-avatar { 
@@ -102,8 +101,8 @@
         }
 
         .msg-container { max-width: 85%; padding: 10px 14px; border-radius: 16px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-size: 15px; transition: background 0.5s; }
-        .msg-sent .msg-container { align-self: flex-end; background: #DCF8C6; border-bottom-right-radius: 2px; }
-        .msg-received .msg-container { align-self: flex-start; background: white; border-bottom-left-radius: 2px; }
+        .msg-sent { align-self: flex-end; background: #DCF8C6; border-bottom-right-radius: 2px; }
+        .msg-received { align-self: flex-start; background: white; border-bottom-left-radius: 2px; }
         .highlight-msg { background: #FFF59D !important; border: 1px solid #FFD600; }
         
         .author { font-size: 12px; font-weight: bold; margin-bottom: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
@@ -119,16 +118,16 @@
         .reply-box { background: rgba(0,0,0,0.05); border-left: 3px solid #F57C00; padding: 4px 8px; margin-bottom: 6px; border-radius: 4px; font-size: 13px; }
         .reactions-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; background: rgba(0,0,0,0.03); border-radius: 10px; padding: 2px 8px; width: fit-content; font-size: 12px; cursor: pointer; }
 
-        #btnScrollDown {
-            position: fixed; right: 20px; bottom: calc(85px + var(--safe-bottom));
-            width: 44px; height: 44px; background: white;
-            border-radius: 50%; display: none; align-items: center; justify-content: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; z-index: 8000;
+        #btnScrollDown { 
+            position: fixed; right: 20px; bottom: calc(85px + var(--safe-bottom)); 
+            width: 44px; height: 44px; background: white; 
+            border-radius: 50%; display: none; align-items: center; justify-content: center; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; z-index: 8000; 
         }
 
-        .bottom-area {
-            background: white; border-top: 1px solid #ddd;
-            flex-shrink: 0; padding-bottom: max(10px, var(--safe-bottom));
+        .bottom-area { 
+            background: white; border-top: 1px solid #ddd; 
+            flex-shrink: 0; padding-bottom: max(10px, var(--safe-bottom)); 
             z-index: 11000; width: 100%; position: relative;
         }
         #replyPreview { background: #f0f0f0; padding: 10px 15px; display: none; border-left: 4px solid #F57C00; align-items: center; }
@@ -136,8 +135,6 @@
         #msgInput { flex-grow: 1; border: 1px solid #eee; background: #f9f9f9; outline: none; font-size: 16px; padding: 12px 15px; border-radius: 25px; }
         #sendBtn { background: none; border: none; cursor: pointer; padding: 5px; display: flex; }
         #sendBtn svg { fill: #F57C00; width: 32px; height: 32px; }
-
-        .ban-text { color: red; font-weight: bold; font-size: 14px; text-align: center; width: 100%; padding: 10px; }
 
         #profile_overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
@@ -153,15 +150,14 @@
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 15000; }
         .emoji-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; padding: 15px; overflow-y: auto; border-bottom: 1px solid #eee; }
         .action-item { padding: 16px 20px; font-size: 17px; cursor: pointer; border-bottom: 1px solid #f2f2f2; }
+        .ban-text { color: red; font-weight: bold; font-size: 14px; text-align: center; width: 100%; padding: 10px; }
     </style>
 </head>
 <body>
 
     <div id="broadcast_overlay">
         <div class="broadcast-card">
-            <i>📢</i>
-            <h2>Объявление</h2>
-            <div id="broadcast_text"></div>
+            <i>📢</i><h2>Объявление</h2><div id="broadcast_text"></div>
             <button class="broadcast-btn" onclick="closeBroadcast()">ПОНЯТНО</button>
         </div>
     </div>
@@ -192,7 +188,6 @@
         </div>
 
         <div id="chatMessages"></div>
-
         <div id="btnScrollDown" onclick="scrollToBottom()"><span>⬇</span></div>
 
         <div class="bottom-area">
@@ -232,8 +227,6 @@
         </div>
         <div id="durationMenu" style="display: none;">
             <div class="action-item" onclick="confirmBan('CHAT_WRITE', 1)">На 1 час</div>
-            <div class="action-item" onclick="confirmBan('CHAT_WRITE', 6)">На 6 часов</div>
-            <div class="action-item" onclick="confirmBan('CHAT_WRITE', 12)">На 12 часов</div>
             <div class="action-item" onclick="confirmBan('CHAT_WRITE', 24)">На 24 часа</div>
             <div class="action-item" onclick="confirmBan('CHAT_WRITE', -1)">Навсегда</div>
             <div class="action-item" style="color: gray;" onclick="showBanMenu()">⬅ Назад</div>
@@ -241,10 +234,7 @@
     </div>
 
     <script>
-        function navTo(url) {
-            if (window.navigator.standalone) { window.location.replace(url); } else { window.location.href = url; }
-        }
-
+        function navTo(url) { window.location.href = url; }
         const firebaseConfig = {
             apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
             authDomain: "villagehub-d4d5e.firebaseapp.com",
@@ -256,7 +246,6 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-
         const myPhone = localStorage.getItem("USER_PHONE");
         const myName = localStorage.getItem("USER_NAME") || "Пользователь";
         const myRole = (localStorage.getItem("USER_ROLE") || "Житель");
@@ -265,86 +254,29 @@
         let usersCache = {}; 
         const container = document.getElementById('chatMessages');
 
-        // --- ЛОГИКА ЗВУКА И РАЗБЛОКИРОВКИ IOS ---
-        let isAudioUnlocked = false;
-        const alertAudio = new Audio('alert.mp3');
-        alertAudio.preload = 'auto';
-
-        function playAlertSound() {
-            if ('mediaSession' in navigator) { navigator.mediaSession.playbackState = 'none'; }
-            alertAudio.play().catch(e => console.log("Sound interaction wait..."));
-        }
-
-        function unlockAudio() {
-            if (isAudioUnlocked) return;
-            const silentAudio = new Audio('alert.mp3');
-            silentAudio.muted = true;
-            silentAudio.play().then(() => { silentAudio.pause(); isAudioUnlocked = true; }).catch(() => {});
-            document.removeEventListener('click', unlockAudio);
-            document.removeEventListener('touchstart', unlockAudio);
-        }
-        document.addEventListener('click', unlockAudio);
-        document.addEventListener('touchstart', unlockAudio);
-
-        // --- РАССЫЛКА ---
-        db.ref('SystemAlerts').on('value', (snap) => {
-            const alertData = snap.val();
-            if (alertData && alertData.text) {
-                const lastSeenTime = localStorage.getItem("LAST_ALERT_TIME") || "0";
-                if (alertData.time && alertData.time.toString() !== lastSeenTime) {
-                    playAlertSound();
-                    document.getElementById('broadcast_text').innerText = alertData.text;
-                    document.getElementById('broadcast_overlay').style.display = 'flex';
-                }
-            }
-        });
-
-        function closeBroadcast() {
-            db.ref('SystemAlerts/time').once('value').then((snap) => {
-                const currentTime = snap.val();
-                if (currentTime) { localStorage.setItem("LAST_ALERT_TIME", currentTime.toString()); }
-                document.getElementById('broadcast_overlay').style.display = 'none';
-            });
-        }
-
-        // --- ОНЛАЙН ---
-        if (myPhone) {
-            const presenceRef = db.ref('Users/' + myPhone + '/isOnline');
-            db.ref('.info/connected').on('value', (snap) => {
-                if (snap.val() === true) {
-                    presenceRef.set(true);
-                    presenceRef.onDisconnect().set(false);
-                }
-            });
-        }
-
-        let lastReadTimestamp = parseInt(localStorage.getItem("CHAT_LAST_READ") || "0");
-        let selectedMsg = null, replyingTo = null, editingMsgId = null;
-        const emojiList = ["👍", "❤️", "🔥", "😂", "😮", "😢", "🙏", "👏", "🎉", "✨", "👎", "😡", "💩", "👀", "💯", "✅", "❌", "🤝", "💪", "🙌", "🤔", "🥳", "😱", "😴", "🤡", "👻", "👽", "🤖", "🎃", "🌟", "💘", "💔", "💎", "💰", "⚽", "🚗", "🏠", "🎁", "🍻", "☕", "👋", "👌", "✌️", "🤞", "🤟", "🤘", "🤙", "🖕", "🤩", "😈"];
-
-        db.ref('BannedUsers/' + myPhone).on('value', snap => {
-            const row = document.getElementById('inputRow');
-            if (snap.exists()) {
-                const ban = snap.val();
-                if (ban.timestamp === -1 || ban.timestamp > Date.now()) {
-                    row.innerHTML = `<div class="ban-text">Вы заблокированы</div>`;
-                }
-            }
+        // Логика закрепов (ВОЗВРАЩЕНА)
+        db.ref('PinnedMessages').on('value', snap => {
+            const layout = document.getElementById('pinnedLayout');
+            if(!snap.exists()) { layout.style.display = 'none'; return; }
+            layout.style.display = 'flex'; let last = null; snap.forEach(c => last = c.val());
+            document.getElementById('tvPinnedText').innerText = last.text;
+            layout.onclick = () => { 
+                const target = document.getElementById("msg_" + last.originalId); 
+                if (target) { target.scrollIntoView({ behavior: "smooth", block: "center" }); target.classList.add('highlight-msg'); setTimeout(() => target.classList.remove('highlight-msg'), 1500); } 
+            };
         });
 
         db.ref('Chats').limitToLast(100).on('value', snap => {
             container.innerHTML = '';
             snap.forEach(child => renderMessage(child.val(), child.key));
             scrollToBottom();
-            updateReadStatus();
         });
 
         function renderMessage(msg, id) {
             const isMine = msg.senderId === myPhone;
             const div = document.createElement('div');
-            div.className = isMine ? 'msg-sent' : 'msg-received';
-            div.style.display = "flex";
-            div.style.flexDirection = "column";
+            div.className = `msg-wrapper-outer ${isMine ? 'msg-sent' : 'msg-received'}`;
+            div.style.display = "flex"; div.style.flexDirection = "column";
 
             let replyHtml = msg.replyToText ? `<div class="reply-box"><b>${msg.replyToAuthor}</b><br>${msg.replyToText}</div>` : '';
             const tempAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.author);
@@ -352,21 +284,22 @@
             div.innerHTML = `
                 <div class="msg-wrapper">
                     <img class="user-avatar" id="av_${id}" src="${tempAvatar}" onclick="event.stopPropagation(); showUserProfile('${msg.senderId}')">
-                    <div class="msg-container" id="msg_${id}" onclick="openActionsByData('${id}', '${msg.senderId}', '${msg.author}', '${msg.text}')">
+                    <div class="msg-container" id="msg_${id}">
                         ${!isMine ? `<div class="author" id="auth_${id}">${msg.author}</div>` : ''}
                         ${replyHtml}
                         <div>${msg.text}</div>
                         <div class="time">${msg.time}</div>
                     </div>
                 </div>`;
+
+            div.onclick = () => openActionsByData(id, msg.senderId, msg.author, msg.text);
             container.appendChild(div);
 
             if (usersCache[msg.senderId]) {
                 applyUserData(id, usersCache[msg.senderId]);
             } else {
                 db.ref('Users/' + msg.senderId).once('value', s => {
-                    const u = s.val() || {};
-                    usersCache[msg.senderId] = u;
+                    const u = s.val() || {}; usersCache[msg.senderId] = u;
                     applyUserData(id, u);
                 });
             }
@@ -379,7 +312,9 @@
             if (img && user.avatar) img.src = user.avatar;
             if (msgBox) msgBox.setAttribute('data-role', user.role || "Житель");
             if (auth && user.role) {
-                auth.innerHTML = `${user.name || auth.innerText} <span class="status-${user.role.toLowerCase()}">(${user.role})</span>`;
+                // Цвета ролей (ВОЗВРАЩЕНЫ)
+                let statusStyle = user.role === "АДМИН" ? "status-admin" : (user.role === "МОДЕРАТОР" ? "status-mod" : "status-user");
+                auth.innerHTML = `${user.name || auth.innerText} <span class="${statusStyle}">(${user.role})</span>`;
             }
         }
 
@@ -389,14 +324,12 @@
             const input = document.getElementById('msgInput'); const text = input.value.trim();
             if(!text) return;
             const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            db.ref('Chats').push({ author: myName, role: myRole, text: text, time: timeStr, senderId: myPhone, timestamp: Date.now(), replyToText: replyingTo ? replyingTo.text : "", replyToAuthor: replyingTo ? replyingTo.author : "" })
-            .then(() => { input.value = ''; cancelReply(); });
-        }
-
-        function saveEdit() {
-            const input = document.getElementById('msgInput');
-            if(input.value.trim() && editingMsgId) db.ref('Chats/' + editingMsgId).update({ text: input.value.trim() });
-            editingMsgId = null; input.value = '';
+            db.ref('Chats').push({ 
+                author: myName, role: myRole, text: text, time: timeStr, senderId: myPhone, timestamp: Date.now(), 
+                replyToText: replyingTo ? replyingTo.text : "", replyToAuthor: replyingTo ? replyingTo.author : "" 
+            }).then(() => {
+                input.value = ''; cancelReply(); scrollToBottom();
+            });
         }
 
         function showUserProfile(phone) {
@@ -410,36 +343,42 @@
             });
         }
 
-        function closeUserProfile() { document.getElementById('profile_overlay').style.display = 'none'; }
-
         function openActionsByData(id, senderId, author, text) {
             selectedMsg = {id, senderId, author, text};
             document.getElementById('overlay').style.display = 'block'; document.getElementById('actionSheet').style.display = 'flex';
             const isMine = senderId === myPhone;
             const targetRole = document.getElementById("msg_" + id).getAttribute('data-role') || "Житель";
             document.getElementById('editBtn').style.display = isMine ? 'block' : 'none';
-            document.getElementById('deleteMsgBtn').style.display = (senderId === myPhone || iAmPrivileged) ? 'block' : 'none';
-            if (iAmPrivileged && senderId !== myPhone) {
-                const isTargetAdmin = (targetRole === 'АДМИН' || targetRole === 'admin');
-                document.getElementById('adminBanBtn').style.display = (myRole.includes('АДМИН') || !isTargetAdmin) ? 'block' : 'none';
-            }
+            document.getElementById('deleteMsgBtn').style.display = (iAmPrivileged || isMine) ? 'block' : 'none';
+            document.getElementById('adminPinBtn').style.display = iAmPrivileged ? 'block' : 'none';
+            document.getElementById('adminUnpinBtn').style.display = iAmPrivileged ? 'block' : 'none';
+            if (iAmPrivileged && !isMine) {
+                const isTargetPrivileged = (targetRole === 'АДМИН' || targetRole === 'admin' || targetRole === 'МОДЕРАТОР');
+                if (myRole === 'АДМИН' || myRole === 'admin') document.getElementById('adminBanBtn').style.display = 'block';
+                else document.getElementById('adminBanBtn').style.display = !isTargetPrivileged ? 'block' : 'none';
+            } else document.getElementById('adminBanBtn').style.display = 'none';
+
             const grid = document.getElementById('emojiGrid'); grid.innerHTML = '';
-            emojiList.forEach(emoji => {
+            ["👍", "❤️", "🔥", "😂", "😮", "😢", "🙏", "👏", "🎉", "✨", "👎", "😡", "💩", "👀"].forEach(emoji => {
                 const s = document.createElement('span'); s.innerText = emoji; s.style.fontSize="24px"; s.style.cursor="pointer";
                 s.onclick = () => { db.ref(`Chats/${id}/reactionsCounts/${emoji}`).transaction(c => (c || 0) + 1); closeActions(); };
                 grid.appendChild(s);
             });
         }
 
+        // Остальные функции (Звук, рассылка, онлайн)
+        function closeUserProfile() { document.getElementById('profile_overlay').style.display = 'none'; }
         function closeActions() { document.getElementById('overlay').style.display = 'none'; document.getElementById('actionSheet').style.display = 'none'; }
-        function prepareReply() { replyingTo = selectedMsg; document.getElementById('replyPreview').style.display = 'block'; document.getElementById('replyPreviewName').innerText = selectedMsg.author; document.getElementById('replyPreviewText').innerText = selectedMsg.text; closeActions(); }
         function cancelReply() { replyingTo = null; document.getElementById('replyPreview').style.display = 'none'; }
+        function scrollToBottom() { container.scrollTop = container.scrollHeight; }
+        function deleteMsg() { if(confirm("Удалить?")) { db.ref(`Chats/${selectedMsg.id}`).remove(); closeActions(); } }
+        function prepareReply() { replyingTo = selectedMsg; document.getElementById('replyPreview').style.display = 'flex'; document.getElementById('replyPreviewName').innerText = selectedMsg.author; document.getElementById('replyPreviewText').innerText = selectedMsg.text; closeActions(); }
         function writePrivate() { navTo(`private_chat.html?otherPhone=${selectedMsg.senderId}`); }
-        function deleteMsg() { if(confirm("Удалить?")) db.ref(`Chats/${selectedMsg.id}`).remove(); closeActions(); }
         function showBanMenu() { document.getElementById('mainActions').style.display = 'none'; document.getElementById('banMenu').style.display = 'block'; }
         function backToMainActions() { document.getElementById('mainActions').style.display = 'block'; document.getElementById('banMenu').style.display = 'none'; }
-        function confirmBan(type, h) { const ts = h === -1 ? -1 : Date.now() + (h * 3600000); db.ref('BannedUsers/' + selectedMsg.senderId).set({ type, timestamp: ts }).then(closeActions); }
-        function scrollToBottom() { container.scrollTop = container.scrollHeight; }
+        function confirmBan(t, h) { const ts = h===-1?-1:Date.now()+(h*3600000); db.ref('BannedUsers/'+selectedMsg.senderId).set({type:t, timestamp:ts}).then(closeActions); }
+        function pinMsg() { db.ref(`PinnedMessages`).remove().then(() => { db.ref(`PinnedMessages/${selectedMsg.id}`).set({ text: selectedMsg.text, author: selectedMsg.author, originalId: selectedMsg.id, pinnedTime: Date.now() }); }); closeActions(); }
+        function unpinMsg() { db.ref(`PinnedMessages`).remove(); closeActions(); }
         function updateReadStatus() { db.ref('Chats').limitToLast(1).once('value', s => { s.forEach(c => localStorage.setItem("CHAT_LAST_READ", c.val().timestamp)); }); }
     </script>
 </body>
