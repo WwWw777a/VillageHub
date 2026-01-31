@@ -127,9 +127,27 @@
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 15000; }
         .emoji-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; padding: 15px; overflow-y: auto; border-bottom: 1px solid #eee; }
         .action-item { padding: 16px 20px; font-size: 17px; cursor: pointer; border-bottom: 1px solid #f2f2f2; }
+
+        /* СТИЛИ КАРТОЧКИ ПРОФИЛЯ */
+        #user_profile_overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0,0,0,0.9); display: none; z-index: 30000; align-items: center; justify-content: center; padding: 20px; }
+        .profile-card { background: white; border-radius: 30px; padding: 30px; width: 100%; max-width: 340px; text-align: center; }
+        #full_avatar { width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid var(--accent-blue); margin-bottom: 15px; }
+        .profile-name { font-size: 20px; font-weight: bold; margin-bottom: 5px; color: #000; }
+        .profile-bio { font-size: 14px; color: #666; margin: 10px 0 20px; background: #f9f9f9; padding: 10px; border-radius: 10px; text-align: left; max-height: 150px; overflow-y: auto; }
+        .close-profile-btn { background: var(--accent-blue); color: white; border: none; padding: 14px; border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%; }
     </style>
 </head>
 <body>
+
+    <div id="user_profile_overlay" onclick="this.style.display='none'">
+        <div class="profile-card" onclick="event.stopPropagation()">
+            <img id="full_avatar" src="" alt="">
+            <div id="profile_name" class="profile-name"></div>
+            <div id="profile_phone" style="color:#888; font-size:14px;"></div>
+            <div id="profile_bio" class="profile-bio"></div>
+            <button class="close-profile-btn" onclick="document.getElementById('user_profile_overlay').style.display='none'">ЗАКРЫТЬ</button>
+        </div>
+    </div>
 
     <div class="main-wrapper">
         <div class="header">
@@ -242,6 +260,18 @@
         let selectedMsg = null, replyingTo = null, editingMsgId = null, lastPinnedId = "", isFirstLoad = true, unreadMarkerShown = false;
         const container = document.getElementById('chatMessages');
 
+        // --- ФУНКЦИЯ ОТКРЫТИЯ ПРОФИЛЯ ---
+        function openUserProfile(phone) {
+            db.ref('Users/' + phone).once('value', snap => {
+                const u = snap.val() || {};
+                document.getElementById('full_avatar').src = u.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || "?");
+                document.getElementById('profile_name').innerText = u.name || "Пользователь";
+                document.getElementById('profile_phone').innerText = phone;
+                document.getElementById('profile_bio').innerText = u.bio || "О себе ничего не указано";
+                document.getElementById('user_profile_overlay').style.display = 'flex';
+            });
+        }
+
         db.ref('BannedUsers/' + myPhone).on('value', snap => {
             const row = document.getElementById('inputRow');
             if (snap.exists()) {
@@ -280,7 +310,7 @@
             const tempAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.author);
 
             div.innerHTML = `
-                <img class="user-avatar" id="av_${id}" src="${tempAvatar}">
+                <img class="user-avatar" id="av_${id}" src="${tempAvatar}" onclick="openUserProfile('${msg.senderId}')">
                 <div class="msg-container" id="msg_${id}">
                     <div class="author" id="auth_${id}">${msg.author}</div>
                     ${replyHtml}
@@ -334,7 +364,7 @@
 
         function openActions(msg, id) {
             selectedMsg = {...msg, id: id}; document.getElementById('overlay').style.display = 'block'; document.getElementById('actionSheet').style.display = 'flex';
-            const isMine = msg.senderId === myPhone;
+            backToMainActions(); const isMine = msg.senderId === myPhone;
             const targetRole = document.getElementById("msg_" + id).getAttribute('data-actual-role') || "Житель";
             document.getElementById('editBtn').style.display = isMine ? 'block' : 'none';
             document.getElementById('adminPinBtn').style.display = iAmPrivileged ? 'block' : 'none';
