@@ -76,12 +76,12 @@
             flex-shrink: 0; border: 1px solid #ddd;
         }
 
-        .msg-container { max-width: 85%; padding: 10px 14px; border-radius: 16px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-size: 15px; transition: background 0.5s; }
+        .msg-container { max-width: 85%; padding: 10px 14px; border-radius: 16px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-size: 15px; transition: background 0.5s; cursor: pointer; }
         .msg-sent .msg-container { align-self: flex-end; background: #DCF8C6; border-bottom-right-radius: 2px; }
         .msg-received .msg-container { align-self: flex-start; background: white; border-bottom-left-radius: 2px; }
         .highlight-msg { background: #FFF59D !important; border: 1px solid #FFD600; }
         
-        .author { font-size: 12px; font-weight: bold; margin-bottom: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
+        .author { font-size: 12px; font-weight: bold; margin-bottom: 4px; display: flex; flex-wrap: wrap; gap: 4px; cursor: pointer; }
         
         .status-admin { color: #F44336; font-weight: bold; }
         .status-mod { color: #2196F3; font-weight: bold; }
@@ -311,13 +311,17 @@
 
             div.innerHTML = `
                 <img class="user-avatar" id="av_${id}" src="${tempAvatar}" onclick="openUserProfile('${msg.senderId}')">
-                <div class="msg-container" id="msg_${id}">
-                    <div class="author" id="auth_${id}">${msg.author}</div>
+                <div class="msg-container" id="msg_${id}" onclick="openActions(this.dataset.msgObject, '${id}')">
+                    <div class="author" id="auth_${id}" onclick="event.stopPropagation(); openActions(this.parentElement.dataset.msgObject, '${id}')">${msg.author}</div>
                     ${replyHtml}
                     <div>${msg.text}</div>
                     <div class="time">${msg.time}</div>
                 </div>`;
-            div.onclick = () => openActions(msg, id);
+            
+            // Сохраняем объект сообщения в дата-атрибуте для доступа из обработчика
+            const containerDiv = div.querySelector('.msg-container');
+            containerDiv.dataset.msgObject = JSON.stringify(msg);
+
             container.appendChild(div);
 
             if (usersCache[msg.senderId]) { applyUserData(id, usersCache[msg.senderId]); } 
@@ -362,7 +366,10 @@
             layout.onclick = () => { const t = document.getElementById("msg_" + last.originalId); if (t) { t.scrollIntoView({ behavior: "smooth", block: "center" }); t.classList.add('highlight-msg'); setTimeout(() => t.classList.remove('highlight-msg'), 1500); } };
         });
 
-        function openActions(msg, id) {
+        function openActions(msgRaw, id) {
+            let msg;
+            try { msg = typeof msgRaw === 'string' ? JSON.parse(msgRaw) : msgRaw; } catch(e) { return; }
+            
             selectedMsg = {...msg, id: id}; document.getElementById('overlay').style.display = 'block'; document.getElementById('actionSheet').style.display = 'flex';
             backToMainActions(); const isMine = msg.senderId === myPhone;
             const targetRole = document.getElementById("msg_" + id).getAttribute('data-actual-role') || "Житель";
