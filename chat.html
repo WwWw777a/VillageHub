@@ -53,6 +53,7 @@
             font-size: 16px; color: #555; line-height: 1.5; margin-bottom: 20px; 
             white-space: pre-wrap; word-wrap: break-word; overflow-y: auto;
             text-align: left; padding-right: 5px; -webkit-overflow-scrolling: touch;
+            text-align: left;
         }
         .broadcast-btn {
             background: var(--accent-blue); color: white; border: none; padding: 14px;
@@ -182,7 +183,7 @@
     </div>
 
     <div id="overlay" class="overlay" onclick="closeActions()"></div>
-    <div id="actionSheet" class="action-sheet">
+    <div id="actionSheet" class="action-sheet" onclick="event.stopPropagation()">
         <div id="emojiGrid" class="emoji-grid"></div>
         <div id="mainActions">
             <div class="action-item" style="color: #2196F3; font-weight: bold;" onclick="prepareReply()">Ответить</div>
@@ -425,10 +426,6 @@
             document.getElementById('deleteMsgBtn').style.display = (iAmPrivileged || isMine) ? 'block' : 'none';
             
             // ЛОГИКА КНОПКИ БАНА:
-            // 1. Нельзя банить самого себя (!isMine)
-            // 2. Только Админ или Модератор могут видеть кнопку (iAmPrivileged)
-            // 3. ЕСЛИ ТЫ АДМИН: видишь кнопку на всех, кроме себя.
-            // 4. ЕСЛИ ТЫ МОДЕРАТОР: видишь кнопку ТОЛЬКО на обычных жителях (!isTargetPrivileged)
             if (myRole === 'АДМИН' || myRole === 'admin') {
                 document.getElementById('adminBanBtn').style.display = !isMine ? 'block' : 'none';
             } else if (myRole === 'МОДЕРАТОР') {
