@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Мой Профиль</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <style>
+        :root { --accent-blue: #2196F3; --safe-top: env(safe-area-inset-top, 0px); }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { 
+            margin: 0; font-family: -apple-system, sans-serif; 
+            background: #f0f2f5; padding-top: var(--safe-top); 
+            display: flex; flex-direction: column; height: 100dvh;
+        }
+        .header { 
+            height: 60px; background: white; display: flex; align-items: center; 
+            padding: 0 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; }
+        .header h1 { font-size: 18px; margin: 0; flex-grow: 1; }
+
+        .content { padding: 20px; overflow-y: auto; flex-grow: 1; }
+        .avatar-section { text-align: center; margin-bottom: 30px; position: relative; }
+        #my_avatar { 
+            width: 150px; height: 150px; border-radius: 50%; object-fit: cover; 
+            background: #ddd; border: 4px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .change-photo-btn {
+            background: var(--accent-blue); color: white; border: none; padding: 8px 15px;
+            border-radius: 20px; font-size: 13px; margin-top: 10px; cursor: pointer; font-weight: bold;
+        }
+        .del-photo-btn { color: #f44336; font-size: 13px; cursor: pointer; margin-top: 8px; display: block; border: none; background: none; width: 100%; }
+
+        .input-group { background: white; padding: 15px; border-radius: 15px; margin-bottom: 15px; }
+        label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; text-transform: uppercase; }
+        textarea { 
+            width: 100%; border: none; outline: none; font-size: 16px; 
+            resize: none; font-family: inherit; color: #333; min-height: 80px;
+        }
+        .char-count { font-size: 11px; text-align: right; color: #bbb; margin-top: 5px; }
+
+        .save-btn {
+            background: var(--accent-blue); color: white; border: none; width: 100%;
+            padding: 16px; border-radius: 15px; font-size: 17px; font-weight: bold;
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3); margin-top: 10px;
+        }
+        .save-btn:active { transform: scale(0.98); opacity: 0.9; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="back-btn" onclick="history.back()">←</div>
+        <h1>Настройки профиля</h1>
+    </div>
+
+    <div class="content">
+        <div class="avatar-section">
+            <img id="my_avatar" src="https://ui-avatars.com/api/?name=User" alt="Avatar">
+            <input type="file" id="file_input" accept="image/*" style="display:none" onchange="processFile(this)">
+            <button class="change-photo-btn" onclick="document.getElementById('file_input').click()">ИЗМЕНИТЬ ФОТО</button>
+            <button class="del-photo-btn" onclick="deletePhoto()">Удалить фото</button>
+        </div>
+
+        <div class="input-group">
+            <label>О себе</label>
+            <textarea id="bio_input" maxlength="500" placeholder="Расскажите что-нибудь о себе..."></textarea>
+            <div id="char_count" class="char-count">0 / 500</div>
+        </div>
+
+        <div style="padding: 0 10px; color: #888; font-size: 13px; margin-bottom: 20px;">
+            Ваш аватар и текст «О себе» будут видны всем участникам чатов и разделов поселка.
+        </div>
+
+        <button class="save-btn" onclick="saveAll()">СОХРАНИТЬ</button>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
+            authDomain: "villagehub-d4d5e.firebaseapp.com",
+            databaseURL: "https://villagehub-d4d5e-default-rtdb.firebaseio.com",
+            projectId: "villagehub-d4d5e",
+            storageBucket: "villagehub-d4d5e.firebasestorage.app",
+            messagingSenderId: "131056250064",
+            appId: "1:131056250064:web:84c0c67819e9828ec642d5"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const myPhone = localStorage.getItem("USER_PHONE");
+
+        if(!myPhone) { alert("Ошибка авторизации!"); window.location.href="login.html"; }
+
+        // Загрузка данных
+        db.ref('Users/' + myPhone).once('value', snap => {
+            const u = snap.val() || {};
+            if(u.avatar) document.getElementById('my_avatar').src = u.avatar;
+            if(u.bio) {
+                document.getElementById('bio_input').value = u.bio;
+                updateCounter();
+            }
+        });
+
+        // Счетчик символов
+        const bioInput = document.getElementById('bio_input');
+        bioInput.oninput = updateCounter;
+        function updateCounter() {
+            document.getElementById('char_count').innerText = bioInput.value.length + " / 500";
+        }
+
+        // Обработка фото
+        function processFile(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const MAX_SIZE = 400;
+                        let w = img.width, h = img.height;
+                        if (w > h) { if (w > MAX_SIZE) { h *= MAX_SIZE / w; w = MAX_SIZE; } }
+                        else { if (h > MAX_SIZE) { w *= MAX_SIZE / h; h = MAX_SIZE; } }
+                        canvas.width = w; canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, w, h);
+                        document.getElementById('my_avatar').src = canvas.toDataURL('image/jpeg', 0.8);
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function deletePhoto() {
+            document.getElementById('my_avatar').src = 'https://ui-avatars.com/api/?name=User';
+        }
+
+        function saveAll() {
+            const avatar = document.getElementById('my_avatar').src;
+            const bio = bioInput.value.trim();
+            const data = { bio: bio };
+            
+            // Если аватар - это Base64 (новое фото) или пустой/стандартный
+            if(avatar.startsWith('data:image')) data.avatar = avatar;
+            else if(avatar.includes('ui-avatars.com')) data.avatar = "";
+
+            db.ref('Users/' + myPhone).update(data).then(() => {
+                alert("Данные сохранены!");
+                history.back();
+            });
+        }
+    </script>
+</body>
+</html>
