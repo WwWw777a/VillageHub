@@ -346,6 +346,7 @@
                 else if(actualRole === "МОДЕРАТОР") statusStyle = "status-mod";
                 const authorDiv = div.querySelector('.author');
                 if(authorDiv) { authorDiv.innerHTML = `${msg.author} <span class="${statusStyle}">(${actualRole})</span>`; }
+                div.setAttribute('data-actual-role', actualRole);
             });
             let reactionsHtml = '';
             if(msg.reactionsCounts) {
@@ -404,14 +405,38 @@
             layout.onclick = () => { const target = document.getElementById("msg_" + lastPinnedId); if (target) { target.scrollIntoView({ behavior: "smooth", block: "center" }); target.classList.add('highlight-msg'); setTimeout(() => target.classList.remove('highlight-msg'), 1500); } };
         });
 
+        // --- ЗАЩИТА АДМИНА ТУТ ---
         function openActions(msg) {
             selectedMsg = msg; document.getElementById('overlay').style.display = 'block'; document.getElementById('actionSheet').style.display = 'flex';
-            backToMainActions(); const isMine = msg.senderId === myPhone;
+            backToMainActions(); 
+            const isMine = msg.senderId === myPhone;
+            
+            // Получаем актуальную роль того, на чье сообщение нажали
+            const msgElement = document.getElementById("msg_" + msg.id);
+            const targetRole = msgElement ? msgElement.getAttribute('data-actual-role') : "Житель";
+            
+            // Проверка: является ли цель Админом или Модератором
+            const isTargetPrivileged = (targetRole === 'АДМИН' || targetRole === 'admin' || targetRole === 'МОДЕРАТОР');
+            const isTargetAdmin = (targetRole === 'АДМИН' || targetRole === 'admin');
+
             document.getElementById('editBtn').style.display = isMine ? 'block' : 'none';
             document.getElementById('adminPinBtn').style.display = iAmPrivileged ? 'block' : 'none';
             document.getElementById('adminUnpinBtn').style.display = iAmPrivileged ? 'block' : 'none';
             document.getElementById('deleteMsgBtn').style.display = (iAmPrivileged || isMine) ? 'block' : 'none';
-            document.getElementById('adminBanBtn').style.display = (iAmPrivileged && !isMine) ? 'block' : 'none';
+            
+            // ЛОГИКА КНОПКИ БАНА:
+            // 1. Нельзя банить самого себя (!isMine)
+            // 2. Только Админ или Модератор могут видеть кнопку (iAmPrivileged)
+            // 3. ЕСЛИ ТЫ АДМИН: видишь кнопку на всех, кроме себя.
+            // 4. ЕСЛИ ТЫ МОДЕРАТОР: видишь кнопку ТОЛЬКО на обычных жителях (!isTargetPrivileged)
+            if (myRole === 'АДМИН' || myRole === 'admin') {
+                document.getElementById('adminBanBtn').style.display = !isMine ? 'block' : 'none';
+            } else if (myRole === 'МОДЕРАТОР') {
+                document.getElementById('adminBanBtn').style.display = (!isMine && !isTargetPrivileged) ? 'block' : 'none';
+            } else {
+                document.getElementById('adminBanBtn').style.display = 'none';
+            }
+
             const grid = document.getElementById('emojiGrid'); grid.innerHTML = '';
             emojiList.forEach(emoji => { const s = document.createElement('span'); s.style.fontSize="24px"; s.style.cursor="pointer"; s.innerText = emoji; s.onclick = () => toggleReaction(emoji); grid.appendChild(s); });
         }
