@@ -26,7 +26,7 @@
     </style>
 </head>
 <body>
-    <div class="header"><div class="back-btn" onclick="history.back()">←</div><h1>Настройки профиля</h1></div>
+    <div class="header"><div class="back-btn" onclick="window.location.href='index.html'">←</div><h1>Настройки профиля</h1></div>
     <div class="content">
         <div class="avatar-section">
             <img id="my_avatar" src="https://ui-avatars.com/api/?name=User" alt="Avatar">
@@ -78,7 +78,11 @@
             }
 
             db.ref('Users/' + myPhone).update({ bio: document.getElementById('bio_input').value.trim(), avatar: currentAvatarUrl })
-            .then(() => { alert("Готово!"); history.back(); });
+            .then(() => { 
+                alert("Готово!"); 
+                // ИСПРАВЛЕНО: Прямой переход вместо history.back()
+                window.location.href = 'index.html'; 
+            });
         }
     </script>
 </body>
