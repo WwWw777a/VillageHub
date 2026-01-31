@@ -1477,3 +1477,411 @@
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no">
+    <title>VillageHub</title>
+    
+    <link rel="manifest" href="manifest.json">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="VillageHub">
+    <link rel="apple-touch-icon" href="icon.png">
+
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --text-primary: #333;
+            --text-secondary: #777;
+            --accent-blue: #2196F3;
+            --card-bg: #ffffff;
+            --color-board: #4CAF50; 
+            --color-taxi: #FFC107;  
+            --color-issues: #F44336; 
+            --color-chat: #9C27B0;  
+            --safe-top: env(safe-area-inset-top, 0px);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body, html {
+            margin: 0; padding: 0;
+            height: 100dvh; width: 100vw;
+            background-color: var(--bg-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden; 
+            position: fixed;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        .scroll-container {
+            height: 100dvh;
+            width: 100%;
+            overflow-y: auto;
+            padding: 16px;
+            padding-top: calc(16px + var(--safe-top));
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+        .title-group h1 { margin: 16px 0 0 0; font-size: 28px; font-weight: bold; }
+        .subtitle { color: var(--text-secondary); font-size: 16px; margin: 0; }
+        .greeting { color: var(--color-board); font-size: 18px; font-weight: bold; margin-top: 4px; }
+        
+        .top-icons { display: flex; gap: 20px; margin-top: 12px; align-items: center; }
+        .admin-icon-btn { font-size: 38px; cursor: pointer; display: none; }
+        .msg-icon-btn { font-size: 48px; cursor: pointer; position: relative; display: flex; align-items: center; }
+        
+        .badge { 
+            position: absolute; top: 5px; right: -2px; 
+            width: 14px; height: 14px; 
+            background: red; border-radius: 50%; 
+            display: none; border: 2px solid white; 
+            z-index: 10;
+        }
+
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+        .blinking { animation: blink 1.5s infinite; }
+
+        .menu-grid { 
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 16px; 
+            margin-top: 20px; 
+            width: 100%;
+        }
+        .card { 
+            background: var(--card-bg); 
+            border-radius: 20px; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+            aspect-ratio: 1 / 1; 
+            cursor: pointer;
+            overflow: hidden;
+        }
+        .card:active { transform: scale(0.95); }
+        .card i { font-size: 40px; margin-bottom: 12px; font-style: normal; }
+        .card span { font-weight: bold; font-size: 14px; text-align: center; }
+
+        .admin-btn { background: var(--accent-blue); color: white; margin-top: 24px; padding: 16px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer; margin-bottom: 40px; }
+        .admin-btn i { margin-right: 12px; font-style: normal; }
+        
+        .icon-board { color: var(--color-board); }
+        .icon-taxi { color: var(--color-taxi); }
+        .icon-issues { color: var(--color-issues); }
+        .icon-chat { color: var(--color-chat); }
+
+        /* ИСПРАВЛЕННОЕ ОКНО УВЕДОМЛЕНИЯ */
+        #broadcast_overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+            background: rgba(0,0,0,0.7); display: none; z-index: 9999;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .broadcast-card {
+            background: white; border-radius: 24px; padding: 24px; 
+            width: 100%; max-width: 400px;
+            max-height: 85vh; /* Ограничение высоты окна */
+            display: flex; flex-direction: column;
+            text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease-out;
+            box-sizing: border-box;
+        }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .broadcast-card i { font-size: 40px; display: block; margin-bottom: 12px; font-style: normal; flex-shrink: 0; }
+        .broadcast-card h2 { margin: 0 0 12px 0; font-size: 20px; color: #333; flex-shrink: 0; }
+
+        #broadcast_text { 
+            font-size: 16px; color: #555; line-height: 1.5; 
+            margin-bottom: 20px; 
+            white-space: pre-wrap;       /* Перенос строк */
+            word-wrap: break-word;      /* Перенос длинных слов */
+            overflow-y: auto;           /* Скролл внутри окна */
+            text-align: left;           /* Выравнивание по левому краю для чтения */
+            padding-right: 5px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .broadcast-btn {
+            background: var(--accent-blue); color: white; border: none; padding: 14px;
+            border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; 
+            width: 100%; flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <script>
+        if (!localStorage.getItem("USER_PHONE")) {
+            window.location.replace("login.html");
+        }
+    </script>
+
+    <div id="broadcast_overlay">
+        <div class="broadcast-card">
+            <i>📢</i>
+            <h2>Объявление</h2>
+            <div id="broadcast_text"></div>
+            <button class="broadcast-btn" onclick="closeBroadcast()">ПОНЯТНО</button>
+        </div>
+    </div>
+
+    <div class="scroll-container">
+        <div class="header">
+            <div class="title-group">
+                <h1>Наш поселок</h1>
+                <p class="subtitle">Главное меню</p>
+                <div id="tv_greeting" class="greeting">Загрузка...</div>
+            </div>
+            <div class="top-icons">
+                <div id="btn_admin_panel" class="admin-icon-btn" onclick="navTo('admin.html')">🗝️</div>
+                <div id="btn_open_messages" class="msg-icon-btn">
+                    ✉️ <div id="badge_new_msg" class="badge"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="menu-grid">
+            <div onclick="navTo('board.html')" class="card">
+                <i class="icon-board">📋</i>
+                <span>Доска объявлений</span>
+            </div>
+            <div onclick="navTo('taxi.html')" class="card">
+                <i class="icon-taxi">🚕</i>
+                <span>Такси</span>
+            </div>
+            <div onclick="navTo('issues.html')" class="card">
+                <i class="icon-issues">🚨</i>
+                <span>Проблемы поселка</span>
+            </div>
+            <div onclick="navTo('chat.html')" class="card">
+                <i class="icon-chat">💬</i>
+                <span>Чат</span>
+            </div>
+        </div>
+
+        <div id="card_contact_admin" class="admin-btn">
+            <i>📧</i> Написать Администратору
+        </div>
+    </div>
+
+    <script>
+        function navTo(url) {
+            if (window.navigator.standalone) {
+                window.location.replace(url);
+            } else {
+                window.location.href = url;
+            }
+        }
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
+            authDomain: "villagehub-d4d5e.firebaseapp.com",
+            databaseURL: "https://villagehub-d4d5e-default-rtdb.firebaseio.com",
+            projectId: "villagehub-d4d5e",
+            storageBucket: "villagehub-d4d5e.firebasestorage.app",
+            messagingSenderId: "131056250064",
+            appId: "1:131056250064:web:84c0c67819e9828ec642d5"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const myPhone = localStorage.getItem("USER_PHONE");
+
+        // --- ЛОГИКА ЗВУКА И РАЗБЛОКИРОВКИ IOS ---
+        let isAudioUnlocked = false;
+        const alertAudio = new Audio('alert.mp3');
+        alertAudio.preload = 'auto';
+
+        function playAlertSound() {
+            const tempAudio = new Audio('alert.mp3');
+            tempAudio.preload = 'auto';
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.playbackState = 'none';
+            }
+            tempAudio.play().then(() => {
+                tempAudio.onended = () => {
+                    tempAudio.src = "";
+                    tempAudio.load();
+                    tempAudio.remove();
+                };
+            }).catch(e => console.log("Sound play waiting for interaction..."));
+        }
+
+        function unlockAudio() {
+            if (isAudioUnlocked) return;
+            const silentAudio = new Audio('alert.mp3');
+            silentAudio.muted = true;
+            silentAudio.play().then(() => {
+                silentAudio.pause();
+                isAudioUnlocked = true;
+            }).catch(() => {});
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+        }
+        document.addEventListener('click', unlockAudio);
+        document.addEventListener('touchstart', unlockAudio);
+
+        // --- ЛОГИКА ОНЛАЙНА ---
+        if (myPhone) {
+            const presenceRef = db.ref('Users/' + myPhone + '/isOnline');
+            const lastSeenRef = db.ref('Users/' + myPhone + '/lastOnline');
+            const connectedRef = db.ref('.info/connected');
+
+            connectedRef.on('value', (snap) => {
+                if (snap.val() === true) {
+                    presenceRef.set(true);
+                    presenceRef.onDisconnect().set(false);
+                    lastSeenRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
+                }
+            });
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    presenceRef.set(false);
+                    lastSeenRef.set(firebase.database.ServerValue.TIMESTAMP);
+                } else {
+                    presenceRef.set(true);
+                }
+            });
+        }
+
+        // --- ЛОГИКА РАССЫЛКИ ---
+        db.ref('SystemAlerts').on('value', (snap) => {
+            const alertData = snap.val();
+            if (alertData && alertData.text) {
+                const lastSeenTime = localStorage.getItem("LAST_ALERT_TIME") || "0";
+                if (alertData.time && alertData.time.toString() !== lastSeenTime) {
+                    
+                    if (!isAudioUnlocked) {
+                        const playOnFirstClick = () => {
+                            playAlertSound();
+                            document.removeEventListener('click', playOnFirstClick);
+                            document.removeEventListener('touchstart', playOnFirstClick);
+                        };
+                        document.addEventListener('click', playOnFirstClick);
+                        document.addEventListener('touchstart', playOnFirstClick);
+                    } else {
+                        playAlertSound();
+                    }
+                    
+                    document.getElementById('broadcast_text').innerText = alertData.text;
+                    document.getElementById('broadcast_overlay').style.display = 'flex';
+                }
+            }
+        });
+
+        function closeBroadcast() {
+            db.ref('SystemAlerts/time').once('value').then((snap) => {
+                const currentTime = snap.val();
+                if (currentTime) {
+                    localStorage.setItem("LAST_ALERT_TIME", currentTime.toString());
+                }
+                document.getElementById('broadcast_overlay').style.display = 'none';
+            });
+        }
+
+        if (myPhone) {
+            db.ref('Users/' + myPhone + '/hasNewMessage').on('value', snap => {
+                const badge = document.getElementById("badge_new_msg");
+                const msgIcon = document.getElementById("btn_open_messages");
+                if (snap.val() === true) {
+                    badge.style.display = "block";
+                    msgIcon.classList.add("blinking");
+                } else {
+                    badge.style.display = "none";
+                    msgIcon.classList.remove("blinking");
+                }
+            });
+        }
+
+        document.getElementById("btn_open_messages").onclick = function() {
+            if(myPhone) db.ref('Users/' + myPhone + '/hasNewMessage').set(false);
+            navTo("messages.html");
+        };
+
+        function updateGreeting() {
+            const userName = localStorage.getItem("USER_NAME") || "Житель";
+            const hour = new Date().getHours();
+            let text = (hour >= 6 && hour < 12) ? "Доброе утро" : (hour >= 12 && hour < 18) ? "Добрый день" : (hour >= 18 && hour < 24) ? "Добрый вечер" : "Доброй ночи";
+            document.getElementById("tv_greeting").innerText = `${text}, ${userName}!`;
+        }
+
+        function checkAdmin() {
+            const role = localStorage.getItem("USER_ROLE");
+            if (role === "АДМИН" || role === "admin") {
+                document.getElementById("btn_admin_panel").style.display = "block";
+            }
+        }
+
+        updateGreeting();
+        checkAdmin();
+
+        document.getElementById("card_contact_admin").onclick = function() {
+             const adminPhone = "+79002712293";
+             if (!myPhone) return;
+             navTo(`private_chat.html?otherPhone=${encodeURIComponent(adminPhone)}`);
+        };
+
+        document.addEventListener('touchmove', function(e) {
+            if (document.getElementById('broadcast_overlay').style.display === 'flex') {
+                e.preventDefault();
+                return;
+            }
+            if (e.target.closest('.scroll-container')) return;
+            e.preventDefault();
+        }, { passive: false });
+
+        (function(document,navigator,standalone) {
+            if ((standalone in navigator) && navigator[standalone]) {
+                var curnode, location=document.location, stop=/^(a|html)$/i;
+                document.addEventListener('click', function(e) {
+                    curnode=e.target;
+                    while (!(stop).test(curnode.nodeName)) { curnode=curnode.parentNode; }
+                    if('href' in curnode && (curnode.href.indexOf('http') || ~curnode.href.indexOf(location.host))) {
+                        e.preventDefault();
+                        location.replace(curnode.href);
+                    }
+                },false);
+            }
+        })(document,window.navigator,'standalone');
+    </script>
+</body>
+</html>
