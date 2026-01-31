@@ -93,18 +93,30 @@
         let bannedPhones = new Set();
         let selectedUser = null;
 
-        // Обновление своего статуса (чтобы админ тоже был "онлайн")
-        function updateAdminStatus() {
-            const myPhone = localStorage.getItem("USER_PHONE");
-            if (myPhone) {
-                db.ref('Users/' + myPhone).update({
-                    lastOnline: Date.now(),
-                    lastActive: Date.now()
-                });
-            }
+        // --- НОВАЯ ЛОГИКА ОНЛАЙНА (КАК В ЧАТЕ) ---
+        const myPhone = localStorage.getItem("USER_PHONE");
+        if (myPhone) {
+            const presenceRef = db.ref('Users/' + myPhone + '/isOnline');
+            const lastSeenRef = db.ref('Users/' + myPhone + '/lastOnline');
+            const connectedRef = db.ref('.info/connected');
+
+            connectedRef.on('value', (snap) => {
+                if (snap.val() === true) {
+                    presenceRef.set(true);
+                    presenceRef.onDisconnect().set(false);
+                    lastSeenRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
+                }
+            });
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    presenceRef.set(false);
+                    lastSeenRef.set(firebase.database.ServerValue.TIMESTAMP);
+                } else {
+                    presenceRef.set(true);
+                }
+            });
         }
-        updateAdminStatus();
-        setInterval(updateAdminStatus, 60000); // Раз в минуту
 
         db.ref('BannedUsers').on('value', snap => {
             bannedPhones.clear();
@@ -123,7 +135,7 @@
                         role: val.role || "Житель",
                         regDate: Number(val.regDate) || 0,
                         lastOnline: Number(val.lastOnline) || 0,
-                        lastActive: Number(val.lastActive) || 0,
+                        isOnline: val.isOnline || false, // Теперь берем напрямую из флага
                         isBanned: bannedPhones.has(child.key)
                     });
                 });
@@ -135,13 +147,10 @@
             const container = document.getElementById('rv_users_list');
             const searchVal = document.getElementById('et_search_user').value.toLowerCase();
             container.innerHTML = '';
-            const now = Date.now();
             let onlineCount = 0;
 
             list.forEach(user => {
-                const lastSeenTime = Math.max(user.lastOnline, user.lastActive);
-                const isOnline = lastSeenTime > 0 && (now - lastSeenTime) < (5 * 60 * 1000);
-                if (isOnline) onlineCount++;
+                if (user.isOnline) onlineCount++;
 
                 // Фильтр поиска
                 if (searchVal && !user.name.toLowerCase().includes(searchVal) && !user.phone.includes(searchVal)) {
@@ -150,7 +159,7 @@
 
                 const div = document.createElement('div');
                 div.className = 'user-card';
-                const statusClass = isOnline ? 'online' : 'offline';
+                const statusClass = user.isOnline ? 'online' : 'offline';
 
                 let roleDisplay = user.role;
                 let roleClass = 'role-user';
@@ -164,7 +173,7 @@
                 }
 
                 const reg = user.regDate ? new Date(user.regDate).toLocaleDateString() : 'нет данных';
-                const lastSeenFormatted = lastSeenTime ? new Date(lastSeenTime).toLocaleString([], {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : 'Никогда';
+                const lastSeenFormatted = user.isOnline ? 'В сети' : (user.lastOnline ? new Date(user.lastOnline).toLocaleString([], {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : 'Никогда');
 
                 div.innerHTML = `
                     <div class="user-row">
@@ -184,9 +193,6 @@
             document.getElementById('tv_total_users').innerText = `Пользователей: ${allUsers.length}`;
             document.getElementById('tv_online_users').innerText = `В сети: ${onlineCount}`;
         }
-
-        // Обновляем список по таймеру для актуальности кружков
-        setInterval(() => { renderList(allUsers); }, 30000);
 
         document.getElementById('et_search_user').oninput = function() {
             renderList(allUsers);
@@ -216,8 +222,10 @@
         }
 
         function unbanUser() {
-            db.ref('BannedUsers/' + selectedUser.phone).remove();
-            closeModals();
+            if (confirm(`Разблокировать ${selectedUser.name}?`)) {
+                db.ref('BannedUsers/' + selectedUser.phone).remove();
+                closeModals();
+            }
         }
 
         function showRoleDialog() {
