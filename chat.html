@@ -57,7 +57,18 @@
             position: relative; z-index: 9000;
         }
         .pinned-line { width: 4px; height: 24px; background: #2196F3; margin-right: 10px; border-radius: 2px; flex-shrink: 0; }
-        #tvPinnedText { font-size: 13px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; }
+        
+        /* ИСПРАВЛЕНО: Ограничение закрепленного текста одной строкой */
+        #tvPinnedText { 
+            font-size: 13px; 
+            color: #333; 
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            display: block; 
+            width: 100%;
+            max-height: 1.2em;
+        }
 
         #chatMessages { 
             flex-grow: 1; overflow-y: auto; 
@@ -177,7 +188,7 @@
         <div id="pinnedLayout">
             <div class="pinned-line"></div>
             <div class="pinned-info">
-                <div class="pinned-title">Закрепленное сообщение</div>
+                <div class="pinned-title" style="font-size: 11px; font-weight: bold; color: #2196F3;">Закрепленное сообщение</div>
                 <div id="tvPinnedText">...</div>
             </div>
         </div>
@@ -344,7 +355,6 @@
             let replyHtml = msg.replyToText ? `<div class="reply-box"><b>${msg.replyToAuthor}</b><br>${msg.replyToText}</div>` : '';
             const tempAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.author);
 
-            // ИСПОЛЬЗУЕМ <pre> ИЛИ white-space ПРЯМО В ТЕКСТЕ ДЛЯ ОТОБРАЖЕНИЯ ПЕРЕНОСОВ
             div.innerHTML = `
                 <img class="user-avatar" id="av_${id}" src="${tempAvatar}" onclick="openUserProfile('${msg.senderId}')">
                 <div class="msg-container" id="msg_${id}" onclick="openActions(this.dataset.msgObject, '${id}')">
@@ -397,7 +407,11 @@
             const layout = document.getElementById('pinnedLayout');
             if(!snap.exists()) { layout.style.display = 'none'; return; }
             layout.style.display = 'flex'; let last = null; snap.forEach(c => last = c.val());
-            document.getElementById('tvPinnedText').innerText = last.text;
+            
+            // ИСПРАВЛЕНО: При отображении берем только первую строку сообщения
+            let displayPinnedText = last.text.split('\n')[0];
+            document.getElementById('tvPinnedText').innerText = displayPinnedText;
+            
             layout.onclick = () => { const t = document.getElementById("msg_" + last.originalId); if (t) { t.scrollIntoView({ behavior: "smooth", block: "center" }); t.classList.add('highlight-msg'); setTimeout(() => t.classList.remove('highlight-msg'), 1500); } };
         });
 
