@@ -130,18 +130,28 @@
 
         /* СТИЛИ КАРТОЧКИ ПРОФИЛЯ */
         #user_profile_overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0,0,0,0.9); display: none; z-index: 30000; align-items: center; justify-content: center; padding: 20px; }
-        .profile-card { background: white; border-radius: 30px; padding: 30px; width: 100%; max-width: 340px; text-align: center; }
-        #full_avatar { width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid var(--accent-blue); margin-bottom: 15px; }
+        .profile-card { background: white; border-radius: 30px; padding: 30px; width: 100%; max-width: 340px; text-align: center; position: relative; }
+        #full_avatar { width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid var(--accent-blue); margin-bottom: 15px; cursor: pointer; }
         .profile-name { font-size: 20px; font-weight: bold; margin-bottom: 5px; color: #000; }
         .profile-bio { font-size: 14px; color: #666; margin: 10px 0 20px; background: #f9f9f9; padding: 10px; border-radius: 10px; text-align: left; max-height: 150px; overflow-y: auto; }
         .close-profile-btn { background: var(--accent-blue); color: white; border: none; padding: 14px; border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%; }
+
+        /* ПРОСМОТР ФОТО НА ВЕСЬ ЭКРАН */
+        #fullscreen_viewer { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: black; display: none; z-index: 40000; align-items: center; justify-content: center; }
+        #fullscreen_img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .close-fullscreen { position: absolute; top: calc(20px + var(--safe-top)); right: 20px; color: white; font-size: 35px; cursor: pointer; z-index: 40001; text-shadow: 0 0 10px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
 
+    <div id="fullscreen_viewer">
+        <span class="close-fullscreen" onclick="closeFullscreen()">✕</span>
+        <img id="fullscreen_img" src="" alt="">
+    </div>
+
     <div id="user_profile_overlay" onclick="this.style.display='none'">
         <div class="profile-card" onclick="event.stopPropagation()">
-            <img id="full_avatar" src="" alt="">
+            <img id="full_avatar" src="" alt="" onclick="openFullscreen()">
             <div id="profile_name" class="profile-name"></div>
             <div id="profile_phone" style="color:#888; font-size:14px;"></div>
             <div id="profile_bio" class="profile-bio"></div>
@@ -235,7 +245,6 @@
         const myRole = (localStorage.getItem("USER_ROLE") || "Житель");
         const iAmPrivileged = (myRole === "АДМИН" || myRole === "admin" || myRole === "МОДЕРАТОР");
 
-        // --- ЛОГИКА ОНЛАЙНА ---
         if (myPhone) {
             const presenceRef = db.ref('Users/' + myPhone + '/isOnline');
             const lastSeenRef = db.ref('Users/' + myPhone + '/lastOnline');
@@ -260,16 +269,28 @@
         let selectedMsg = null, replyingTo = null, editingMsgId = null, lastPinnedId = "", isFirstLoad = true, unreadMarkerShown = false;
         const container = document.getElementById('chatMessages');
 
-        // --- ФУНКЦИЯ ОТКРЫТИЯ ПРОФИЛЯ ---
+        // --- ФУНКЦИИ ОТКРЫТИЯ ПРОФИЛЯ И ФОТО ---
         function openUserProfile(phone) {
             db.ref('Users/' + phone).once('value', snap => {
                 const u = snap.val() || {};
-                document.getElementById('full_avatar').src = u.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || "?");
+                const avSrc = u.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || "?");
+                document.getElementById('full_avatar').src = avSrc;
                 document.getElementById('profile_name').innerText = u.name || "Пользователь";
                 document.getElementById('profile_phone').innerText = phone;
                 document.getElementById('profile_bio').innerText = u.bio || "О себе ничего не указано";
                 document.getElementById('user_profile_overlay').style.display = 'flex';
             });
+        }
+
+        function openFullscreen() {
+            const src = document.getElementById('full_avatar').src;
+            if (src.includes('ui-avatars.com')) return; // Не открываем стандартную букву
+            document.getElementById('fullscreen_img').src = src;
+            document.getElementById('fullscreen_viewer').style.display = 'flex';
+        }
+
+        function closeFullscreen() {
+            document.getElementById('fullscreen_viewer').style.display = 'none';
         }
 
         db.ref('BannedUsers/' + myPhone).on('value', snap => {
@@ -318,7 +339,6 @@
                     <div class="time">${msg.time}</div>
                 </div>`;
             
-            // Сохраняем объект сообщения в дата-атрибуте для доступа из обработчика
             const containerDiv = div.querySelector('.msg-container');
             containerDiv.dataset.msgObject = JSON.stringify(msg);
 
