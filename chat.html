@@ -219,13 +219,24 @@
 
         let usersCache = {};
         let lastReadTimestamp = parseInt(localStorage.getItem("CHAT_LAST_READ") || "0");
-        let isFirstLoad = true, unreadMarkerShown = false;
+        let selectedMsg = null, replyingTo = null, editingMsgId = null, lastPinnedId = "", isFirstLoad = true, unreadMarkerShown = false;
         const container = document.getElementById('chatMessages');
+
+        db.ref('BannedUsers/' + myPhone).on('value', snap => {
+            const row = document.getElementById('inputRow');
+            if (snap.exists()) {
+                const ban = snap.val();
+                if (ban.timestamp === -1 || ban.timestamp > Date.now()) {
+                    if (ban.type === 'GLOBAL') { navTo('login.html'); return; }
+                    row.innerHTML = `<div class="ban-text">Вы заблокированы ${ban.type==='CHAT_FULL'?'в чате':'до '+new Date(ban.timestamp).toLocaleString()}</div>`;
+                } else { db.ref('BannedUsers/' + myPhone).remove(); }
+            }
+        });
 
         db.ref('Chats').limitToLast(100).on('value', snap => {
             container.innerHTML = ''; unreadMarkerShown = false;
             snap.forEach(child => {
-                const msg = child.val();
+                const msg = child.val(); msg.id = child.key;
                 if (!unreadMarkerShown && lastReadTimestamp !== 0 && msg.timestamp > lastReadTimestamp && msg.senderId !== myPhone) {
                     container.innerHTML += `<div class="unread-separator" id="unread_anchor"><span>Непрочитанные сообщения</span></div>`;
                     unreadMarkerShown = true;
@@ -243,22 +254,18 @@
         function renderMessage(msg, id) {
             const isMine = msg.senderId === myPhone;
             const div = document.createElement('div');
-            div.className = isMine ? 'msg-sent' : 'msg-received';
-            div.style.display = "flex"; div.style.flexDirection = "column";
+            div.className = `msg-wrapper ${isMine ? 'msg-sent' : 'msg-received'}`;
 
-            let roleClass = msg.role === 'АДМИН' ? 'role-admin' : (msg.role === 'МОДЕРАТОР' ? 'role-mod' : 'role-user');
             let replyHtml = msg.replyToText ? `<div class="reply-box"><b>${msg.replyToAuthor}</b><br>${msg.replyToText}</div>` : '';
             const tempAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.author);
 
             div.innerHTML = `
-                <div class="msg-wrapper">
-                    <img class="user-avatar" id="av_${id}" src="${tempAvatar}">
-                    <div class="msg-container" id="msg_${id}">
-                        <div class="author" id="auth_${id}">${msg.author}</div>
-                        ${replyHtml}
-                        <div>${msg.text}</div>
-                        <div class="time">${msg.time}</div>
-                    </div>
+                <img class="user-avatar" id="av_${id}" src="${tempAvatar}">
+                <div class="msg-container" id="msg_${id}">
+                    <div class="author" id="auth_${id}">${msg.author}</div>
+                    ${replyHtml}
+                    <div>${msg.text}</div>
+                    <div class="time">${msg.time}</div>
                 </div>`;
             div.onclick = () => openActions(msg, id);
             container.appendChild(div);
@@ -279,18 +286,41 @@
             }
         }
 
-        function handleSendClick() { if (editingMsgId) saveEdit(); else sendChatMessage(); }
+        // --- ИСПРАВЛЕННЫЕ ФУНКЦИИ ОТПРАВКИ ---
+        function handleSendClick() { 
+            if (editingMsgId) saveEdit(); 
+            else sendChatMessage(); 
+        }
 
         function sendChatMessage() {
-            const input = document.getElementById('msgInput'); const text = input.value.trim();
+            const input = document.getElementById('msgInput'); 
+            const text = input.value.trim();
             if(!text) return;
+            const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             db.ref('Chats').push({ 
-                author: myName, role: myRole, text: text, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), 
-                senderId: myPhone, timestamp: Date.now(), 
-                replyToText: replyingTo ? replyingTo.text : "", replyToAuthor: replyingTo ? replyingTo.author : "" 
+                author: myName, 
+                role: myRole, 
+                text: text, 
+                time: timeStr, 
+                senderId: myPhone, 
+                timestamp: Date.now(), 
+                replyToText: replyingTo ? replyingTo.text : "", 
+                replyToAuthor: replyingTo ? replyingTo.author : "" 
             }).then(() => {
-                input.value = ''; cancelReply(); scrollToBottom();
+                input.value = ''; 
+                cancelReply(); 
+                scrollToBottom();
             });
+        }
+
+        function saveEdit() {
+            const input = document.getElementById('msgInput');
+            if(input.value.trim() && editingMsgId) {
+                db.ref('Chats/' + editingMsgId).update({ text: input.value.trim() });
+            }
+            editingMsgId = null; 
+            input.value = ''; 
+            document.getElementById('sendIcon').style.fill = "#F57C00";
         }
 
         function updateReadStatus() { db.ref('Chats').limitToLast(1).once('value', s => { s.forEach(c => localStorage.setItem("CHAT_LAST_READ", c.val().timestamp)); }); }
@@ -305,7 +335,6 @@
             layout.onclick = () => { const t = document.getElementById("msg_" + last.originalId); if (t) { t.scrollIntoView({ behavior: "smooth", block: "center" }); t.classList.add('highlight-msg'); setTimeout(() => t.classList.remove('highlight-msg'), 1500); } };
         });
 
-        // (Функции реакций, редактирования, бана и т.д. остаются один в один как у тебя)
         function openActions(msg, id) {
             selectedMsg = {...msg, id: id}; document.getElementById('overlay').style.display = 'block'; document.getElementById('actionSheet').style.display = 'flex';
             backToMainActions(); const isMine = msg.senderId === myPhone;
@@ -337,7 +366,6 @@
         function pinMsg() { db.ref(`PinnedMessages`).remove().then(() => { db.ref(`PinnedMessages/${selectedMsg.id}`).set({ text: selectedMsg.text, author: selectedMsg.author, originalId: selectedMsg.id, pinnedTime: Date.now() }); }); closeActions(); }
         function unpinMsg() { db.ref(`PinnedMessages`).remove(); closeActions(); }
         function prepareEdit() { editingMsgId = selectedMsg.id; document.getElementById('msgInput').value = selectedMsg.text; document.getElementById('sendIcon').style.fill = "#4CAF50"; closeActions(); }
-        function saveEdit() { db.ref('Chats/' + editingMsgId).update({ text: document.getElementById('msgInput').value.trim() }); editingMsgId = null; document.getElementById('msgInput').value = ''; document.getElementById('sendIcon').style.fill = "#F57C00"; }
     </script>
 </body>
 </html>
