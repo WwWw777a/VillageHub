@@ -76,7 +76,7 @@
             flex-shrink: 0; border: 1px solid #ddd;
         }
 
-        .msg-container { max-width: 85%; padding: 10px 14px; border-radius: 16px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-size: 15px; transition: background 0.5s; cursor: pointer; }
+        .msg-container { max-width: 85%; padding: 10px 14px; border-radius: 16px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-size: 15px; transition: background 0.5s; cursor: pointer; word-wrap: break-word; }
         .msg-sent .msg-container { align-self: flex-end; background: #DCF8C6; border-bottom-right-radius: 2px; }
         .msg-received .msg-container { align-self: flex-start; background: white; border-bottom-left-radius: 2px; }
         .highlight-msg { background: #FFF59D !important; border: 1px solid #FFD600; }
@@ -116,9 +116,17 @@
             z-index: 11000; width: 100%; position: relative;
         }
         #replyPreview { background: #f0f0f0; padding: 10px 15px; display: none; border-left: 4px solid #F57C00; align-items: center; }
-        .input-row { display: flex; align-items: center; padding: 10px 15px; gap: 10px; }
-        #msgInput { flex-grow: 1; border: 1px solid #eee; background: #f9f9f9; outline: none; font-size: 16px; padding: 12px 15px; border-radius: 25px; }
-        #sendBtn { background: none; border: none; cursor: pointer; padding: 5px; display: flex; }
+        .input-row { display: flex; align-items: flex-end; padding: 10px 15px; gap: 10px; }
+        
+        /* ИСПРАВЛЕННОЕ ПОЛЕ ВВОДА ДЛЯ ПЕРЕНОСА СТРОК */
+        #msgInput { 
+            flex-grow: 1; border: 1px solid #eee; background: #f9f9f9; 
+            outline: none; font-size: 16px; padding: 10px 15px; 
+            border-radius: 20px; resize: none; max-height: 120px; 
+            font-family: inherit; line-height: 1.4; overflow-y: auto;
+        }
+
+        #sendBtn { background: none; border: none; cursor: pointer; padding: 5px; display: flex; align-self: flex-end; margin-bottom: 2px; }
         #sendBtn svg { fill: #F57C00; width: 32px; height: 32px; }
 
         .ban-text { color: red; font-weight: bold; font-size: 14px; text-align: center; width: 100%; padding: 10px; }
@@ -187,7 +195,7 @@
                 <span onclick="cancelReply()" style="cursor:pointer; padding: 5px; font-size: 20px;">✕</span>
             </div>
             <div class="input-row" id="inputRow">
-                <input type="text" id="msgInput" placeholder="Написать сообщение..." autocomplete="off">
+                <textarea id="msgInput" placeholder="Написать сообщение..." rows="1" oninput="autoResize(this)"></textarea>
                 <button id="sendBtn" onclick="handleSendClick()">
                     <svg id="sendIcon" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                 </button>
@@ -224,6 +232,13 @@
     </div>
 
     <script>
+        // АВТОМАТИЧЕСКОЕ РАСШИРЕНИЕ ПОЛЯ ПРИ ПЕЧАТИ
+        function autoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight) + 'px';
+            if (textarea.value === "") textarea.style.height = '42px'; // Базовая высота
+        }
+
         function navTo(url) {
             if (window.navigator.standalone) { window.location.replace(url); } else { window.location.href = url; }
         }
@@ -269,7 +284,6 @@
         let selectedMsg = null, replyingTo = null, editingMsgId = null, lastPinnedId = "", isFirstLoad = true, unreadMarkerShown = false;
         const container = document.getElementById('chatMessages');
 
-        // --- ФУНКЦИИ ОТКРЫТИЯ ПРОФИЛЯ И ФОТО ---
         function openUserProfile(phone) {
             db.ref('Users/' + phone).once('value', snap => {
                 const u = snap.val() || {};
@@ -284,7 +298,7 @@
 
         function openFullscreen() {
             const src = document.getElementById('full_avatar').src;
-            if (src.includes('ui-avatars.com')) return; // Не открываем стандартную букву
+            if (src.includes('ui-avatars.com')) return; 
             document.getElementById('fullscreen_img').src = src;
             document.getElementById('fullscreen_viewer').style.display = 'flex';
         }
@@ -330,12 +344,13 @@
             let replyHtml = msg.replyToText ? `<div class="reply-box"><b>${msg.replyToAuthor}</b><br>${msg.replyToText}</div>` : '';
             const tempAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.author);
 
+            // ИСПОЛЬЗУЕМ <pre> ИЛИ white-space ПРЯМО В ТЕКСТЕ ДЛЯ ОТОБРАЖЕНИЯ ПЕРЕНОСОВ
             div.innerHTML = `
                 <img class="user-avatar" id="av_${id}" src="${tempAvatar}" onclick="openUserProfile('${msg.senderId}')">
                 <div class="msg-container" id="msg_${id}" onclick="openActions(this.dataset.msgObject, '${id}')">
                     <div class="author" id="auth_${id}" onclick="event.stopPropagation(); openActions(this.parentElement.dataset.msgObject, '${id}')">${msg.author}</div>
                     ${replyHtml}
-                    <div>${msg.text}</div>
+                    <div style="white-space: pre-wrap;">${msg.text}</div>
                     <div class="time">${msg.time}</div>
                 </div>`;
             
@@ -370,7 +385,7 @@
                 author: myName, role: myRole, text: text, time: timeStr, senderId: myPhone, timestamp: Date.now(), 
                 replyToText: replyingTo ? replyingTo.text : "", replyToAuthor: replyingTo ? replyingTo.author : "" 
             }).then(() => {
-                input.value = ''; cancelReply(); scrollToBottom();
+                input.value = ''; input.style.height = '42px'; cancelReply(); scrollToBottom();
             });
         }
 
@@ -419,8 +434,8 @@
         function confirmBan(t, h) { const ts = h===-1?-1:Date.now()+(h*3600000); db.ref('BannedUsers/'+selectedMsg.senderId).set({type:t, timestamp:ts}).then(closeActions); }
         function pinMsg() { db.ref(`PinnedMessages`).remove().then(() => { db.ref(`PinnedMessages/${selectedMsg.id}`).set({ text: selectedMsg.text, author: selectedMsg.author, originalId: selectedMsg.id, pinnedTime: Date.now() }); }); closeActions(); }
         function unpinMsg() { db.ref(`PinnedMessages`).remove(); closeActions(); }
-        function prepareEdit() { editingMsgId = selectedMsg.id; document.getElementById('msgInput').value = selectedMsg.text; document.getElementById('sendIcon').style.fill = "#4CAF50"; closeActions(); }
-        function saveEdit() { db.ref('Chats/' + editingMsgId).update({ text: document.getElementById('msgInput').value.trim() }); editingMsgId = null; document.getElementById('msgInput').value = ''; document.getElementById('sendIcon').style.fill = "#F57C00"; }
+        function prepareEdit() { editingMsgId = selectedMsg.id; const input = document.getElementById('msgInput'); input.value = selectedMsg.text; autoResize(input); document.getElementById('sendIcon').style.fill = "#4CAF50"; closeActions(); }
+        function saveEdit() { db.ref('Chats/' + editingMsgId).update({ text: document.getElementById('msgInput').value.trim() }); editingMsgId = null; const input = document.getElementById('msgInput'); input.value = ''; input.style.height = '42px'; document.getElementById('sendIcon').style.fill = "#F57C00"; }
     </script>
 </body>
 </html>
