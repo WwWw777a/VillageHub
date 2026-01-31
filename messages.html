@@ -44,6 +44,10 @@
         .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; padding: 5px; }
         .container { height: 100dvh; overflow-y: auto; padding: 10px; padding-top: calc(70px + var(--safe-top)); -webkit-overflow-scrolling: touch; }
         .chat-item { background: white; border-radius: 12px; padding: 15px; margin-bottom: 8px; display: flex; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; position: relative; }
+        
+        /* СТИЛЬ АВАТАРА В СПИСКЕ */
+        .chat-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin-right: 12px; background: #eee; flex-shrink: 0; }
+        
         .chat-info { flex-grow: 1; overflow: hidden; }
         .chat-phone { font-weight: bold; font-size: 16px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
         .chat-last-msg { color: #757575; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -174,8 +178,14 @@
                     db.ref('UserChats').child(myPhone).child(otherPhone).update({ unreadCount: 0, hasNewMessage: false });
                     location.href = `private_chat.html?otherPhone=${encodeURIComponent(otherPhone)}`; 
                 };
-                const nameId = "name_" + otherPhone.replace(/\+/g, '').replace(/[^0-9]/g, '');
+                
+                const cleanPhone = otherPhone.replace(/\+/g, '').replace(/[^0-9]/g, '');
+                const nameId = "name_" + cleanPhone;
+                const avId = "av_" + cleanPhone;
+                
+                // Рендерим элемент с заглушкой аватара
                 div.innerHTML = `
+                    <img id="${avId}" class="chat-avatar" src="https://ui-avatars.com/api/?name=?&background=random" alt="">
                     <div class="chat-info">
                         <div class="chat-phone" id="${nameId}">${otherPhone} ${unreadHtml}</div>
                         <div class="chat-last-msg">${chat.lastMessage || ''}</div>
@@ -183,10 +193,17 @@
                     <div class="btn-delete" onclick="event.stopPropagation(); deleteChat('${otherPhone}')">🗑</div>
                 `;
                 list.appendChild(div);
-                db.ref('Users').child(otherPhone).child('name').once('value', nSnap => {
-                    if (nSnap.exists()) {
-                        const el = document.getElementById(nameId);
-                        if(el) el.innerHTML = `${nSnap.val()} ${unreadHtml}`;
+
+                // Подтягиваем имя и реальный аватар из базы Users
+                db.ref('Users').child(otherPhone).once('value', uSnap => {
+                    const userData = uSnap.val();
+                    if (userData) {
+                        const nameEl = document.getElementById(nameId);
+                        const avEl = document.getElementById(avId);
+                        
+                        if(nameEl) nameEl.innerHTML = `${userData.name || otherPhone} ${unreadHtml}`;
+                        if(avEl && userData.avatar) avEl.src = userData.avatar;
+                        else if(avEl && userData.name) avEl.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=random`;
                     }
                 });
             });

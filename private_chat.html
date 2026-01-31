@@ -46,18 +46,30 @@
 
         .header { background: #2196F3; color: white; padding-top: var(--safe-top); height: var(--header-h); display: flex; align-items: center; padding-left: 15px; padding-right: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 1000; position: fixed; top: 0; width: 100%; }
         .back-btn { font-size: 28px; cursor: pointer; margin-right: 12px; padding: 5px; }
+        
+        /* СТИЛЬ АВАТАРА В ШАПКЕ */
+        .header-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 10px; background: #eee; border: 1px solid rgba(255,255,255,0.3); }
+        
         .header-info { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
         .user-phone { font-weight: bold; font-size: 17px; }
         .user-status { font-size: 12px; color: #e0e0e0; }
         .online-text { color: #00e676 !important; font-weight: bold; }
         
         #messages { flex: 1; overflow-y: auto; padding: 10px 15px; display: flex; flex-direction: column; gap: 8px; margin-top: var(--header-h); margin-bottom: var(--footer-h); -webkit-overflow-scrolling: touch; }
+        
+        /* СТИЛИ АВАТАРОВ В СООБЩЕНИЯХ */
+        .msg-row { display: flex; align-items: flex-end; gap: 8px; width: 100%; }
+        .msg-row.sent { flex-direction: row-reverse; }
+        .msg-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; background: #eee; flex-shrink: 0; }
+
         .msg { max-width: 80%; padding: 10px 14px; border-radius: 16px; font-size: 15px; word-wrap: break-word; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
-        .sent { align-self: flex-end; background: #DCF8C6; border-bottom-right-radius: 2px; }
-        .received { align-self: flex-start; background: white; border-bottom-left-radius: 2px; }
+        .sent .msg { background: #DCF8C6; border-bottom-right-radius: 2px; }
+        .received .msg { background: white; border-bottom-left-radius: 2px; }
+        
         .msg-footer { display: flex; justify-content: flex-end; align-items: center; gap: 4px; font-size: 10px; color: #888; margin-top: 4px; }
         .ticks { font-weight: bold; font-size: 14px; margin-left: 4px; }
         .read { color: #2196F3; } .unread { color: #BDBDBD; }
+        
         .bottom-area { background: #f0f0f0; border-top: 1px solid #ddd; padding: 8px 10px calc(var(--safe-bottom) + 8px) 10px; display: flex; align-items: center; gap: 8px; position: fixed; bottom: 0; width: 100%; z-index: 1000; height: var(--footer-h); }
         input { flex: 1; border: 1px solid #ccc; background: #fff; outline: none; font-size: 16px; padding: 10px 15px; border-radius: 20px; }
         .send-btn { background: #2196F3; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; }
@@ -76,6 +88,7 @@
 
     <div class="header">
         <span class="back-btn" onclick="location.href='messages.html'">←</span>
+        <img id="otherUserAvatar" class="header-avatar" src="https://ui-avatars.com/api/?name=?" alt="">
         <div class="header-info">
             <div class="user-phone" id="otherUserPhoneDisplay">Загрузка...</div>
             <div class="user-status" id="otherUserStatus">офлайн</div>
@@ -96,6 +109,13 @@
         const otherPhone = (new URLSearchParams(window.location.search).get('otherPhone') || "").trim();
         const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
         const container = document.getElementById('messages');
+
+        // КЭШ ДЛЯ АВАТАРОВ
+        let otherAvatar = "https://ui-avatars.com/api/?name=?";
+        let myAvatar = "https://ui-avatars.com/api/?name=Я";
+
+        // Загружаем аватарки один раз
+        db.ref('Users/' + myPhone + '/avatar').once('value', s => { if(s.val()) myAvatar = s.val(); });
 
         // --- ЛОГИКА ЗВУКА И РАЗБЛОКИРОВКИ IOS ---
         let isAudioUnlocked = false;
@@ -167,7 +187,7 @@
             });
         }
 
-        // СЛУШАТЕЛЬ СООБЩЕНИЙ
+        // СЛУШАТЕЛЬ СООБЩЕНИЙ С АВАТАРАМИ
         db.ref('PrivateChats').child(chatId).on('value', snap => {
             let html = '';
             snap.forEach(child => {
@@ -175,7 +195,18 @@
                 const isMine = (msg.senderId === myPhone);
                 if (!isMine && !msg.isRead) { child.ref.child('isRead').set(true); }
                 const tickHtml = isMine ? `<span class="ticks ${msg.isRead ? 'read' : 'unread'}">${msg.isRead ? '✔✔' : '✔'}</span>` : '';
-                html += `<div class="msg ${isMine ? 'sent' : 'received'}"><div>${msg.text}</div><div class="msg-footer">${msg.time}${tickHtml}</div></div>`;
+                
+                // Используем аватарки из кэша
+                const currentMsgAvatar = isMine ? myAvatar : otherAvatar;
+
+                html += `
+                    <div class="msg-row ${isMine ? 'sent' : 'received'}">
+                        <img class="msg-avatar" src="${currentMsgAvatar}">
+                        <div class="msg">
+                            <div>${msg.text}</div>
+                            <div class="msg-footer">${msg.time}${tickHtml}</div>
+                        </div>
+                    </div>`;
             });
             container.innerHTML = html;
             container.scrollTo(0, container.scrollHeight);
@@ -200,6 +231,14 @@
             document.getElementById('otherUserPhoneDisplay').innerText = d.name || otherPhone;
             document.getElementById('otherUserStatus').innerText = d.isOnline ? "в сети" : "офлайн";
             document.getElementById('otherUserStatus').className = "user-status " + (d.isOnline ? "online-text" : "");
+            
+            // Обновляем аватар в шапке и кэш для сообщений
+            if(d.avatar) {
+                otherAvatar = d.avatar;
+                document.getElementById('otherUserAvatar').src = d.avatar;
+            } else {
+                document.getElementById('otherUserAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(d.name || '?')}`;
+            }
         });
         document.getElementById('msgInput').onkeypress = e => { if(e.key === 'Enter') sendMsg() };
     </script>
