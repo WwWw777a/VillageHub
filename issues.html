@@ -14,7 +14,7 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body, html { margin: 0; padding: 0; height: 100dvh; background: #f5f5f5; font-family: -apple-system, sans-serif; overflow: hidden; position: fixed; }
         
-        /* СТИЛИ УВЕДОМЛЕНИЯ (КАК НА ГЛАВНОЙ) */
+        /* СТИЛИ УВЕДОМЛЕНИЯ */
         #broadcast_overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
             background: rgba(0,0,0,0.7); display: none; z-index: 99999;
@@ -44,14 +44,30 @@
         .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; padding: 5px; }
         .container { height: 100dvh; overflow-y: auto; padding: 10px; padding-top: calc(70px + var(--safe-top)); padding-bottom: 20px; -webkit-overflow-scrolling: touch; }
         .btn-add-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; color: #FF9800; font-weight: bold; font-size: 16px; border: none; width: 100%; }
+        
         .issue-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); position: relative; }
+        .issue-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .author-avatar { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; background: #eee; cursor: pointer; border: 1px solid #ddd; }
+        
         .issue-title { font-size: 18px; font-weight: bold; color: #000; margin-bottom: 4px; padding-right: 30px; }
-        .issue-meta { font-size: 12px; color: #757575; margin-bottom: 10px; }
+        .issue-meta { font-size: 12px; color: #757575; }
         .issue-desc { font-size: 15px; color: #333; line-height: 1.4; white-space: pre-wrap; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
         .issue-desc.expanded { -webkit-line-clamp: unset; }
         .read-more { color: #2196F3; font-size: 13px; font-weight: bold; margin-top: 6px; cursor: pointer; }
-        .issue-img { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-top: 12px; display: none; }
+        .issue-img { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-top: 12px; display: none; cursor: pointer; }
         .btn-delete { position: absolute; top: 16px; right: 16px; color: #F44336; font-size: 20px; cursor: pointer; }
+
+        /* ПРОСМОТР ФОТО НА ВЕСЬ ЭКРАН */
+        #fs_viewer { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: black; display: none; z-index: 40000; align-items: center; justify-content: center; }
+        #fs_img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .fs-close { position: absolute; top: calc(20px + var(--safe-top)); right: 20px; color: white; font-size: 35px; cursor: pointer; z-index: 40001; }
+
+        /* СТИЛИ КАРТОЧКИ ПРОФИЛЯ */
+        #user_profile_overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0,0,0,0.9); display: none; z-index: 30000; align-items: center; justify-content: center; padding: 20px; }
+        .profile-card { background: white; border-radius: 30px; padding: 30px; width: 100%; max-width: 340px; text-align: center; }
+        #full_avatar { width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid var(--accent-blue); margin-bottom: 15px; cursor: pointer; }
+        .profile-name { font-size: 20px; font-weight: bold; margin-bottom: 5px; color: #000; }
+        .profile-bio { font-size: 14px; color: #666; margin: 10px 0 20px; background: #f9f9f9; padding: 10px; border-radius: 10px; text-align: left; max-height: 150px; overflow-y: auto; }
     </style>
 </head>
 <body>
@@ -62,6 +78,21 @@
             <h2>Объявление</h2>
             <div id="broadcast_text"></div>
             <button class="broadcast-btn" onclick="closeBroadcast()">ПОНЯТНО</button>
+        </div>
+    </div>
+
+    <div id="fs_viewer">
+        <span class="fs-close" onclick="closeFS()">✕</span>
+        <img id="fs_img" src="" alt="">
+    </div>
+
+    <div id="user_profile_overlay" onclick="this.style.display='none'">
+        <div class="profile-card" onclick="event.stopPropagation()">
+            <img id="full_avatar" src="" alt="" onclick="openFS(this.src)">
+            <div id="profile_name" class="profile-name"></div>
+            <div id="profile_phone" style="color:#888; font-size:14px;"></div>
+            <div id="profile_bio" class="profile-bio"></div>
+            <button class="broadcast-btn" onclick="document.getElementById('user_profile_overlay').style.display='none'">ЗАКРЫТЬ</button>
         </div>
     </div>
 
@@ -89,6 +120,29 @@
         const db = firebase.database();
         const myPhone = localStorage.getItem("USER_PHONE");
         const myRole = localStorage.getItem("USER_ROLE");
+
+        // --- ФУНКЦИИ ОТКРЫТИЯ ПРОФИЛЯ И ФОТО ---
+        function openUserProfile(phone) {
+            db.ref('Users/' + phone).once('value', snap => {
+                const u = snap.val() || {};
+                const avSrc = u.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || "?");
+                document.getElementById('full_avatar').src = avSrc;
+                document.getElementById('profile_name').innerText = u.name || "Пользователь";
+                document.getElementById('profile_phone').innerText = phone;
+                document.getElementById('profile_bio').innerText = u.bio || "О себе ничего не указано";
+                document.getElementById('user_profile_overlay').style.display = 'flex';
+            });
+        }
+
+        function openFS(src) {
+            if (!src || src.includes('ui-avatars.com')) return;
+            document.getElementById('fs_img').src = src;
+            document.getElementById('fs_viewer').style.display = 'flex';
+        }
+
+        function closeFS() {
+            document.getElementById('fs_viewer').style.display = 'none';
+        }
 
         // --- ЛОГИКА ЗВУКА И РАЗБЛОКИРОВКИ IOS ---
         let isAudioUnlocked = false;
@@ -170,15 +224,28 @@
                 const card = document.createElement('div');
                 card.className = 'issue-card';
                 const dateStr = new Date(item.timestamp).toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+                
+                const avId = "av_issue_" + item.id;
+                
                 card.innerHTML = `
                     <div class="btn-delete" style="display:${canDelete ? 'block' : 'none'}" onclick="deleteIssue('${item.id}')">🗑</div>
+                    <div class="issue-header">
+                        <img id="${avId}" class="author-avatar" src="https://ui-avatars.com/api/?name=${encodeURIComponent(item.author)}" onclick="openUserProfile('${item.phone}')">
+                        <div class="issue-meta"><b>${item.author}</b><br>${dateStr}</div>
+                    </div>
                     <div class="issue-title">${item.title}</div>
-                    <div class="issue-meta">${item.author} • ${dateStr}</div>
                     <div class="issue-desc" id="desc_${item.id}">${item.description}</div>
                     <div class="read-more" id="more_${item.id}" onclick="toggleExpand('${item.id}')">Показать полностью ▼</div>
-                    <img class="issue-img" id="img_${item.id}" src="data:image/jpeg;base64,${item.image}" style="display:${item.image ? 'block' : 'none'}">
+                    <img class="issue-img" id="img_${item.id}" src="data:image/jpeg;base64,${item.image}" 
+                         style="display:${item.image ? 'block' : 'none'}" 
+                         onclick="openFS(this.src)">
                 `;
                 container.appendChild(card);
+
+                // Подгружаем реальный аватар автора
+                db.ref('Users/' + item.phone + '/avatar').once('value', aSnap => {
+                    if (aSnap.val()) document.getElementById(avId).src = aSnap.val();
+                });
             });
         });
 

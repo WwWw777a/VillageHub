@@ -3490,3 +3490,213 @@
     </script>
 </body>
 </html>
+
+
+
+
+
+Проблемы поселка 
+
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Лента проблем</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <style>
+        :root { 
+            --safe-top: env(safe-area-inset-top, 0px); 
+            --accent-blue: #2196F3;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body, html { margin: 0; padding: 0; height: 100dvh; background: #f5f5f5; font-family: -apple-system, sans-serif; overflow: hidden; position: fixed; }
+        
+        /* СТИЛИ УВЕДОМЛЕНИЯ (КАК НА ГЛАВНОЙ) */
+        #broadcast_overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+            background: rgba(0,0,0,0.7); display: none; z-index: 99999;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .broadcast-card {
+            background: white; border-radius: 24px; padding: 24px; 
+            width: 100%; max-width: 400px;
+            max-height: 85vh; display: flex; flex-direction: column;
+            text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease-out; box-sizing: border-box;
+        }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .broadcast-card i { font-size: 40px; display: block; margin-bottom: 12px; font-style: normal; flex-shrink: 0; }
+        .broadcast-card h2 { margin: 0 0 12px 0; font-size: 20px; color: #333; flex-shrink: 0; }
+        #broadcast_text { 
+            font-size: 16px; color: #555; line-height: 1.5; margin-bottom: 20px; 
+            white-space: pre-wrap; word-wrap: break-word; overflow-y: auto;
+            text-align: left; padding-right: 5px; -webkit-overflow-scrolling: touch;
+        }
+        .broadcast-btn {
+            background: var(--accent-blue); color: white; border: none; padding: 14px;
+            border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%; flex-shrink: 0;
+        }
+
+        .header { background: #FF9800; color: white; padding: 15px; display: flex; align-items: center; position: fixed; top: 0; left: 0; width: 100%; z-index: 1000; height: calc(60px + var(--safe-top)); padding-top: var(--safe-top); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .back-btn { font-size: 24px; cursor: pointer; margin-right: 15px; padding: 5px; }
+        .container { height: 100dvh; overflow-y: auto; padding: 10px; padding-top: calc(70px + var(--safe-top)); padding-bottom: 20px; -webkit-overflow-scrolling: touch; }
+        .btn-add-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; color: #FF9800; font-weight: bold; font-size: 16px; border: none; width: 100%; }
+        .issue-card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); position: relative; }
+        .issue-title { font-size: 18px; font-weight: bold; color: #000; margin-bottom: 4px; padding-right: 30px; }
+        .issue-meta { font-size: 12px; color: #757575; margin-bottom: 10px; }
+        .issue-desc { font-size: 15px; color: #333; line-height: 1.4; white-space: pre-wrap; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+        .issue-desc.expanded { -webkit-line-clamp: unset; }
+        .read-more { color: #2196F3; font-size: 13px; font-weight: bold; margin-top: 6px; cursor: pointer; }
+        .issue-img { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-top: 12px; display: none; }
+        .btn-delete { position: absolute; top: 16px; right: 16px; color: #F44336; font-size: 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div id="broadcast_overlay">
+        <div class="broadcast-card">
+            <i>📢</i>
+            <h2>Объявление</h2>
+            <div id="broadcast_text"></div>
+            <button class="broadcast-btn" onclick="closeBroadcast()">ПОНЯТНО</button>
+        </div>
+    </div>
+
+    <div class="header">
+        <span class="back-btn" onclick="location.href='index.html'">←</span>
+        <h1 style="font-size: 18px; margin: 0;">Лента проблем</h1>
+    </div>
+
+    <div class="container" id="feedList">
+        <button class="btn-add-card" onclick="location.href='add_issue.html'">➕ Сообщить о проблеме</button>
+        <div id="issuesContainer"></div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
+            authDomain: "villagehub-d4d5e.firebaseapp.com",
+            databaseURL: "https://villagehub-d4d5e-default-rtdb.firebaseio.com",
+            projectId: "villagehub-d4d5e",
+            storageBucket: "villagehub-d4d5e.firebasestorage.app",
+            messagingSenderId: "131056250064",
+            appId: "1:131056250064:web:84c0c67819e9828ec642d5"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const myPhone = localStorage.getItem("USER_PHONE");
+        const myRole = localStorage.getItem("USER_ROLE");
+
+        // --- ЛОГИКА ЗВУКА И РАЗБЛОКИРОВКИ IOS ---
+        let isAudioUnlocked = false;
+        const alertAudio = new Audio('alert.mp3');
+        alertAudio.preload = 'auto';
+
+        function unlockAudio() {
+            if (isAudioUnlocked) return;
+            const silentAudio = new Audio('alert.mp3');
+            silentAudio.muted = true;
+            silentAudio.play().then(() => { silentAudio.pause(); isAudioUnlocked = true; }).catch(() => {});
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+        }
+        document.addEventListener('click', unlockAudio);
+        document.addEventListener('touchstart', unlockAudio);
+
+        function playAlertSound() {
+            if ('mediaSession' in navigator) { navigator.mediaSession.playbackState = 'none'; }
+            alertAudio.play().then(() => {
+                alertAudio.onended = () => { alertAudio.pause(); alertAudio.currentTime = 0; };
+            }).catch(() => {});
+        }
+
+        // --- СЛУШАТЕЛЬ РАССЫЛКИ ---
+        db.ref('SystemAlerts').on('value', (snap) => {
+            const alertData = snap.val();
+            if (alertData && alertData.text) {
+                const lastSeenTime = localStorage.getItem("LAST_ALERT_TIME") || "0";
+                if (alertData.time && alertData.time.toString() !== lastSeenTime) {
+                    if (!isAudioUnlocked) {
+                        const playOnce = () => { playAlertSound(); document.removeEventListener('click', playOnce); };
+                        document.addEventListener('click', playOnce);
+                    } else { playAlertSound(); }
+                    document.getElementById('broadcast_text').innerText = alertData.text;
+                    document.getElementById('broadcast_overlay').style.display = 'flex';
+                }
+            }
+        });
+
+        function closeBroadcast() {
+            db.ref('SystemAlerts/time').once('value').then((snap) => {
+                const currentTime = snap.val();
+                if (currentTime) { localStorage.setItem("LAST_ALERT_TIME", currentTime.toString()); }
+                document.getElementById('broadcast_overlay').style.display = 'none';
+            });
+        }
+
+        // --- ЛОГИКА ОНЛАЙНА ---
+        if (myPhone) {
+            const presenceRef = db.ref('Users/' + myPhone + '/isOnline');
+            const lastSeenRef = db.ref('Users/' + myPhone + '/lastOnline');
+            const connectedRef = db.ref('.info/connected');
+            connectedRef.on('value', (snap) => {
+                if (snap.val() === true) {
+                    presenceRef.set(true);
+                    presenceRef.onDisconnect().set(false);
+                    lastSeenRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
+                }
+            });
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    presenceRef.set(false);
+                    lastSeenRef.set(firebase.database.ServerValue.TIMESTAMP);
+                } else { presenceRef.set(true); }
+            });
+        }
+
+        db.ref('Issues').on('value', snap => {
+            const container = document.getElementById('issuesContainer');
+            container.innerHTML = '';
+            let issues = [];
+            snap.forEach(child => { issues.push(child.val()); });
+            issues.sort((a, b) => b.timestamp - a.timestamp);
+
+            issues.forEach(item => {
+                const isAdmin = (myRole === "АДМИН" || myRole === "admin");
+                const canDelete = (item.phone === myPhone || isAdmin);
+                const card = document.createElement('div');
+                card.className = 'issue-card';
+                const dateStr = new Date(item.timestamp).toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+                card.innerHTML = `
+                    <div class="btn-delete" style="display:${canDelete ? 'block' : 'none'}" onclick="deleteIssue('${item.id}')">🗑</div>
+                    <div class="issue-title">${item.title}</div>
+                    <div class="issue-meta">${item.author} • ${dateStr}</div>
+                    <div class="issue-desc" id="desc_${item.id}">${item.description}</div>
+                    <div class="read-more" id="more_${item.id}" onclick="toggleExpand('${item.id}')">Показать полностью ▼</div>
+                    <img class="issue-img" id="img_${item.id}" src="data:image/jpeg;base64,${item.image}" style="display:${item.image ? 'block' : 'none'}">
+                `;
+                container.appendChild(card);
+            });
+        });
+
+        function toggleExpand(id) {
+            const desc = document.getElementById('desc_' + id);
+            const btn = document.getElementById('more_' + id);
+            if (desc.classList.contains('expanded')) {
+                desc.classList.remove('expanded');
+                btn.innerText = "Показать полностью ▼";
+            } else {
+                desc.classList.add('expanded');
+                btn.innerText = "Свернуть ▲";
+            }
+        }
+
+        function deleteIssue(id) {
+            if (confirm("Удалить эту проблему?")) { db.ref('Issues').child(id).remove(); }
+        }
+    </script>
+</body>
+</html>
