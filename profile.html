@@ -34,7 +34,10 @@
             <button class="change-photo-btn" onclick="document.getElementById('file_input').click()">ИЗМЕНИТЬ ФОТО</button>
             <button class="del-photo-btn" onclick="deletePhoto()">Удалить фото</button>
         </div>
-        <div class="input-group"><label>О себе</label><textarea id="bio_input" maxlength="500" placeholder="Расскажите о себе..."></textarea></div>
+        <div class="input-group">
+            <label>О себе (макс. 500 симв.)</label>
+            <textarea id="bio_input" maxlength="500" placeholder="Расскажите о себе..."></textarea>
+        </div>
         <button id="save_btn" class="save-btn" onclick="saveAll()">СОХРАНИТЬ</button>
     </div>
 
@@ -77,11 +80,17 @@
                 } catch (e) { alert("Ошибка загрузки фото"); btn.disabled = false; return; }
             }
 
-            db.ref('Users/' + myPhone).update({ bio: document.getElementById('bio_input').value.trim(), avatar: currentAvatarUrl })
+            // Дополнительная проверка на 500 символов перед отправкой
+            const bioText = document.getElementById('bio_input').value.trim().substring(0, 500);
+
+            db.ref('Users/' + myPhone).update({ bio: bioText, avatar: currentAvatarUrl })
             .then(() => { 
                 alert("Готово!"); 
-                // ИСПРАВЛЕНО: Прямой переход вместо history.back()
                 window.location.href = 'index.html'; 
+            }).catch(err => {
+                alert("Ошибка сохранения: " + err.message);
+                btn.disabled = false;
+                btn.innerText = "СОХРАНИТЬ";
             });
         }
     </script>
