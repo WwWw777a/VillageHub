@@ -58,7 +58,7 @@
         }
         .pinned-line { width: 4px; height: 24px; background: #2196F3; margin-right: 10px; border-radius: 2px; flex-shrink: 0; }
         
-        /* ИСПРАВЛЕНО: Ограничение закрепленного текста одной строкой */
+        /* Ограничение закрепленного текста одной строкой */
         #tvPinnedText { 
             font-size: 13px; 
             color: #333; 
@@ -129,12 +129,13 @@
         #replyPreview { background: #f0f0f0; padding: 10px 15px; display: none; border-left: 4px solid #F57C00; align-items: center; }
         .input-row { display: flex; align-items: flex-end; padding: 10px 15px; gap: 10px; }
         
-        /* ИСПРАВЛЕННОЕ ПОЛЕ ВВОДА ДЛЯ ПЕРЕНОСА СТРОК */
+        /* Поле ввода сообщения */
         #msgInput { 
             flex-grow: 1; border: 1px solid #eee; background: #f9f9f9; 
             outline: none; font-size: 16px; padding: 10px 15px; 
             border-radius: 20px; resize: none; max-height: 120px; 
             font-family: inherit; line-height: 1.4; overflow-y: auto;
+            -webkit-user-select: text; user-select: text;
         }
 
         #sendBtn { background: none; border: none; cursor: pointer; padding: 5px; display: flex; align-self: flex-end; margin-bottom: 2px; }
@@ -206,7 +207,7 @@
                 <span onclick="cancelReply()" style="cursor:pointer; padding: 5px; font-size: 20px;">✕</span>
             </div>
             <div class="input-row" id="inputRow">
-                <textarea id="msgInput" placeholder="Написать сообщение..." rows="1" oninput="autoResize(this)"></textarea>
+                <textarea id="msgInput" placeholder="Написать сообщение..." rows="1" oninput="autoResize(this)" onpaste="setTimeout(() => autoResize(this), 10)"></textarea>
                 <button id="sendBtn" onclick="handleSendClick()">
                     <svg id="sendIcon" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                 </button>
@@ -243,11 +244,11 @@
     </div>
 
     <script>
-        // АВТОМАТИЧЕСКОЕ РАСШИРЕНИЕ ПОЛЯ ПРИ ПЕЧАТИ
+        // АВТОМАТИЧЕСКОЕ РАСШИРЕНИЕ ПОЛЯ ПРИ ПЕЧАТИ И ВСТАВКЕ
         function autoResize(textarea) {
             textarea.style.height = 'auto';
             textarea.style.height = (textarea.scrollHeight) + 'px';
-            if (textarea.value === "") textarea.style.height = '42px'; // Базовая высота
+            if (textarea.value === "") textarea.style.height = '42px';
         }
 
         function navTo(url) {
@@ -408,7 +409,7 @@
             if(!snap.exists()) { layout.style.display = 'none'; return; }
             layout.style.display = 'flex'; let last = null; snap.forEach(c => last = c.val());
             
-            // ИСПРАВЛЕНО: При отображении берем только первую строку сообщения
+            // Отображение первой строки закрепленного сообщения
             let displayPinnedText = last.text.split('\n')[0];
             document.getElementById('tvPinnedText').innerText = displayPinnedText;
             
