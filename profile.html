@@ -6,6 +6,7 @@
     <title>Мой Профиль</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-storage-compat.js"></script>
     <style>
         :root { --accent-blue: #2196F3; --safe-top: env(safe-area-inset-top, 0px); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -23,6 +24,7 @@
         textarea { width: 100%; border: none; outline: none; font-size: 16px; resize: none; font-family: inherit; color: #333; min-height: 80px; }
         .char-count { font-size: 11px; text-align: right; color: #bbb; margin-top: 5px; }
         .save-btn { background: var(--accent-blue); color: white; border: none; width: 100%; padding: 16px; border-radius: 15px; font-size: 17px; font-weight: bold; box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3); margin-top: 10px; }
+        .save-btn:disabled { background: #ccc; }
     </style>
 </head>
 <body>
@@ -35,20 +37,37 @@
             <button class="del-photo-btn" onclick="deletePhoto()">Удалить фото</button>
         </div>
         <div class="input-group"><label>О себе</label><textarea id="bio_input" maxlength="500" placeholder="Расскажите о себе..."></textarea><div id="char_count" class="char-count">0 / 500</div></div>
-        <button class="save-btn" onclick="saveAll()">СОХРАНИТЬ</button>
+        <button id="save_btn" class="save-btn" onclick="saveAll()">СОХРАНИТЬ</button>
     </div>
 
     <script>
-        const firebaseConfig = { apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y", authDomain: "villagehub-d4d5e.firebaseapp.com", databaseURL: "https://villagehub-d4d5e-default-rtdb.firebaseio.com", projectId: "villagehub-d4d5e", storageBucket: "villagehub-d4d5e.firebasestorage.app", messagingSenderId: "131056250064", appId: "1:131056250064:web:84c0c67819e9828ec642d5" };
+        const firebaseConfig = { 
+            apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y", 
+            authDomain: "villagehub-d4d5e.firebaseapp.com", 
+            databaseURL: "https://villagehub-d4d5e-default-rtdb.firebaseio.com", 
+            projectId: "villagehub-d4d5e", 
+            storageBucket: "villagehub-d4d5e.firebasestorage.app", 
+            messagingSenderId: "131056250064", 
+            appId: "1:131056250064:web:84c0c67819e9828ec642d5" 
+        };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
+        const storage = firebase.storage(); // Хранилище для файлов
         const myPhone = localStorage.getItem("USER_PHONE");
-        let currentAvatar = "";
+        
+        let currentAvatarBlob = null; // Тут будем хранить сжатый файл для загрузки
+        let avatarUrl = ""; // Ссылка на уже загруженную картинку
 
         db.ref('Users/' + myPhone).once('value', snap => {
             const u = snap.val() || {};
-            if(u.avatar) { document.getElementById('my_avatar').src = u.avatar; currentAvatar = u.avatar; }
-            if(u.bio) { document.getElementById('bio_input').value = u.bio; updateCounter(); }
+            if(u.avatar) { 
+                document.getElementById('my_avatar').src = u.avatar; 
+                avatarUrl = u.avatar; 
+            }
+            if(u.bio) { 
+                document.getElementById('bio_input').value = u.bio; 
+                updateCounter(); 
+            }
         });
 
         function updateCounter() { document.getElementById('char_count').innerText = document.getElementById('bio_input').value.length + " / 500"; }
@@ -61,14 +80,18 @@
                     const img = new Image();
                     img.onload = function() {
                         const canvas = document.createElement('canvas');
-                        const MAX_SIZE = 400;
+                        const MAX_SIZE = 200; // Сжимаем до 200px (для аватара за глаза)
                         let w = img.width, h = img.height;
                         if (w > h) { if (w > MAX_SIZE) { h *= MAX_SIZE / w; w = MAX_SIZE; } }
                         else { if (h > MAX_SIZE) { w *= MAX_SIZE / h; h = MAX_SIZE; } }
                         canvas.width = w; canvas.height = h;
                         const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, w, h);
-                        currentAvatar = canvas.toDataURL('image/jpeg', 0.8);
-                        document.getElementById('my_avatar').src = currentAvatar;
+                        
+                        // Превращаем canvas в Blob (нормальный файл картинки)
+                        canvas.toBlob((blob) => {
+                            currentAvatarBlob = blob;
+                            document.getElementById('my_avatar').src = URL.createObjectURL(blob);
+                        }, 'image/jpeg', 0.8);
                     };
                     img.src = e.target.result;
                 };
@@ -78,14 +101,39 @@
 
         function deletePhoto() {
             if(confirm("Удалить аватар?")) {
-                currentAvatar = ""; // Стираем
+                currentAvatarBlob = null;
+                avatarUrl = ""; 
                 document.getElementById('my_avatar').src = 'https://ui-avatars.com/api/?name=User';
             }
         }
 
-        function saveAll() {
-            db.ref('Users/' + myPhone).update({ bio: document.getElementById('bio_input').value.trim(), avatar: currentAvatar })
-            .then(() => { alert("Готово!"); history.back(); });
+        async function saveAll() {
+            const btn = document.getElementById('save_btn');
+            btn.disabled = true;
+            btn.innerText = "ЗАГРУЗКА...";
+
+            try {
+                // 1. Если выбрано новое фото, загружаем его в Storage
+                if (currentAvatarBlob) {
+                    const storageRef = storage.ref('avatars/' + myPhone + '.jpg');
+                    const uploadTask = await storageRef.put(currentAvatarBlob);
+                    avatarUrl = await uploadTask.ref.getDownloadURL();
+                }
+
+                // 2. Сохраняем ссылку и био в Realtime Database
+                await db.ref('Users/' + myPhone).update({ 
+                    bio: document.getElementById('bio_input').value.trim(), 
+                    avatar: avatarUrl 
+                });
+
+                alert("Сохранено!");
+                history.back();
+            } catch (e) {
+                alert("Ошибка при сохранении: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "СОХРАНИТЬ";
+            }
         }
     </script>
 </body>
