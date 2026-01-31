@@ -217,6 +217,26 @@
         const myRole = (localStorage.getItem("USER_ROLE") || "Житель");
         const iAmPrivileged = (myRole === "АДМИН" || myRole === "admin" || myRole === "МОДЕРАТОР");
 
+        // --- ЛОГИКА ОНЛАЙНА ---
+        if (myPhone) {
+            const presenceRef = db.ref('Users/' + myPhone + '/isOnline');
+            const lastSeenRef = db.ref('Users/' + myPhone + '/lastOnline');
+            const connectedRef = db.ref('.info/connected');
+            connectedRef.on('value', (snap) => {
+                if (snap.val() === true) {
+                    presenceRef.set(true);
+                    presenceRef.onDisconnect().set(false);
+                    lastSeenRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
+                }
+            });
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    presenceRef.set(false);
+                    lastSeenRef.set(firebase.database.ServerValue.TIMESTAMP);
+                } else { presenceRef.set(true); }
+            });
+        }
+
         let usersCache = {};
         let lastReadTimestamp = parseInt(localStorage.getItem("CHAT_LAST_READ") || "0");
         let selectedMsg = null, replyingTo = null, editingMsgId = null, lastPinnedId = "", isFirstLoad = true, unreadMarkerShown = false;
@@ -286,41 +306,18 @@
             }
         }
 
-        // --- ИСПРАВЛЕННЫЕ ФУНКЦИИ ОТПРАВКИ ---
-        function handleSendClick() { 
-            if (editingMsgId) saveEdit(); 
-            else sendChatMessage(); 
-        }
+        function handleSendClick() { if (editingMsgId) saveEdit(); else sendChatMessage(); }
 
         function sendChatMessage() {
-            const input = document.getElementById('msgInput'); 
-            const text = input.value.trim();
+            const input = document.getElementById('msgInput'); const text = input.value.trim();
             if(!text) return;
             const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             db.ref('Chats').push({ 
-                author: myName, 
-                role: myRole, 
-                text: text, 
-                time: timeStr, 
-                senderId: myPhone, 
-                timestamp: Date.now(), 
-                replyToText: replyingTo ? replyingTo.text : "", 
-                replyToAuthor: replyingTo ? replyingTo.author : "" 
+                author: myName, role: myRole, text: text, time: timeStr, senderId: myPhone, timestamp: Date.now(), 
+                replyToText: replyingTo ? replyingTo.text : "", replyToAuthor: replyingTo ? replyingTo.author : "" 
             }).then(() => {
-                input.value = ''; 
-                cancelReply(); 
-                scrollToBottom();
+                input.value = ''; cancelReply(); scrollToBottom();
             });
-        }
-
-        function saveEdit() {
-            const input = document.getElementById('msgInput');
-            if(input.value.trim() && editingMsgId) {
-                db.ref('Chats/' + editingMsgId).update({ text: input.value.trim() });
-            }
-            editingMsgId = null; 
-            input.value = ''; 
-            document.getElementById('sendIcon').style.fill = "#F57C00";
         }
 
         function updateReadStatus() { db.ref('Chats').limitToLast(1).once('value', s => { s.forEach(c => localStorage.setItem("CHAT_LAST_READ", c.val().timestamp)); }); }
@@ -337,7 +334,7 @@
 
         function openActions(msg, id) {
             selectedMsg = {...msg, id: id}; document.getElementById('overlay').style.display = 'block'; document.getElementById('actionSheet').style.display = 'flex';
-            backToMainActions(); const isMine = msg.senderId === myPhone;
+            const isMine = msg.senderId === myPhone;
             const targetRole = document.getElementById("msg_" + id).getAttribute('data-actual-role') || "Житель";
             document.getElementById('editBtn').style.display = isMine ? 'block' : 'none';
             document.getElementById('adminPinBtn').style.display = iAmPrivileged ? 'block' : 'none';
@@ -366,6 +363,7 @@
         function pinMsg() { db.ref(`PinnedMessages`).remove().then(() => { db.ref(`PinnedMessages/${selectedMsg.id}`).set({ text: selectedMsg.text, author: selectedMsg.author, originalId: selectedMsg.id, pinnedTime: Date.now() }); }); closeActions(); }
         function unpinMsg() { db.ref(`PinnedMessages`).remove(); closeActions(); }
         function prepareEdit() { editingMsgId = selectedMsg.id; document.getElementById('msgInput').value = selectedMsg.text; document.getElementById('sendIcon').style.fill = "#4CAF50"; closeActions(); }
+        function saveEdit() { db.ref('Chats/' + editingMsgId).update({ text: document.getElementById('msgInput').value.trim() }); editingMsgId = null; document.getElementById('msgInput').value = ''; document.getElementById('sendIcon').style.fill = "#F57C00"; }
     </script>
 </body>
 </html>
