@@ -26,10 +26,7 @@
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="back-btn" onclick="history.back()">←</div>
-        <h1>Настройки профиля</h1>
-    </div>
+    <div class="header"><div class="back-btn" onclick="history.back()">←</div><h1>Настройки профиля</h1></div>
     <div class="content">
         <div class="avatar-section">
             <img id="my_avatar" src="https://ui-avatars.com/api/?name=User" alt="Avatar">
@@ -37,11 +34,7 @@
             <button class="change-photo-btn" onclick="document.getElementById('file_input').click()">ИЗМЕНИТЬ ФОТО</button>
             <button class="del-photo-btn" onclick="deletePhoto()">Удалить фото</button>
         </div>
-        <div class="input-group">
-            <label>О себе</label>
-            <textarea id="bio_input" maxlength="500" placeholder="Расскажите что-нибудь о себе..."></textarea>
-            <div id="char_count" class="char-count">0 / 500</div>
-        </div>
+        <div class="input-group"><label>О себе</label><textarea id="bio_input" maxlength="500" placeholder="Расскажите о себе..."></textarea><div id="char_count" class="char-count">0 / 500</div></div>
         <button class="save-btn" onclick="saveAll()">СОХРАНИТЬ</button>
     </div>
 
@@ -50,24 +43,16 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const myPhone = localStorage.getItem("USER_PHONE");
-
         let currentAvatar = "";
 
         db.ref('Users/' + myPhone).once('value', snap => {
             const u = snap.val() || {};
-            if(u.avatar) {
-                document.getElementById('my_avatar').src = u.avatar;
-                currentAvatar = u.avatar;
-            }
-            if(u.bio) {
-                document.getElementById('bio_input').value = u.bio;
-                updateCounter();
-            }
+            if(u.avatar) { document.getElementById('my_avatar').src = u.avatar; currentAvatar = u.avatar; }
+            if(u.bio) { document.getElementById('bio_input').value = u.bio; updateCounter(); }
         });
 
-        const bioInput = document.getElementById('bio_input');
-        bioInput.oninput = updateCounter;
-        function updateCounter() { document.getElementById('char_count').innerText = bioInput.value.length + " / 500"; }
+        function updateCounter() { document.getElementById('char_count').innerText = document.getElementById('bio_input').value.length + " / 500"; }
+        document.getElementById('bio_input').oninput = updateCounter;
 
         function processFile(input) {
             if (input.files && input.files[0]) {
@@ -93,19 +78,14 @@
 
         function deletePhoto() {
             if(confirm("Удалить аватар?")) {
-                currentAvatar = ""; // Очищаем переменную
+                currentAvatar = ""; // Стираем
                 document.getElementById('my_avatar').src = 'https://ui-avatars.com/api/?name=User';
             }
         }
 
         function saveAll() {
-            const bio = bioInput.value.trim();
-            const updates = { bio: bio, avatar: currentAvatar }; // Записываем либо Base64, либо пустую строку
-            
-            db.ref('Users/' + myPhone).update(updates).then(() => {
-                alert("Данные сохранены!");
-                history.back();
-            });
+            db.ref('Users/' + myPhone).update({ bio: document.getElementById('bio_input').value.trim(), avatar: currentAvatar })
+            .then(() => { alert("Готово!"); history.back(); });
         }
     </script>
 </body>
