@@ -18,7 +18,7 @@
         }
         body { font-family: -apple-system, sans-serif; background: white; margin: 0; padding: 0; overflow-x: hidden; padding-top: var(--safe-top); -webkit-text-size-adjust: 100%; }
         
-        /* СТИЛИ УВЕДОМЛЕНИЯ (КАК НА ГЛАВНОЙ) */
+        /* СТИЛИ УВЕДОМЛЕНИЯ */
         #broadcast_overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
             background: rgba(0,0,0,0.7); display: none; z-index: 99999;
@@ -58,7 +58,11 @@
         .content { padding: 20px; }
         .price { font-size: 24px; font-weight: bold; color: #4CAF50; margin-bottom: 10px; }
         .title { font-size: 20px; font-weight: bold; margin-bottom: 5px; color: #000; }
-        .meta { font-size: 13px; color: #888; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+        
+        /* СТИЛИ АВАТАРА ПРОДАВЦА */
+        .meta { font-size: 13px; color: #888; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; }
+        .seller-avatar { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; background: #eee; cursor: pointer; border: 1px solid #ddd; }
+        
         .description { font-size: 15px; line-height: 1.5; color: #444; margin-bottom: 120px; white-space: pre-wrap; }
         
         .fs-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 2000; flex-direction: column; justify-content: center; }
@@ -83,6 +87,18 @@
         .btn { border: none; padding: 14px; border-radius: 25px; color: white; font-weight: bold; font-size: 16px; cursor: pointer; text-align: center; text-decoration: none; }
         .btn-call { background-color: #4CAF50; }
         .btn-chat { background-color: #2196F3; }
+
+        /* СТИЛИ КАРТОЧКИ ПРОФИЛЯ */
+        #user_profile_overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0,0,0,0.9); display: none; z-index: 30000; align-items: center; justify-content: center; padding: 20px; }
+        .profile-card { background: white; border-radius: 30px; padding: 30px; width: 100%; max-width: 340px; text-align: center; }
+        #full_avatar { width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid var(--accent-blue); margin-bottom: 15px; cursor: pointer; }
+        .profile-name { font-size: 20px; font-weight: bold; margin-bottom: 5px; color: #000; }
+        .profile-bio { font-size: 14px; color: #666; margin: 10px 0 20px; background: #f9f9f9; padding: 10px; border-radius: 10px; text-align: left; max-height: 150px; overflow-y: auto; }
+
+        /* ПРОСМОТР ФОТО НА ВЕСЬ ЭКРАН */
+        #fullscreen_viewer { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: black; display: none; z-index: 40000; align-items: center; justify-content: center; }
+        #fullscreen_img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .close-fullscreen { position: absolute; top: calc(20px + var(--safe-top)); right: 20px; color: white; font-size: 35px; cursor: pointer; z-index: 40001; }
     </style>
 </head>
 <body>
@@ -92,6 +108,21 @@
             <h2>Объявление</h2>
             <div id="broadcast_text"></div>
             <button class="broadcast-btn" onclick="closeBroadcast()">ПОНЯТНО</button>
+        </div>
+    </div>
+
+    <div id="fullscreen_viewer">
+        <span class="close-fullscreen" onclick="closeFullscreen()">✕</span>
+        <img id="fullscreen_img" src="" alt="">
+    </div>
+
+    <div id="user_profile_overlay" onclick="this.style.display='none'">
+        <div class="profile-card" onclick="event.stopPropagation()">
+            <img id="full_avatar" src="" alt="" onclick="openFullscreen()">
+            <div id="profile_name" class="profile-name"></div>
+            <div id="profile_phone" style="color:#888; font-size:14px;"></div>
+            <div id="profile_bio" class="profile-bio"></div>
+            <button class="broadcast-btn" onclick="document.getElementById('user_profile_overlay').style.display='none'">ЗАКРЫТЬ</button>
         </div>
     </div>
 
@@ -134,6 +165,30 @@
         const currentUserRole = localStorage.getItem("USER_ROLE");
         const myPhone = localStorage.getItem("USER_PHONE");
         let sellerPhone = "";
+
+        // --- ФУНКЦИИ ОТКРЫТИЯ ПРОФИЛЯ И ФОТО ---
+        function openUserProfile(phone) {
+            database.ref('Users/' + phone).once('value', snap => {
+                const u = snap.val() || {};
+                const avSrc = u.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || "?");
+                document.getElementById('full_avatar').src = avSrc;
+                document.getElementById('profile_name').innerText = u.name || "Пользователь";
+                document.getElementById('profile_phone').innerText = phone;
+                document.getElementById('profile_bio').innerText = u.bio || "О себе ничего не указано";
+                document.getElementById('user_profile_overlay').style.display = 'flex';
+            });
+        }
+
+        function openFullscreen() {
+            const src = document.getElementById('full_avatar').src;
+            if (src.includes('ui-avatars.com')) return;
+            document.getElementById('fullscreen_img').src = src;
+            document.getElementById('fullscreen_viewer').style.display = 'flex';
+        }
+
+        function closeFullscreen() {
+            document.getElementById('fullscreen_viewer').style.display = 'none';
+        }
 
         // --- ЛОГИКА ЗВУКА И РАЗБЛОКИРОВКИ IOS ---
         let isAudioUnlocked = false;
@@ -211,10 +266,12 @@
             database.ref('Ads/' + adId).once('value').then((snap) => {
                 const ad = snap.val(); if(!ad) return;
                 const authorName = ad.author || "Житель"; sellerPhone = ad.phone;
+                
                 if (authorName === currentUserName || currentUserRole === "АДМИН") {
                     const eBtn = document.getElementById('editBtn'); eBtn.style.display = 'flex';
                     eBtn.onclick = () => navTo(`add_ad.html?editId=${adId}`);
                 }
+                
                 const slider = document.getElementById('slider');
                 const fsContainer = document.getElementById('fsContainer');
                 const dots = document.getElementById('dots');
@@ -231,9 +288,20 @@
                         document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === page));
                     };
                 }
+                
                 document.getElementById('adPrice').innerText = (ad.price || "0") + " ₽";
                 document.getElementById('adTitle').innerText = ad.title || "Без названия";
-                document.getElementById('adMeta').innerText = "Продавец: " + authorName + " • " + new Date(ad.timestamp || Date.now()).toLocaleString();
+                
+                // Подгружаем аватар продавца в блок мета
+                const metaBlock = document.getElementById('adMeta');
+                database.ref('Users/' + sellerPhone + '/avatar').once('value', sSnap => {
+                    const avUrl = sSnap.val() || `https://ui-avatars.com/api/?name=${encodeURIComponent(authorName)}`;
+                    metaBlock.innerHTML = `
+                        <img class="seller-avatar" src="${avUrl}" onclick="openUserProfile('${sellerPhone}')">
+                        <div>Продавец: ${authorName} <br> <span style="font-size:11px;">${new Date(ad.timestamp || Date.now()).toLocaleString()}</span></div>
+                    `;
+                });
+
                 document.getElementById('adDesc').innerText = ad.description || "";
                 if (ad.phone) document.getElementById('callBtn').onclick = () => { 
                     window.location.href = "tel:" + ad.phone; 
@@ -242,8 +310,6 @@
         }
         function openChat() {
             if(!sellerPhone || !myPhone) return;
-            const sDigits = sellerPhone.replace(/\D/g, ''), mDigits = myPhone.replace(/\D/g, '');
-            const chatId = BigInt(mDigits) < BigInt(sDigits) ? `${myPhone}_${sellerPhone}` : `${sellerPhone}_${myPhone}`;
             navTo(`private_chat.html?otherPhone=${encodeURIComponent(sellerPhone)}`);
         }
         function openFS(idx) {

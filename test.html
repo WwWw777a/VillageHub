@@ -3224,3 +3224,269 @@
     </script>
 </body>
 </html>
+
+
+
+
+
+
+детали обьявления 
+
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>VillageHub</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="VillageHub">
+    <link rel="apple-touch-icon" href="icon.png">
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <style>
+        :root { 
+            --safe-top: env(safe-area-inset-top, 0px); 
+            --accent-blue: #2196F3;
+        }
+        body { font-family: -apple-system, sans-serif; background: white; margin: 0; padding: 0; overflow-x: hidden; padding-top: var(--safe-top); -webkit-text-size-adjust: 100%; }
+        
+        /* СТИЛИ УВЕДОМЛЕНИЯ (КАК НА ГЛАВНОЙ) */
+        #broadcast_overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+            background: rgba(0,0,0,0.7); display: none; z-index: 99999;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .broadcast-card {
+            background: white; border-radius: 24px; padding: 24px; 
+            width: 100%; max-width: 400px;
+            max-height: 85vh; display: flex; flex-direction: column;
+            text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease-out; box-sizing: border-box;
+        }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .broadcast-card i { font-size: 40px; display: block; margin-bottom: 12px; font-style: normal; flex-shrink: 0; }
+        .broadcast-card h2 { margin: 0 0 12px 0; font-size: 20px; color: #333; flex-shrink: 0; }
+        #broadcast_text { 
+            font-size: 16px; color: #555; line-height: 1.5; margin-bottom: 20px; 
+            white-space: pre-wrap; word-wrap: break-word; overflow-y: auto;
+            text-align: left; padding-right: 5px; -webkit-overflow-scrolling: touch;
+        }
+        .broadcast-btn {
+            background: var(--accent-blue); color: white; border: none; padding: 14px;
+            border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%; flex-shrink: 0;
+        }
+
+        .back-nav, .edit-nav { position: absolute; top: calc(15px + var(--safe-top)); width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 100; cursor: pointer; background: rgba(0,0,0,0.4); color: white; }
+        .back-nav { left: 15px; font-size: 20px; }
+        .edit-nav { right: 15px; font-size: 18px; display: none; }
+        .slider-wrapper { width: 100%; position: relative; background: #eee; aspect-ratio: 4/3; overflow: hidden; }
+        .slider-container { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; height: 100%; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
+        .slider-container::-webkit-scrollbar { display: none; }
+        .slide { flex: 0 0 100%; scroll-snap-align: start; height: 100%; display: flex; align-items: center; justify-content: center; }
+        .slide img { width: 100%; height: 100%; object-fit: cover; }
+        .dots { position: absolute; bottom: 10px; width: 100%; display: flex; justify-content: center; gap: 6px; pointer-events: none; }
+        .dot { width: 7px; height: 7px; background: rgba(255,255,255,0.4); border-radius: 50%; transition: 0.3s; }
+        .dot.active { background: white; transform: scale(1.2); }
+        .content { padding: 20px; }
+        .price { font-size: 24px; font-weight: bold; color: #4CAF50; margin-bottom: 10px; }
+        .title { font-size: 20px; font-weight: bold; margin-bottom: 5px; color: #000; }
+        .meta { font-size: 13px; color: #888; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+        .description { font-size: 15px; line-height: 1.5; color: #444; margin-bottom: 120px; white-space: pre-wrap; }
+        
+        .fs-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 2000; flex-direction: column; justify-content: center; }
+        .fs-close { 
+            position: absolute; 
+            top: calc(20px + var(--safe-top)); 
+            right: 20px; 
+            color: white; 
+            font-size: 40px; 
+            z-index: 2100; 
+            cursor: pointer; 
+            width: 50px; height: 50px; 
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.1); border-radius: 50%;
+        }
+        .fs-container { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; height: 100%; }
+        .fs-container::-webkit-scrollbar { display: none; }
+        .fs-slide { flex: 0 0 100%; scroll-snap-align: start; display: flex; align-items: center; justify-content: center; }
+        .fs-slide img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        
+        .footer-btns { position: fixed; bottom: 0; left: 0; width: 100%; background: white; padding: 15px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); padding-bottom: max(15px, env(safe-area-inset-bottom)); }
+        .btn { border: none; padding: 14px; border-radius: 25px; color: white; font-weight: bold; font-size: 16px; cursor: pointer; text-align: center; text-decoration: none; }
+        .btn-call { background-color: #4CAF50; }
+        .btn-chat { background-color: #2196F3; }
+    </style>
+</head>
+<body>
+    <div id="broadcast_overlay">
+        <div class="broadcast-card">
+            <i>📢</i>
+            <h2>Объявление</h2>
+            <div id="broadcast_text"></div>
+            <button class="broadcast-btn" onclick="closeBroadcast()">ПОНЯТНО</button>
+        </div>
+    </div>
+
+    <div class="back-nav" onclick="navTo('board.html')">←</div>
+    <div id="editBtn" class="edit-nav">✎</div>
+    <div class="slider-wrapper">
+        <div class="slider-container" id="slider"></div>
+        <div class="dots" id="dots"></div>
+    </div>
+    <div class="content">
+        <div id="adPrice" class="price"></div>
+        <div id="adTitle" class="title"></div>
+        <div id="adMeta" class="meta"></div>
+        <div id="adDesc" class="description"></div>
+    </div>
+    <div id="fsGallery" class="fs-overlay">
+        <div class="fs-close" onclick="closeFS()">×</div>
+        <div class="fs-container" id="fsContainer"></div>
+    </div>
+    <div class="footer-btns">
+        <a id="callBtn" class="btn btn-call" href="javascript:void(0)">Позвонить продавцу</a>
+        <button id="chatBtn" class="btn btn-chat" onclick="openChat()">Написать сообщение</button>
+    </div>
+    <script>
+        function navTo(url) { if (window.navigator.standalone) { window.location.replace(url); } else { window.location.href = url; } }
+        const firebaseConfig = {
+            apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
+            authDomain: "villagehub-d4d5e.firebaseapp.com",
+            databaseURL: "https://villagehub-d4d5e-default-rtdb.firebaseio.com",
+            projectId: "villagehub-d4d5e",
+            storageBucket: "villagehub-d4d5e.firebasestorage.app",
+            messagingSenderId: "131056250064",
+            appId: "1:131056250064:web:84c0c67819e9828ec642d5"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const urlParams = new URLSearchParams(window.location.search);
+        const adId = urlParams.get('id');
+        const currentUserName = localStorage.getItem("USER_NAME");
+        const currentUserRole = localStorage.getItem("USER_ROLE");
+        const myPhone = localStorage.getItem("USER_PHONE");
+        let sellerPhone = "";
+
+        // --- ЛОГИКА ЗВУКА И РАЗБЛОКИРОВКИ IOS ---
+        let isAudioUnlocked = false;
+        const alertAudio = new Audio('alert.mp3');
+        alertAudio.preload = 'auto';
+
+        function unlockAudio() {
+            if (isAudioUnlocked) return;
+            const silentAudio = new Audio('alert.mp3');
+            silentAudio.muted = true;
+            silentAudio.play().then(() => {
+                silentAudio.pause();
+                isAudioUnlocked = true;
+            }).catch(() => {});
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+        }
+        document.addEventListener('click', unlockAudio);
+        document.addEventListener('touchstart', unlockAudio);
+
+        function playAlertSound() {
+            if ('mediaSession' in navigator) { navigator.mediaSession.playbackState = 'none'; }
+            alertAudio.play().then(() => {
+                alertAudio.onended = () => { alertAudio.pause(); alertAudio.currentTime = 0; };
+            }).catch(() => {});
+        }
+
+        // --- СЛУШАТЕЛЬ РАССЫЛКИ ---
+        database.ref('SystemAlerts').on('value', (snap) => {
+            const alertData = snap.val();
+            if (alertData && alertData.text) {
+                const lastSeenTime = localStorage.getItem("LAST_ALERT_TIME") || "0";
+                if (alertData.time && alertData.time.toString() !== lastSeenTime) {
+                    if (!isAudioUnlocked) {
+                        const playOnce = () => { playAlertSound(); document.removeEventListener('click', playOnce); };
+                        document.addEventListener('click', playOnce);
+                    } else { playAlertSound(); }
+                    document.getElementById('broadcast_text').innerText = alertData.text;
+                    document.getElementById('broadcast_overlay').style.display = 'flex';
+                }
+            }
+        });
+
+        function closeBroadcast() {
+            database.ref('SystemAlerts/time').once('value').then((snap) => {
+                const currentTime = snap.val();
+                if (currentTime) { localStorage.setItem("LAST_ALERT_TIME", currentTime.toString()); }
+                document.getElementById('broadcast_overlay').style.display = 'none';
+            });
+        }
+
+        // --- ЛОГИКА ОНЛАЙНА ---
+        if (myPhone) {
+            const presenceRef = database.ref('Users/' + myPhone + '/isOnline');
+            const lastSeenRef = database.ref('Users/' + myPhone + '/lastOnline');
+            const connectedRef = database.ref('.info/connected');
+            connectedRef.on('value', (snap) => {
+                if (snap.val() === true) {
+                    presenceRef.set(true);
+                    presenceRef.onDisconnect().set(false);
+                    lastSeenRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
+                }
+            });
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    presenceRef.set(false);
+                    lastSeenRef.set(firebase.database.ServerValue.TIMESTAMP);
+                } else {
+                    presenceRef.set(true);
+                }
+            });
+        }
+
+        if(adId) {
+            database.ref('Ads/' + adId).once('value').then((snap) => {
+                const ad = snap.val(); if(!ad) return;
+                const authorName = ad.author || "Житель"; sellerPhone = ad.phone;
+                if (authorName === currentUserName || currentUserRole === "АДМИН") {
+                    const eBtn = document.getElementById('editBtn'); eBtn.style.display = 'flex';
+                    eBtn.onclick = () => navTo(`add_ad.html?editId=${adId}`);
+                }
+                const slider = document.getElementById('slider');
+                const fsContainer = document.getElementById('fsContainer');
+                const dots = document.getElementById('dots');
+                let photos = ad.imageUrls || [];
+                if (photos.length > 0) {
+                    photos.forEach((data, idx) => {
+                        let src = "data:image/jpeg;base64," + data;
+                        slider.innerHTML += `<div class="slide"><img src="${src}" onclick="openFS(${idx})"></div>`;
+                        fsContainer.innerHTML += `<div class="fs-slide"><img src="${src}"></div>`;
+                        if (photos.length > 1) dots.innerHTML += `<div class="dot ${idx === 0 ? 'active' : ''}"></div>`;
+                    });
+                    slider.onscroll = () => {
+                        const page = Math.round(slider.scrollLeft / slider.offsetWidth);
+                        document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === page));
+                    };
+                }
+                document.getElementById('adPrice').innerText = (ad.price || "0") + " ₽";
+                document.getElementById('adTitle').innerText = ad.title || "Без названия";
+                document.getElementById('adMeta').innerText = "Продавец: " + authorName + " • " + new Date(ad.timestamp || Date.now()).toLocaleString();
+                document.getElementById('adDesc').innerText = ad.description || "";
+                if (ad.phone) document.getElementById('callBtn').onclick = () => { 
+                    window.location.href = "tel:" + ad.phone; 
+                };
+            });
+        }
+        function openChat() {
+            if(!sellerPhone || !myPhone) return;
+            const sDigits = sellerPhone.replace(/\D/g, ''), mDigits = myPhone.replace(/\D/g, '');
+            const chatId = BigInt(mDigits) < BigInt(sDigits) ? `${myPhone}_${sellerPhone}` : `${sellerPhone}_${myPhone}`;
+            navTo(`private_chat.html?otherPhone=${encodeURIComponent(sellerPhone)}`);
+        }
+        function openFS(idx) {
+            document.getElementById('fsGallery').style.display = 'flex';
+            const container = document.getElementById('fsContainer');
+            container.scrollLeft = container.offsetWidth * idx;
+        }
+        function closeFS() { document.getElementById('fsGallery').style.display = 'none'; }
+    </script>
+</body>
+</html>
