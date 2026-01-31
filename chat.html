@@ -129,13 +129,14 @@
         #replyPreview { background: #f0f0f0; padding: 10px 15px; display: none; border-left: 4px solid #F57C00; align-items: center; }
         .input-row { display: flex; align-items: flex-end; padding: 10px 15px; gap: 10px; }
         
-        /* Поле ввода сообщения */
+        /* Исправленное поле ввода сообщения */
         #msgInput { 
             flex-grow: 1; border: 1px solid #eee; background: #f9f9f9; 
             outline: none; font-size: 16px; padding: 10px 15px; 
             border-radius: 20px; resize: none; max-height: 120px; 
             font-family: inherit; line-height: 1.4; overflow-y: auto;
-            -webkit-user-select: text; user-select: text;
+            /* Убраны ограничения на выделение для работы вставки */
+            -webkit-appearance: none;
         }
 
         #sendBtn { background: none; border: none; cursor: pointer; padding: 5px; display: flex; align-self: flex-end; margin-bottom: 2px; }
@@ -207,7 +208,7 @@
                 <span onclick="cancelReply()" style="cursor:pointer; padding: 5px; font-size: 20px;">✕</span>
             </div>
             <div class="input-row" id="inputRow">
-                <textarea id="msgInput" placeholder="Написать сообщение..." rows="1" oninput="autoResize(this)" onpaste="setTimeout(() => autoResize(this), 10)"></textarea>
+                <textarea id="msgInput" placeholder="Написать сообщение..." rows="1" inputmode="text" oninput="autoResize(this)" onpaste="handlePaste(this, event)"></textarea>
                 <button id="sendBtn" onclick="handleSendClick()">
                     <svg id="sendIcon" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                 </button>
@@ -244,6 +245,12 @@
     </div>
 
     <script>
+        // Функция для корректной вставки текста на мобильных устройствах
+        function handlePaste(textarea, e) {
+            // Даем браузеру время вставить текст, затем меняем размер
+            setTimeout(() => autoResize(textarea), 0);
+        }
+
         // АВТОМАТИЧЕСКОЕ РАСШИРЕНИЕ ПОЛЯ ПРИ ПЕЧАТИ И ВСТАВКЕ
         function autoResize(textarea) {
             textarea.style.height = 'auto';
