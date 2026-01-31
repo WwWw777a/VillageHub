@@ -58,16 +58,11 @@
         }
         .pinned-line { width: 4px; height: 24px; background: #2196F3; margin-right: 10px; border-radius: 2px; flex-shrink: 0; }
         
-        /* Ограничение закрепленного текста одной строкой */
+        /* ИСПРАВЛЕНО: Стили для одной строки в закрепе */
         #tvPinnedText { 
-            font-size: 13px; 
-            color: #333; 
-            white-space: nowrap; 
-            overflow: hidden; 
-            text-overflow: ellipsis; 
-            display: block; 
-            width: 100%;
-            max-height: 1.2em;
+            font-size: 13px; color: #333; 
+            white-space: nowrap; overflow: hidden; 
+            text-overflow: ellipsis; display: block; width: 100%; 
         }
 
         #chatMessages { 
@@ -129,14 +124,12 @@
         #replyPreview { background: #f0f0f0; padding: 10px 15px; display: none; border-left: 4px solid #F57C00; align-items: center; }
         .input-row { display: flex; align-items: flex-end; padding: 10px 15px; gap: 10px; }
         
-        /* Исправленное поле ввода сообщения */
+        /* ИСПРАВЛЕННОЕ ПОЛЕ ВВОДА ДЛЯ ПЕРЕНОСА СТРОК */
         #msgInput { 
             flex-grow: 1; border: 1px solid #eee; background: #f9f9f9; 
             outline: none; font-size: 16px; padding: 10px 15px; 
             border-radius: 20px; resize: none; max-height: 120px; 
             font-family: inherit; line-height: 1.4; overflow-y: auto;
-            /* Убраны ограничения на выделение для работы вставки */
-            -webkit-appearance: none;
         }
 
         #sendBtn { background: none; border: none; cursor: pointer; padding: 5px; display: flex; align-self: flex-end; margin-bottom: 2px; }
@@ -190,7 +183,7 @@
         <div id="pinnedLayout">
             <div class="pinned-line"></div>
             <div class="pinned-info">
-                <div class="pinned-title" style="font-size: 11px; font-weight: bold; color: #2196F3;">Закрепленное сообщение</div>
+                <div class="pinned-title">Закрепленное сообщение</div>
                 <div id="tvPinnedText">...</div>
             </div>
         </div>
@@ -208,7 +201,7 @@
                 <span onclick="cancelReply()" style="cursor:pointer; padding: 5px; font-size: 20px;">✕</span>
             </div>
             <div class="input-row" id="inputRow">
-                <textarea id="msgInput" placeholder="Написать сообщение..." rows="1" inputmode="text" oninput="autoResize(this)" onpaste="handlePaste(this, event)"></textarea>
+                <textarea id="msgInput" placeholder="Написать сообщение..." rows="1" oninput="autoResize(this)"></textarea>
                 <button id="sendBtn" onclick="handleSendClick()">
                     <svg id="sendIcon" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                 </button>
@@ -245,17 +238,11 @@
     </div>
 
     <script>
-        // Функция для корректной вставки текста на мобильных устройствах
-        function handlePaste(textarea, e) {
-            // Даем браузеру время вставить текст, затем меняем размер
-            setTimeout(() => autoResize(textarea), 0);
-        }
-
-        // АВТОМАТИЧЕСКОЕ РАСШИРЕНИЕ ПОЛЯ ПРИ ПЕЧАТИ И ВСТАВКЕ
+        // АВТОМАТИЧЕСКОЕ РАСШИРЕНИЕ ПОЛЯ ПРИ ПЕЧАТИ
         function autoResize(textarea) {
             textarea.style.height = 'auto';
             textarea.style.height = (textarea.scrollHeight) + 'px';
-            if (textarea.value === "") textarea.style.height = '42px';
+            if (textarea.value === "") textarea.style.height = '42px'; // Базовая высота
         }
 
         function navTo(url) {
@@ -363,6 +350,7 @@
             let replyHtml = msg.replyToText ? `<div class="reply-box"><b>${msg.replyToAuthor}</b><br>${msg.replyToText}</div>` : '';
             const tempAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.author);
 
+            // ИСПОЛЬЗУЕМ <pre> ИЛИ white-space ПРЯМО В ТЕКСТЕ ДЛЯ ОТОБРАЖЕНИЯ ПЕРЕНОСОВ
             div.innerHTML = `
                 <img class="user-avatar" id="av_${id}" src="${tempAvatar}" onclick="openUserProfile('${msg.senderId}')">
                 <div class="msg-container" id="msg_${id}" onclick="openActions(this.dataset.msgObject, '${id}')">
@@ -416,9 +404,9 @@
             if(!snap.exists()) { layout.style.display = 'none'; return; }
             layout.style.display = 'flex'; let last = null; snap.forEach(c => last = c.val());
             
-            // Отображение первой строки закрепленного сообщения
-            let displayPinnedText = last.text.split('\n')[0];
-            document.getElementById('tvPinnedText').innerText = displayPinnedText;
+            // ИСПРАВЛЕНО: При отображении берем только первую строку сообщения
+            let firstLine = last.text.split('\n')[0];
+            document.getElementById('tvPinnedText').innerText = firstLine;
             
             layout.onclick = () => { const t = document.getElementById("msg_" + last.originalId); if (t) { t.scrollIntoView({ behavior: "smooth", block: "center" }); t.classList.add('highlight-msg'); setTimeout(() => t.classList.remove('highlight-msg'), 1500); } };
         });
