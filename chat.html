@@ -4,82 +4,209 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>VillageHub</title>
+
     <link rel="manifest" href="manifest.json">
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="VillageHub">
     <link rel="apple-touch-icon" href="icon.png">
+
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        :root { --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px); --accent-blue: #2196F3; }
-        body, html { margin: 0; padding: 0; height: 100dvh; width: 100vw; background: #f5f5f5; font-family: -apple-system, sans-serif; overflow: hidden; position: fixed; -webkit-text-size-adjust: 100%; }
-        #broadcast_overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0,0,0,0.7); display: none; z-index: 99999; align-items: center; justify-content: center; padding: 20px; }
-        .broadcast-card { background: white; border-radius: 24px; padding: 24px; width: 100%; max-width: 400px; max-height: 85vh; display: flex; flex-direction: column; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3); animation: slideUp 0.3s ease-out; box-sizing: border-box; }
+        
+        :root {
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --accent-blue: #2196F3;
+        }
+
+        body, html { 
+            margin: 0; padding: 0; 
+            height: 100dvh; width: 100vw; 
+            background: #f5f5f5;
+            font-family: -apple-system, sans-serif;
+            overflow: hidden; 
+            position: fixed; 
+            -webkit-text-size-adjust: 100%;
+        }
+
+        /* СТИЛИ УВЕДОМЛЕНИЯ */
+        #broadcast_overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+            background: rgba(0,0,0,0.7); display: none; z-index: 99999;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .broadcast-card {
+            background: white; border-radius: 24px; padding: 24px; 
+            width: 100%; max-width: 400px;
+            max-height: 85vh; display: flex; flex-direction: column;
+            text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease-out; box-sizing: border-box;
+        }
         @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .broadcast-card i { font-size: 40px; display: block; margin-bottom: 12px; font-style: normal; flex-shrink: 0; }
         .broadcast-card h2 { margin: 0 0 12px 0; font-size: 20px; color: #333; flex-shrink: 0; }
-        #broadcast_text { font-size: 16px; color: #555; line-height: 1.5; margin-bottom: 20px; white-space: pre-wrap; word-wrap: break-word; overflow-y: auto; text-align: left; padding-right: 5px; -webkit-overflow-scrolling: touch; }
-        .broadcast-btn { background: var(--accent-blue); color: white; border: none; padding: 14px; border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%; flex-shrink: 0; }
-        .main-wrapper { display: flex; flex-direction: column; height: 100dvh; width: 100%; padding-top: var(--safe-top); }
-        .header { height: 60px; background: white; display: flex; align-items: center; padding: 0 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex-shrink: 0; z-index: 10000; position: relative; }
+        #broadcast_text { 
+            font-size: 16px; color: #555; line-height: 1.5; margin-bottom: 20px; 
+            white-space: pre-wrap; word-wrap: break-word; overflow-y: auto;
+            text-align: left; padding-right: 5px; -webkit-overflow-scrolling: touch;
+        }
+        .broadcast-btn {
+            background: var(--accent-blue); color: white; border: none; padding: 14px;
+            border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%; flex-shrink: 0;
+        }
+
+        .main-wrapper {
+            display: flex; flex-direction: column;
+            height: 100dvh; width: 100%;
+            padding-top: var(--safe-top);
+        }
+
+        .header { 
+            height: 60px; background: white; 
+            display: flex; align-items: center; padding: 0 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); flex-shrink: 0; z-index: 10000; position: relative;
+        }
         .back-btn { font-size: 28px; cursor: pointer; color: #000; margin-right: 15px; padding: 5px; }
         .header h1 { font-size: 18px; margin: 0; flex-grow: 1; font-weight: bold; }
         .profile-link { font-size: 24px; cursor: pointer; padding: 5px; }
-        #pinnedLayout { background: #FFF8E1; padding: 8px 15px; display: none; align-items: center; border-bottom: 1px solid #FFECB3; flex-shrink: 0; cursor: pointer; position: relative; z-index: 9000; }
+
+        #pinnedLayout { 
+            background: #FFF8E1; padding: 8px 15px; 
+            display: none; align-items: center; 
+            border-bottom: 1px solid #FFECB3; flex-shrink: 0; cursor: pointer;
+            position: relative; z-index: 9000;
+        }
         .pinned-line { width: 4px; height: 24px; background: #2196F3; margin-right: 10px; border-radius: 2px; flex-shrink: 0; }
         #tvPinnedText { font-size: 13px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; width: 100%; }
-        #chatMessages { flex-grow: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; }
+
+        #chatMessages { 
+            flex-grow: 1; overflow-y: auto; 
+            padding: 10px; display: flex; 
+            flex-direction: column; gap: 8px;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-y: contain;
+        }
+
+        /* АВАТАРЫ */
         .msg-wrapper { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 4px; width: 100%; }
         .msg-sent .msg-wrapper { flex-direction: row-reverse; }
-        .user-avatar { width: 35px; height: 35px; border-radius: 50%; background: #eee; object-fit: cover; cursor: pointer; flex-shrink: 0; border: 1px solid #ddd; }
+        .user-avatar { 
+            width: 35px; height: 35px; border-radius: 50%; 
+            background: #eee; object-fit: cover; cursor: pointer;
+            flex-shrink: 0; border: 1px solid #ddd;
+        }
+
         .msg-container { max-width: 85%; padding: 10px 14px; border-radius: 16px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-size: 15px; transition: background 0.5s; }
         .msg-sent .msg-container { align-self: flex-end; background: #DCF8C6; border-bottom-right-radius: 2px; }
         .msg-received .msg-container { align-self: flex-start; background: white; border-bottom-left-radius: 2px; }
         .highlight-msg { background: #FFF59D !important; border: 1px solid #FFD600; }
+        
         .author { font-size: 12px; font-weight: bold; margin-bottom: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
         .status-admin { color: #F44336; font-weight: bold; }
         .status-mod { color: #2196F3; font-weight: bold; }
         .status-user { color: inherit; font-weight: normal; }
+
         .role-admin { color: #2E7D32; }
         .role-mod { color: #D32F2F; }
         .role-user { color: #F57C00; }
         .time { font-size: 10px; color: #888; text-align: right; margin-top: 4px; }
+        
         .reply-box { background: rgba(0,0,0,0.05); border-left: 3px solid #F57C00; padding: 4px 8px; margin-bottom: 6px; border-radius: 4px; font-size: 13px; }
         .reactions-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; background: rgba(0,0,0,0.03); border-radius: 10px; padding: 2px 8px; width: fit-content; font-size: 12px; cursor: pointer; }
-        #btnScrollDown { position: fixed; right: 20px; bottom: calc(85px + var(--safe-bottom)); width: 44px; height: 44px; background: white; border-radius: 50%; display: none; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; z-index: 8000; }
-        .bottom-area { background: white; border-top: 1px solid #ddd; flex-shrink: 0; padding-bottom: max(10px, var(--safe-bottom)); z-index: 11000; width: 100%; position: relative; }
+
+        #btnScrollDown { 
+            position: fixed; right: 20px; bottom: calc(85px + var(--safe-bottom)); 
+            width: 44px; height: 44px; background: white; 
+            border-radius: 50%; display: none; align-items: center; justify-content: center; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer; z-index: 8000; 
+        }
+
+        .bottom-area { 
+            background: white; border-top: 1px solid #ddd; 
+            flex-shrink: 0; padding-bottom: max(10px, var(--safe-bottom)); 
+            z-index: 11000; width: 100%; position: relative;
+        }
         #replyPreview { background: #f0f0f0; padding: 10px 15px; display: none; border-left: 4px solid #F57C00; align-items: center; }
         .input-row { display: flex; align-items: center; padding: 10px 15px; gap: 10px; }
         #msgInput { flex-grow: 1; border: 1px solid #eee; background: #f9f9f9; outline: none; font-size: 16px; padding: 12px 15px; border-radius: 25px; }
         #sendBtn { background: none; border: none; cursor: pointer; padding: 5px; display: flex; }
         #sendBtn svg { fill: #F57C00; width: 32px; height: 32px; }
-        .ban-text { color: red; font-weight: bold; font-size: 14px; text-align: center; width: 100%; padding: 10px; }
-        #profile_overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0,0,0,0.9); display: none; z-index: 30000; align-items: center; justify-content: center; padding: 20px; }
+
+        #profile_overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+            background: rgba(0,0,0,0.9); display: none; z-index: 30000;
+            align-items: center; justify-content: center; padding: 20px;
+        }
         .profile-card { background: #fff; border-radius: 30px; padding: 30px; text-align: center; width: 100%; max-width: 340px; }
         #full_avatar { width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid var(--accent-blue); margin-bottom: 15px; }
         .profile-name { font-size: 20px; font-weight: bold; margin-bottom: 5px; color: #000; }
         .profile-bio { font-size: 14px; color: #666; margin: 10px 0 20px; background: #f9f9f9; padding: 10px; border-radius: 10px; text-align: left; max-height: 150px; overflow-y: auto; }
+
         .action-sheet { position: fixed; bottom: 0; left: 0; width: 100%; background: white; z-index: 20000; border-radius: 20px 20px 0 0; display: none; flex-direction: column; padding: 10px 0; max-height: 85vh; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); }
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 15000; }
         .emoji-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; padding: 15px; overflow-y: auto; border-bottom: 1px solid #eee; max-height: 200px; }
         .action-item { padding: 16px 20px; font-size: 17px; cursor: pointer; border-bottom: 1px solid #f2f2f2; }
+        .ban-text { color: red; font-weight: bold; font-size: 14px; text-align: center; width: 100%; padding: 10px; }
     </style>
 </head>
 <body>
-    <div id="broadcast_overlay"><div class="broadcast-card"><i>📢</i><h2>Объявление</h2><div id="broadcast_text"></div><button class="broadcast-btn" onclick="closeBroadcast()">ПОНЯТНО</button></div></div>
-    <div id="profile_overlay" onclick="closeUserProfile()"><div class="profile-card" onclick="event.stopPropagation()"><img id="full_avatar" src="" alt=""><div id="profile_user_name" class="profile-name"></div><div id="profile_user_phone" style="color: #888; font-size: 14px;"></div><div id="profile_user_bio" class="profile-bio"></div><button class="broadcast-btn" onclick="closeUserProfile()">ЗАКРЫТЬ</button></div></div>
-    <div class="main-wrapper">
-        <div class="header"><div class="back-btn" onclick="navTo('index.html')">←</div><h1>Чат поселка</h1><div class="profile-link" onclick="navTo('profile.html')">👤</div></div>
-        <div id="pinnedLayout"><div class="pinned-line"></div><div class="pinned-info"><div class="pinned-title">Закрепленное сообщение</div><div id="tvPinnedText">...</div></div></div>
-        <div id="chatMessages"></div>
-        <div id="btnScrollDown" onclick="scrollToBottom()"><span>⬇</span></div>
-        <div class="bottom-area">
-            <div id="replyPreview"><div style="flex-grow: 1; overflow: hidden;"><div id="replyPreviewName" style="font-weight: bold; color: #F57C00; font-size: 11px;"></div><div id="replyPreviewText" style="font-size: 13px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div></div><span onclick="cancelReply()" style="cursor:pointer; padding: 5px; font-size: 20px;">✕</span></div>
-            <div class="input-row" id="inputRow"><input type="text" id="msgInput" placeholder="Написать сообщение..." autocomplete="off"><button id="sendBtn" onclick="handleSendClick()"><svg id="sendIcon" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button></div>
+
+    <div id="broadcast_overlay">
+        <div class="broadcast-card">
+            <i>📢</i><h2>Объявление</h2><div id="broadcast_text"></div>
+            <button class="broadcast-btn" onclick="closeBroadcast()">ПОНЯТНО</button>
         </div>
     </div>
+
+    <div id="profile_overlay" onclick="closeUserProfile()">
+        <div class="profile-card" onclick="event.stopPropagation()">
+            <img id="full_avatar" src="" alt="avatar">
+            <div id="profile_user_name" class="profile-name"></div>
+            <div id="profile_user_phone" style="color: #888; font-size: 14px;"></div>
+            <div id="profile_user_bio" class="profile-bio"></div>
+            <button class="broadcast-btn" onclick="closeUserProfile()">ЗАКРЫТЬ</button>
+        </div>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="header">
+            <div class="back-btn" onclick="navTo('index.html')">←</div>
+            <h1>Чат поселка</h1>
+            <div class="profile-link" onclick="navTo('profile.html')">👤</div>
+        </div>
+
+        <div id="pinnedLayout">
+            <div class="pinned-line"></div>
+            <div class="pinned-info">
+                <div class="pinned-title">Закрепленное сообщение</div>
+                <div id="tvPinnedText">...</div>
+            </div>
+        </div>
+
+        <div id="chatMessages"></div>
+        <div id="btnScrollDown" onclick="scrollToBottom()"><span>⬇</span></div>
+
+        <div class="bottom-area">
+            <div id="replyPreview">
+                <div style="flex-grow: 1; overflow: hidden;">
+                    <div id="replyPreviewName" style="font-weight: bold; color: #F57C00; font-size: 11px;"></div>
+                    <div id="replyPreviewText" style="font-size: 13px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div>
+                </div>
+                <span onclick="cancelReply()" style="cursor:pointer; padding: 5px; font-size: 20px;">✕</span>
+            </div>
+            <div class="input-row" id="inputRow">
+                <input type="text" id="msgInput" placeholder="Написать сообщение..." autocomplete="off">
+                <button id="sendBtn" onclick="handleSendClick()">
+                    <svg id="sendIcon" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="overlay" class="overlay" onclick="closeActions()"></div>
     <div id="actionSheet" class="action-sheet" onclick="event.stopPropagation()">
         <div id="emojiGrid" class="emoji-grid"></div>
@@ -99,7 +226,6 @@
             <div class="action-item" style="color: gray;" onclick="backToMainActions()">⬅ Назад</div>
         </div>
         <div id="durationMenu" style="display: none;">
-            <div class="action-item" onclick="confirmBan('CHAT_WRITE', 1)">На 1 час</div>
             <div class="action-item" onclick="confirmBan('CHAT_WRITE', 24)">На 24 часа</div>
             <div class="action-item" onclick="confirmBan('CHAT_WRITE', -1)">Навсегда</div>
             <div class="action-item" style="color: gray;" onclick="showBanMenu()">⬅ Назад</div>
@@ -116,10 +242,9 @@
         const myRole = (localStorage.getItem("USER_ROLE") || "Житель");
         const iAmPrivileged = (myRole === "АДМИН" || myRole === "admin" || myRole === "МОДЕРАТОР");
 
-        let usersCache = {}; 
         const container = document.getElementById('chatMessages');
         let selectedMsg = null, replyingTo = null, editingMsgId = null;
-        const emojiList = ["👍", "❤️", "🔥", "😂", "😮", "😢", "🙏", "👏", "🎉", "✨", "👎", "😡", "💩", "👀", "💯", "✅", "❌", "🤝", "💪", "🙌", "🤔", "🥳", "😱", "😴", "🤡", "👻", "👽", "🤖", "🎃", "🌟", "💘", "💔", "💎", "💰", "⚽", "🚗", "🏠", "🎁", "🍻", "☕", "👋", "👌", "✌️", "🤞", "🤟", "🤘", "🤙", "🖕", "🤩", "😈"];
+        let usersCache = {};
 
         // ЗАКРЕПЫ
         db.ref('PinnedMessages').on('value', snap => {
@@ -128,17 +253,16 @@
             layout.style.display = 'flex'; let last = null; snap.forEach(c => last = c.val());
             document.getElementById('tvPinnedText').innerText = last.text;
             layout.onclick = () => { 
-                const target = document.getElementById("msg_" + last.originalId); 
-                if (target) { target.scrollIntoView({ behavior: "smooth", block: "center" }); target.classList.add('highlight-msg'); setTimeout(() => target.classList.remove('highlight-msg'), 1500); } 
+                const t = document.getElementById("msg_" + last.originalId); 
+                if (t) { t.scrollIntoView({ behavior: "smooth", block: "center" }); t.classList.add('highlight-msg'); setTimeout(() => t.classList.remove('highlight-msg'), 1500); } 
             };
         });
 
         // СЛУШАТЕЛЬ ЧАТА
-        db.ref('Chats').limitToLast(100).on('value', snap => {
+        db.ref('Chats').limitToLast(50).on('value', snap => {
             container.innerHTML = '';
             snap.forEach(child => renderMessage(child.val(), child.key));
             scrollToBottom();
-            updateReadStatus();
         });
 
         function renderMessage(msg, id) {
@@ -162,46 +286,46 @@
                 </div>`;
             container.appendChild(div);
 
+            // ЗАГРУЗКА АВАТАРА И РОЛИ (БЕЗ ТОРМОЗОВ)
             if (usersCache[msg.senderId]) {
-                applyUserData(id, usersCache[msg.senderId]);
+                updateUserUI(id, usersCache[msg.senderId]);
             } else {
                 db.ref('Users/' + msg.senderId).once('value', s => {
                     const u = s.val() || {}; usersCache[msg.senderId] = u;
-                    applyUserData(id, u);
+                    updateUserUI(id, u);
                 });
             }
         }
 
-        function applyUserData(msgId, user) {
+        function updateUserUI(msgId, u) {
             const img = document.getElementById('av_' + msgId);
             const auth = document.getElementById('auth_' + msgId);
             const msgBox = document.getElementById('msg_' + msgId);
-            if (img && user.avatar) img.src = user.avatar;
-            if (msgBox) msgBox.setAttribute('data-actual-role', user.role || "Житель");
-            if (auth && user.role) {
-                let statusStyle = user.role === "АДМИН" ? "status-admin" : (user.role === "МОДЕРАТОР" ? "status-mod" : "status-user");
-                auth.innerHTML = `${user.name || auth.innerText} <span class="${statusStyle}">(${user.role})</span>`;
+            if (img && u.avatar) img.src = u.avatar;
+            if (msgBox) msgBox.setAttribute('data-role', u.role || "Житель");
+            if (auth && u.role) {
+                let col = u.role === "АДМИН" ? "status-admin" : (u.role === "МОДЕРАТОР" ? "status-mod" : "status-user");
+                auth.innerHTML = `${u.name || auth.innerText} <span class="${col}">(${u.role})</span>`;
             }
         }
 
         function handleSendClick() { if (editingMsgId) saveEdit(); else sendChatMessage(); }
 
         function sendChatMessage() {
-            const input = document.getElementById('msgInput'); const text = input.value.trim();
+            const input = document.getElementById('msgInput');
+            const text = input.value.trim();
             if(!text) return;
-            const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            db.ref('Chats').push({ 
-                author: myName, role: myRole, text: text, time: timeStr, senderId: myPhone, timestamp: Date.now(), 
-                replyToText: replyingTo ? replyingTo.text : "", replyToAuthor: replyingTo ? replyingTo.author : "" 
+            const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            // ОТПРАВЛЯЕМ МГНОВЕННО
+            db.ref('Chats').push({
+                author: myName, role: myRole, text: text, time: time,
+                senderId: myPhone, timestamp: Date.now(),
+                replyToText: replyingTo ? replyingTo.text : "",
+                replyToAuthor: replyingTo ? replyingTo.author : ""
             }).then(() => {
                 input.value = ''; cancelReply();
             });
-        }
-
-        function saveEdit() {
-            const input = document.getElementById('msgInput');
-            if(input.value.trim() && editingMsgId) db.ref('Chats/' + editingMsgId).update({ text: input.value.trim() });
-            editingMsgId = null; input.value = ''; document.getElementById('sendIcon').style.fill = "#F57C00";
         }
 
         function showUserProfile(phone) {
@@ -218,20 +342,15 @@
         function openActionsByData(id, senderId, author, text) {
             selectedMsg = {id, senderId, author, text};
             document.getElementById('overlay').style.display = 'block'; document.getElementById('actionSheet').style.display = 'flex';
-            const isMine = senderId === myPhone;
-            const targetRole = document.getElementById("msg_" + id).getAttribute('data-actual-role') || "Житель";
-            document.getElementById('editBtn').style.display = isMine ? 'block' : 'none';
-            document.getElementById('deleteMsgBtn').style.display = (iAmPrivileged || isMine) ? 'block' : 'none';
-            document.getElementById('adminPinBtn').style.display = iAmPrivileged ? 'block' : 'none';
-            document.getElementById('adminUnpinBtn').style.display = iAmPrivileged ? 'block' : 'none';
-            if (iAmPrivileged && !isMine) {
+            const targetRole = document.getElementById("msg_" + id).getAttribute('data-role') || "Житель";
+            document.getElementById('editBtn').style.display = (senderId === myPhone) ? 'block' : 'none';
+            document.getElementById('deleteMsgBtn').style.display = (iAmPrivileged || senderId === myPhone) ? 'block' : 'none';
+            if (iAmPrivileged && senderId !== myPhone) {
                 const isTargetAdmin = (targetRole === 'АДМИН' || targetRole === 'admin');
-                if (myRole === 'АДМИН' || myRole === 'admin') document.getElementById('adminBanBtn').style.display = 'block';
-                else document.getElementById('adminBanBtn').style.display = !isTargetAdmin ? 'block' : 'none';
-            } else document.getElementById('adminBanBtn').style.display = 'none';
-
+                document.getElementById('adminBanBtn').style.display = (myRole.includes('АДМИН') || !isTargetAdmin) ? 'block' : 'none';
+            }
             const grid = document.getElementById('emojiGrid'); grid.innerHTML = '';
-            emojiList.forEach(emoji => {
+            ["👍", "❤️", "🔥", "😂", "😮", "😢", "🙏", "👏", "🎉", "✨", "👎", "😡", "💩", "👀", "💯", "✅", "❌", "🤝", "💪", "🙌", "🤔", "🥳", "😱", "😴", "🤡", "👻", "👽", "🤖", "🎃", "🌟", "💘", "💔", "💎", "💰", "⚽", "🚗", "🏠", "🎁", "🍻", "☕", "👋", "👌", "✌️", "🤞", "🤟", "🤘", "🤙", "🖕", "🤩", "😈"].forEach(emoji => {
                 const s = document.createElement('span'); s.innerText = emoji; s.style.fontSize="24px"; s.style.cursor="pointer";
                 s.onclick = () => { db.ref(`Chats/${id}/reactionsCounts/${emoji}`).transaction(c => (c || 0) + 1); closeActions(); };
                 grid.appendChild(s);
@@ -242,15 +361,12 @@
         function closeActions() { document.getElementById('overlay').style.display = 'none'; document.getElementById('actionSheet').style.display = 'none'; }
         function cancelReply() { replyingTo = null; document.getElementById('replyPreview').style.display = 'none'; }
         function scrollToBottom() { container.scrollTop = container.scrollHeight; }
-        function deleteMsg() { if(confirm("Удалить?")) { db.ref(`Chats/${selectedMsg.id}`).remove(); closeActions(); } }
+        function deleteMsg() { if(confirm("Удалить?")) db.ref(`Chats/${selectedMsg.id}`).remove(); closeActions(); }
         function prepareReply() { replyingTo = selectedMsg; document.getElementById('replyPreview').style.display = 'flex'; document.getElementById('replyPreviewName').innerText = selectedMsg.author; document.getElementById('replyPreviewText').innerText = selectedMsg.text; closeActions(); }
         function writePrivate() { navTo(`private_chat.html?otherPhone=${selectedMsg.senderId}`); }
         function showBanMenu() { document.getElementById('mainActions').style.display = 'none'; document.getElementById('banMenu').style.display = 'block'; }
         function backToMainActions() { document.getElementById('mainActions').style.display = 'block'; document.getElementById('banMenu').style.display = 'none'; }
         function confirmBan(t, h) { const ts = h===-1?-1:Date.now()+(h*3600000); db.ref('BannedUsers/'+selectedMsg.senderId).set({type:t, timestamp:ts}).then(closeActions); }
-        function pinMsg() { db.ref(`PinnedMessages`).remove().then(() => { db.ref(`PinnedMessages/${selectedMsg.id}`).set({ text: selectedMsg.text, author: selectedMsg.author, originalId: selectedMsg.id, pinnedTime: Date.now() }); }); closeActions(); }
-        function unpinMsg() { db.ref(`PinnedMessages`).remove(); closeActions(); }
-        function updateReadStatus() { db.ref('Chats').limitToLast(1).once('value', s => { s.forEach(c => localStorage.setItem("CHAT_LAST_READ", c.val().timestamp)); }); }
     </script>
 </body>
 </html>
