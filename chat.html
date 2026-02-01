@@ -132,6 +132,7 @@
             z-index: 11000; width: 100%; position: relative;
         }
 
+        /* ПРЕВЬЮ ВЫБРАННЫХ ФОТО ПЕРЕД ОТПРАВКОЙ */
         #imagePreviewArea { display: none; padding: 10px; background: #f9f9f9; border-top: 1px solid #eee; overflow-x: auto; white-space: nowrap; gap: 8px; }
         .preview-item { position: relative; display: inline-block; width: 60px; height: 60px; margin-right: 8px; }
         .preview-img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; }
@@ -147,12 +148,15 @@
             font-family: inherit; line-height: 1.4; overflow-y: auto;
         }
 
+        /* СКРЕПКА */
         #attachBtn { cursor: pointer; padding: 5px; display: flex; align-items: center; }
         #attachBtn svg { fill: #888; width: 28px; height: 28px; }
 
         #sendBtn { background: none; border: none; cursor: pointer; padding: 5px; display: flex; align-self: flex-end; margin-bottom: 2px; }
         #sendBtn svg { fill: #F57C00; width: 32px; height: 32px; }
         #sendBtn:disabled svg { fill: #ccc; }
+
+        .ban-text { color: red; font-weight: bold; font-size: 14px; text-align: center; width: 100%; padding: 10px; }
 
         .action-sheet { position: fixed; bottom: 0; left: 0; width: 100%; background: white; z-index: 20000; border-radius: 20px 20px 0 0; display: none; flex-direction: column; padding: 10px 0; max-height: 85vh; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); }
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 15000; }
@@ -172,7 +176,7 @@
         .viewer-btn { color: white; font-size: 35px; cursor: pointer; text-shadow: 0 0 10px rgba(0,0,0,0.5); font-weight: bold; }
         .download-btn { color: white; font-size: 18px; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 15px; border-radius: 20px; align-self: center; margin-top: 5px; }
 
-        /* ОКНО ПРОСМОТРА РЕАКЦИЙ ДЛЯ АДМИНА */
+        /* ОКНО ПРОСМОТРА РЕАКЦИЙ ДЛЯ АДМИНА/МОДЕРАТОРА */
         #reaction_details_overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0,0,0,0.8); display: none; z-index: 35000; align-items: center; justify-content: center; padding: 20px; }
         .reaction-card { background: white; border-radius: 20px; padding: 20px; width: 100%; max-width: 320px; display: flex; flex-direction: column; max-height: 70vh; }
         .reaction-list-container { overflow-y: auto; flex-grow: 1; margin: 15px 0; }
@@ -352,8 +356,9 @@
         const myPhone = localStorage.getItem("USER_PHONE");
         const myName = localStorage.getItem("USER_NAME") || "Пользователь";
         const myRole = (localStorage.getItem("USER_ROLE") || "Житель");
+        
+        // ПРАВА ДОСТУПА: Админ или Модератор
         const iAmPrivileged = (myRole === "АДМИН" || myRole === "admin" || myRole === "МОДЕРАТОР");
-        const iAmAdminFull = (myRole === "АДМИН" || myRole === "admin");
 
         if (myPhone) {
             const presenceRef = db.ref('Users/' + myPhone + '/isOnline');
@@ -452,7 +457,7 @@
             const tempAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.author);
             const tickClass = msg.isRead === true ? 'tick-icon tick-read' : 'tick-icon';
 
-            // ИСПРАВЛЕННАЯ ЛОГИКА ОТОБРАЖЕНИЯ РЕАКЦИЙ
+            // ЛОГИКА ОТОБРАЖЕНИЯ РЕАКЦИЙ
             let reactionsHtml = '';
             if (msg.reactionsCounts) {
                 let tempInner = '';
@@ -462,7 +467,8 @@
                     }
                 }
                 if (tempInner !== '') {
-                    reactionsHtml = `<div class="reactions-list" onclick="event.stopPropagation(); if(iAmAdminFull) showWhoReacted('${id}')">${tempInner}</div>`;
+                    // ИСПРАВЛЕНО: Теперь и модератор, и админ могут смотреть список
+                    reactionsHtml = `<div class="reactions-list" onclick="event.stopPropagation(); if(iAmPrivileged) showWhoReacted('${id}')">${tempInner}</div>`;
                 }
             }
 
@@ -488,7 +494,7 @@
             else { db.ref('Users/' + msg.senderId).once('value', s => { usersCache[msg.senderId] = s.val() || {}; applyUserData(id, usersCache[msg.senderId]); }); }
         }
 
-        // НОВАЯ ФУНКЦИЯ ДЛЯ АДМИНА: ПРОСМОТР КТО ПОСТАВИЛ
+        // ОКНО ДЛЯ ПРИВИЛЕГИРОВАННЫХ: ПРОСМОТР КТО ПОСТАВИЛ
         function showWhoReacted(msgId) {
             const listDiv = document.getElementById('reactionList');
             listDiv.innerHTML = 'Загрузка...';
