@@ -4868,3 +4868,307 @@
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+Приват переписка 
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Чат</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        :root { 
+            --safe-top: env(safe-area-inset-top, 0px); 
+            --safe-bottom: env(safe-area-inset-bottom, 0px); 
+            --header-h: calc(60px + var(--safe-top)); 
+            --footer-h: calc(70px + var(--safe-bottom)); 
+            --accent-blue: #2196F3;
+        }
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #e5ddd5; position: fixed; }
+        body { font-family: -apple-system, sans-serif; display: flex; flex-direction: column; }
+        
+        /* СТИЛИ УВЕДОМЛЕНИЯ */
+        #broadcast_overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+            background: rgba(0,0,0,0.7); display: none; z-index: 99999;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .broadcast-card {
+            background: white; border-radius: 24px; padding: 24px; 
+            width: 100%; max-width: 400px;
+            max-height: 80vh; display: flex; flex-direction: column;
+            text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease-out; box-sizing: border-box;
+        }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .broadcast-card i { font-size: 40px; display: block; margin-bottom: 12px; font-style: normal; flex-shrink: 0; }
+        .broadcast-card h2 { margin: 0 0 12px 0; font-size: 20px; color: #333; flex-shrink: 0; }
+        #broadcast_text { 
+            font-size: 16px; color: #555; line-height: 1.5; margin-bottom: 20px; 
+            white-space: pre-wrap; word-wrap: break-word; overflow-y: auto;
+            text-align: left; padding-right: 5px; -webkit-overflow-scrolling: touch;
+        }
+        .broadcast-btn {
+            background: var(--accent-blue); color: white; border: none; padding: 14px;
+            border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%; flex-shrink: 0;
+        }
+
+        .header { background: #2196F3; color: white; padding-top: var(--safe-top); height: var(--header-h); display: flex; align-items: center; padding-left: 15px; padding-right: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 1000; position: fixed; top: 0; width: 100%; }
+        .back-btn { font-size: 28px; cursor: pointer; margin-right: 12px; padding: 5px; }
+        
+        /* СТИЛЬ АВАТАРА В ШАПКЕ */
+        .header-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 10px; background: #eee; border: 1px solid rgba(255,255,255,0.3); cursor: pointer; }
+        
+        .header-info { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
+        .user-phone { font-weight: bold; font-size: 17px; }
+        .user-status { font-size: 12px; color: #e0e0e0; }
+        .online-text { color: #00e676 !important; font-weight: bold; }
+        
+        #messages { flex: 1; overflow-y: auto; padding: 10px 15px; display: flex; flex-direction: column; gap: 8px; margin-top: var(--header-h); margin-bottom: var(--footer-h); -webkit-overflow-scrolling: touch; }
+        
+        /* СТИЛИ АВАТАРОВ В СООБЩЕНИЯХ */
+        .msg-row { display: flex; align-items: flex-end; gap: 8px; width: 100%; }
+        .msg-row.sent { flex-direction: row-reverse; }
+        .msg-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; background: #eee; flex-shrink: 0; cursor: pointer; }
+
+        .msg { max-width: 80%; padding: 10px 14px; border-radius: 16px; font-size: 15px; word-wrap: break-word; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
+        .sent .msg { background: #DCF8C6; border-bottom-right-radius: 2px; }
+        .received .msg { background: white; border-bottom-left-radius: 2px; }
+        
+        .msg-footer { display: flex; justify-content: flex-end; align-items: center; gap: 4px; font-size: 10px; color: #888; margin-top: 4px; }
+        .ticks { font-weight: bold; font-size: 14px; margin-left: 4px; }
+        .read { color: #2196F3; } .unread { color: #BDBDBD; }
+        
+        .bottom-area { background: #f0f0f0; border-top: 1px solid #ddd; padding: 8px 10px calc(var(--safe-bottom) + 8px) 10px; display: flex; align-items: center; gap: 8px; position: fixed; bottom: 0; width: 100%; z-index: 1000; height: var(--footer-h); }
+        input { flex: 1; border: 1px solid #ccc; background: #fff; outline: none; font-size: 16px; padding: 10px 15px; border-radius: 20px; }
+        .send-btn { background: #2196F3; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; }
+        .send-btn svg { fill: white; width: 22px; height: 22px; }
+
+        /* СТИЛИ КАРТОЧКИ ПРОФИЛЯ */
+        #user_profile_overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0,0,0,0.9); display: none; z-index: 30000; align-items: center; justify-content: center; padding: 20px; }
+        .profile-card { background: white; border-radius: 30px; padding: 30px; width: 100%; max-width: 340px; text-align: center; }
+        #full_avatar { width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid var(--accent-blue); margin-bottom: 15px; cursor: pointer; }
+        .profile-name { font-size: 20px; font-weight: bold; margin-bottom: 5px; color: #000; }
+        .profile-bio { font-size: 14px; color: #666; margin: 10px 0 20px; background: #f9f9f9; padding: 10px; border-radius: 10px; text-align: left; max-height: 150px; overflow-y: auto; }
+
+        /* ПРОСМОТР ФОТО НА ВЕСЬ ЭКРАН */
+        #fullscreen_viewer { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: black; display: none; z-index: 40000; align-items: center; justify-content: center; }
+        #fullscreen_img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .close-fullscreen { position: absolute; top: calc(20px + var(--safe-top)); right: 20px; color: white; font-size: 35px; cursor: pointer; z-index: 40001; text-shadow: 0 0 10px rgba(0,0,0,0.5); }
+    </style>
+</head>
+<body>
+    <div id="broadcast_overlay">
+        <div class="broadcast-card">
+            <i>📢</i>
+            <h2>Объявление</h2>
+            <div id="broadcast_text"></div>
+            <button class="broadcast-btn" onclick="closeBroadcast()">ПОНЯТНО</button>
+        </div>
+    </div>
+
+    <div id="fullscreen_viewer">
+        <span class="close-fullscreen" onclick="closeFullscreen()">✕</span>
+        <img id="fullscreen_img" src="" alt="">
+    </div>
+
+    <div id="user_profile_overlay" onclick="this.style.display='none'">
+        <div class="profile-card" onclick="event.stopPropagation()">
+            <img id="full_avatar" src="" alt="" onclick="openFullscreen()">
+            <div id="profile_name" class="profile-name"></div>
+            <div id="profile_phone" style="color:#888; font-size:14px;"></div>
+            <div id="profile_bio" class="profile-bio"></div>
+            <button class="broadcast-btn" onclick="document.getElementById('user_profile_overlay').style.display='none'">ЗАКРЫТЬ</button>
+        </div>
+    </div>
+
+    <div class="header">
+        <span class="back-btn" onclick="location.href='messages.html'">←</span>
+        <img id="otherUserAvatar" class="header-avatar" src="https://ui-avatars.com/api/?name=?" alt="" onclick="openUserProfile(otherPhone)">
+        <div class="header-info">
+            <div class="user-phone" id="otherUserPhoneDisplay">Загрузка...</div>
+            <div class="user-status" id="otherUserStatus">офлайн</div>
+        </div>
+        <div class="clear-btn" onclick="if(confirm('Очистить?')) db.ref('PrivateChats/'+chatId).remove()">🗑</div>
+    </div>
+    <div id="messages"></div>
+    <div class="bottom-area">
+        <input type="text" id="msgInput" placeholder="Сообщение" autocomplete="off">
+        <button class="send-btn" onclick="sendMsg()"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
+    </div>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y", authDomain: "villagehub-d4d5e.firebaseapp.com", databaseURL: "https://villagehub-d4d5e-default-rtdb.firebaseio.com", projectId: "villagehub-d4d5e", storageBucket: "villagehub-d4d5e.firebasestorage.app", messagingSenderId: "131056250064", appId: "1:131056250064:web:84c0c67819e9828ec642d5" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const myPhone = (localStorage.getItem("USER_PHONE") || "").trim();
+        const otherPhone = (new URLSearchParams(window.location.search).get('otherPhone') || "").trim();
+        const chatId = myPhone < otherPhone ? `${myPhone}_${otherPhone}` : `${otherPhone}_${myPhone}`;
+        const container = document.getElementById('messages');
+
+        // КЭШ ДЛЯ АВАТАРОВ
+        let otherAvatar = "https://ui-avatars.com/api/?name=?";
+        let myAvatar = "https://ui-avatars.com/api/?name=Я";
+
+        // Загружаем аватарки один раз
+        db.ref('Users/' + myPhone + '/avatar').once('value', s => { if(s.val()) myAvatar = s.val(); });
+
+        // --- ФУНКЦИИ ОТКРЫТИЯ ПРОФИЛЯ И ФОТО ---
+        function openUserProfile(phone) {
+            db.ref('Users/' + phone).once('value', snap => {
+                const u = snap.val() || {};
+                const avSrc = u.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || "?");
+                document.getElementById('full_avatar').src = avSrc;
+                document.getElementById('profile_name').innerText = u.name || "Пользователь";
+                document.getElementById('profile_phone').innerText = phone;
+                document.getElementById('profile_bio').innerText = u.bio || "О себе ничего не указано";
+                document.getElementById('user_profile_overlay').style.display = 'flex';
+            });
+        }
+
+        function openFullscreen() {
+            const src = document.getElementById('full_avatar').src;
+            if (src.includes('ui-avatars.com')) return;
+            document.getElementById('fullscreen_img').src = src;
+            document.getElementById('fullscreen_viewer').style.display = 'flex';
+        }
+
+        function closeFullscreen() {
+            document.getElementById('fullscreen_viewer').style.display = 'none';
+        }
+
+        // --- ЛОГИКА ЗВУКА И РАЗБЛОКИРОВКИ IOS ---
+        let isAudioUnlocked = false;
+        const alertAudio = new Audio('alert.mp3');
+        alertAudio.preload = 'auto';
+
+        function unlockAudio() {
+            if (isAudioUnlocked) return;
+            const silentAudio = new Audio('alert.mp3');
+            silentAudio.muted = true;
+            silentAudio.play().then(() => {
+                silentAudio.pause();
+                isAudioUnlocked = true;
+            }).catch(() => {});
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+        }
+        document.addEventListener('click', unlockAudio);
+        document.addEventListener('touchstart', unlockAudio);
+
+        function playAlertSound() {
+            if ('mediaSession' in navigator) { navigator.mediaSession.playbackState = 'none'; }
+            alertAudio.play().then(() => {
+                alertAudio.onended = () => { alertAudio.pause(); alertAudio.currentTime = 0; };
+            }).catch(() => {});
+        }
+
+        // --- СЛУШАТЕЛЬ РАССЫЛКИ ---
+        db.ref('SystemAlerts').on('value', (snap) => {
+            const alertData = snap.val();
+            if (alertData && alertData.text) {
+                const lastSeenTime = localStorage.getItem("LAST_ALERT_TIME") || "0";
+                if (alertData.time && alertData.time.toString() !== lastSeenTime) {
+                    if (!isAudioUnlocked) {
+                        const playOnce = () => { playAlertSound(); document.removeEventListener('click', playOnce); };
+                        document.addEventListener('click', playOnce);
+                    } else { playAlertSound(); }
+                    document.getElementById('broadcast_text').innerText = alertData.text;
+                    document.getElementById('broadcast_overlay').style.display = 'flex';
+                }
+            }
+        });
+
+        function closeBroadcast() {
+            db.ref('SystemAlerts/time').once('value').then((snap) => {
+                const currentTime = snap.val();
+                if (currentTime) { localStorage.setItem("LAST_ALERT_TIME", currentTime.toString()); }
+                document.getElementById('broadcast_overlay').style.display = 'none';
+            });
+        }
+
+        // --- ЛОГИКА ОНЛАЙНА ---
+        if (myPhone) {
+            const presenceRef = db.ref('Users/' + myPhone + '/isOnline');
+            const lastSeenRef = db.ref('Users/' + myPhone + '/lastOnline');
+            const connectedRef = db.ref('.info/connected');
+            connectedRef.on('value', (snap) => {
+                if (snap.val() === true) {
+                    presenceRef.set(true);
+                    presenceRef.onDisconnect().set(false);
+                    lastSeenRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
+                }
+            });
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    presenceRef.set(false);
+                    lastSeenRef.set(firebase.database.ServerValue.TIMESTAMP);
+                } else { presenceRef.set(true); }
+            });
+        }
+
+        // СЛУШАТЕЛЬ СООБЩЕНИЙ С АВАТАРАМИ
+        db.ref('PrivateChats').child(chatId).on('value', snap => {
+            let html = '';
+            snap.forEach(child => {
+                const msg = child.val();
+                const isMine = (msg.senderId === myPhone);
+                if (!isMine && !msg.isRead) { child.ref.child('isRead').set(true); }
+                const tickHtml = isMine ? `<span class="ticks ${msg.isRead ? 'read' : 'unread'}">${msg.isRead ? '✔✔' : '✔'}</span>` : '';
+                
+                const currentMsgAvatar = isMine ? myAvatar : otherAvatar;
+
+                html += `
+                    <div class="msg-row ${isMine ? 'sent' : 'received'}">
+                        <img class="msg-avatar" src="${currentMsgAvatar}" onclick="openUserProfile('${msg.senderId}')">
+                        <div class="msg">
+                            <div>${msg.text}</div>
+                            <div class="msg-footer">${msg.time}${tickHtml}</div>
+                        </div>
+                    </div>`;
+            });
+            container.innerHTML = html;
+            container.scrollTo(0, container.scrollHeight);
+            db.ref('Users/'+myPhone).child("hasNewMessage").set(false);
+        });
+
+        function sendMsg() {
+            const input = document.getElementById('msgInput');
+            const text = input.value.trim();
+            if (!text) return;
+            const ts = Date.now();
+            const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            db.ref('PrivateChats/' + chatId).push({ senderId: myPhone, text: text, time: time, timestamp: ts, isRead: false });
+            db.ref('UserChats/'+myPhone+'/'+otherPhone).update({phone: otherPhone, lastMessage: text, timestamp: ts});
+            db.ref('UserChats/'+otherPhone+'/'+myPhone).update({phone: myPhone, lastMessage: text, timestamp: ts, hasNewMessage: true});
+            db.ref('Users/'+otherPhone).child("hasNewMessage").set(true);
+            input.value = '';
+        }
+
+        db.ref('Users/'+otherPhone).on('value', s => {
+            const d = s.val(); if(!d) return;
+            document.getElementById('otherUserPhoneDisplay').innerText = d.name || otherPhone;
+            document.getElementById('otherUserStatus').innerText = d.isOnline ? "в сети" : "офлайн";
+            document.getElementById('otherUserStatus').className = "user-status " + (d.isOnline ? "online-text" : "");
+            
+            if(d.avatar) {
+                otherAvatar = d.avatar;
+                document.getElementById('otherUserAvatar').src = d.avatar;
+            } else {
+                document.getElementById('otherUserAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(d.name || '?')}`;
+            }
+        });
+        document.getElementById('msgInput').onkeypress = e => { if(e.key === 'Enter') sendMsg() };
+    </script>
+</body>
+</html>
