@@ -97,6 +97,12 @@
         .role-mod { color: #D32F2F; }
         .role-user { color: #F57C00; }
 
+        /* СЕТКА ФОТО */
+        .msg-grid { display: grid; gap: 4px; margin-bottom: 6px; border-radius: 8px; overflow: hidden; }
+        .grid-1 { grid-template-columns: 1fr; }
+        .grid-2 { grid-template-columns: 1fr 1fr; }
+        .msg-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 4px; background: #f0f0f0; }
+
         /* ГАЛОЧКИ */
         .time-wrapper { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin-top: 4px; }
         .time { font-size: 10px; color: #888; }
@@ -125,6 +131,13 @@
             flex-shrink: 0; padding-bottom: max(10px, var(--safe-bottom)); 
             z-index: 11000; width: 100%; position: relative;
         }
+
+        /* ПРЕВЬЮ ВЫБРАННЫХ ФОТО ПЕРЕД ОТПРАВКОЙ */
+        #imagePreviewArea { display: none; padding: 10px; background: #f9f9f9; border-top: 1px solid #eee; overflow-x: auto; white-space: nowrap; gap: 8px; }
+        .preview-item { position: relative; display: inline-block; width: 60px; height: 60px; margin-right: 8px; }
+        .preview-img { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; }
+        .remove-preview { position: absolute; top: -5px; right: -5px; background: red; color: white; border-radius: 50%; width: 20px; height: 20px; text-align: center; line-height: 18px; font-size: 14px; cursor: pointer; font-weight: bold; }
+
         #replyPreview { background: #f0f0f0; padding: 10px 15px; display: none; border-left: 4px solid #F57C00; align-items: center; }
         .input-row { display: flex; align-items: flex-end; padding: 10px 15px; gap: 10px; }
         
@@ -135,8 +148,13 @@
             font-family: inherit; line-height: 1.4; overflow-y: auto;
         }
 
+        /* СКРЕПКА */
+        #attachBtn { cursor: pointer; padding: 5px; display: flex; align-items: center; }
+        #attachBtn svg { fill: #888; width: 28px; height: 28px; }
+
         #sendBtn { background: none; border: none; cursor: pointer; padding: 5px; display: flex; align-self: flex-end; margin-bottom: 2px; }
         #sendBtn svg { fill: #F57C00; width: 32px; height: 32px; }
+        #sendBtn:disabled svg { fill: #ccc; }
 
         .ban-text { color: red; font-weight: bold; font-size: 14px; text-align: center; width: 100%; padding: 10px; }
 
@@ -152,21 +170,26 @@
         .profile-bio { font-size: 14px; color: #666; margin: 10px 0 20px; background: #f9f9f9; padding: 10px; border-radius: 10px; text-align: left; max-height: 150px; overflow-y: auto; }
         .close-profile-btn { background: var(--accent-blue); color: white; border: none; padding: 14px; border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%; }
 
-        #fullscreen_viewer { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: black; display: none; z-index: 40000; align-items: center; justify-content: center; }
-        #fullscreen_img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .close-fullscreen { position: absolute; top: calc(20px + var(--safe-top)); right: 20px; color: white; font-size: 35px; cursor: pointer; z-index: 40001; text-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        #fullscreen_viewer { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: black; display: none; z-index: 40000; flex-direction: column; align-items: center; justify-content: center; }
+        #fullscreen_img { max-width: 100%; max-height: 80%; object-fit: contain; }
+        .viewer-controls { position: absolute; top: calc(20px + var(--safe-top)); left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; z-index: 40001; }
+        .viewer-btn { color: white; font-size: 35px; cursor: pointer; text-shadow: 0 0 10px rgba(0,0,0,0.5); font-weight: bold; }
+        .download-btn { color: white; font-size: 18px; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 15px; border-radius: 20px; align-self: center; margin-top: 5px; }
     </style>
 </head>
 <body>
 
     <div id="fullscreen_viewer">
-        <span class="close-fullscreen" onclick="closeFullscreen()">✕</span>
+        <div class="viewer-controls">
+            <span class="viewer-btn" onclick="closeFullscreen()">✕</span>
+            <a id="download_link" class="download-btn" href="" download="VillageHub_Photo.jpg">СКАЧАТЬ ОРИГИНАЛ</a>
+        </div>
         <img id="fullscreen_img" src="" alt="">
     </div>
 
     <div id="user_profile_overlay" onclick="this.style.display='none'">
         <div class="profile-card" onclick="event.stopPropagation()">
-            <img id="full_avatar" src="" alt="" onclick="openFullscreen()">
+            <img id="full_avatar" src="" alt="" onclick="openFullscreen(this.src)">
             <div id="profile_name" class="profile-name"></div>
             <div id="profile_phone" style="color:#888; font-size:14px;"></div>
             <div id="profile_bio" class="profile-bio"></div>
@@ -194,6 +217,7 @@
         <div id="btnScrollDown" onclick="scrollToBottom()"><span>⬇</span></div>
 
         <div class="bottom-area">
+            <div id="imagePreviewArea"></div>
             <div id="replyPreview">
                 <div style="flex-grow: 1; overflow: hidden;">
                     <div id="replyPreviewName" style="font-weight: bold; color: #F57C00; font-size: 11px;"></div>
@@ -202,6 +226,10 @@
                 <span onclick="cancelReply()" style="cursor:pointer; padding: 5px; font-size: 20px;">✕</span>
             </div>
             <div class="input-row" id="inputRow">
+                <label id="attachBtn">
+                    <svg viewBox="0 0 24 24"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.93 1.57 3.5 3.5 3.5s3.5-1.57 3.5-3.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>
+                    <input type="file" id="fileInput" multiple accept="image/*" style="display:none" onchange="handleFileSelect(this)">
+                </label>
                 <textarea id="msgInput" placeholder="Написать сообщение..." rows="1" oninput="autoResize(this)"></textarea>
                 <button id="sendBtn" onclick="handleSendClick()">
                     <svg id="sendIcon" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
@@ -239,6 +267,56 @@
     </div>
 
     <script>
+        const imgbbKey = "d67f49a6fbede7caebd4cbc993c22c1f";
+        let selectedFiles = [];
+
+        function handleFileSelect(input) {
+            const files = Array.from(input.files);
+            if (selectedFiles.length + files.length > 5) { alert("Максимум 5 фото!"); return; }
+            selectedFiles = selectedFiles.concat(files);
+            updateImagePreview();
+            input.value = '';
+        }
+
+        function updateImagePreview() {
+            const area = document.getElementById('imagePreviewArea');
+            area.innerHTML = '';
+            if (selectedFiles.length > 0) {
+                area.style.display = 'flex';
+                selectedFiles.forEach((file, index) => {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        const div = document.createElement('div');
+                        div.className = 'preview-item';
+                        div.innerHTML = `<img src="${e.target.result}" class="preview-img"><div class="remove-preview" onclick="removeSelectedFile(${index})">✕</div>`;
+                        area.appendChild(div);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            } else { area.style.display = 'none'; }
+        }
+
+        function removeSelectedFile(index) {
+            selectedFiles.splice(index, 1);
+            updateImagePreview();
+        }
+
+        async function uploadImagesSequentially() {
+            const urls = [];
+            const btn = document.getElementById('sendBtn');
+            btn.disabled = true;
+            for (let file of selectedFiles) {
+                const formData = new FormData();
+                formData.append("image", file);
+                try {
+                    const resp = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, { method: "POST", body: formData });
+                    const json = await resp.json();
+                    if (json.success) urls.push(json.data.url);
+                } catch (e) { console.error("Upload error", e); }
+            }
+            return urls.join('|');
+        }
+
         function autoResize(textarea) {
             textarea.style.height = 'auto';
             textarea.style.height = (textarea.scrollHeight) + 'px';
@@ -302,10 +380,9 @@
             });
         }
 
-        function openFullscreen() {
-            const src = document.getElementById('full_avatar').src;
-            if (src.includes('ui-avatars.com')) return; 
+        function openFullscreen(src) {
             document.getElementById('fullscreen_img').src = src;
+            document.getElementById('download_link').href = src;
             document.getElementById('fullscreen_viewer').style.display = 'flex';
         }
 
@@ -326,18 +403,12 @@
 
         db.ref('Chats').limitToLast(100).on('value', snap => {
             container.innerHTML = ''; unreadMarkerShown = false;
-            
             const currentMyPhone = localStorage.getItem("USER_PHONE");
-
             snap.forEach(child => {
                 const msg = child.val(); msg.id = child.key;
-
                 if (msg.senderId && currentMyPhone && msg.senderId !== currentMyPhone) {
-                    if (msg.isRead !== true) {
-                        db.ref('Chats/' + msg.id).update({ isRead: true });
-                    }
+                    if (msg.isRead !== true) { db.ref('Chats/' + msg.id).update({ isRead: true }); }
                 }
-
                 if (!unreadMarkerShown && lastReadTimestamp !== 0 && msg.timestamp > lastReadTimestamp && msg.senderId !== currentMyPhone) {
                     container.innerHTML += `<div class="unread-separator" id="unread_anchor"><span>Непрочитанные сообщения</span></div>`;
                     unreadMarkerShown = true;
@@ -358,9 +429,16 @@
             const div = document.createElement('div');
             div.className = `msg-wrapper ${isMine ? 'msg-sent' : 'msg-received'}`;
 
+            let gridHtml = '';
+            if (msg.imageUrl) {
+                const urls = msg.imageUrl.split('|');
+                gridHtml = `<div class="msg-grid ${urls.length > 1 ? 'grid-2' : 'grid-1'}">`;
+                urls.forEach(u => gridHtml += `<img src="${u}" class="msg-img" onclick="event.stopPropagation(); openFullscreen('${u}')">`);
+                gridHtml += `</div>`;
+            }
+
             let replyHtml = msg.replyToText ? `<div class="reply-box"><b>${msg.replyToAuthor}</b><br>${msg.replyToText}</div>` : '';
             const tempAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.author);
-
             const tickClass = msg.isRead === true ? 'tick-icon tick-read' : 'tick-icon';
 
             div.innerHTML = `
@@ -368,6 +446,7 @@
                 <div class="msg-container" id="msg_${id}" onclick="openActions(this.dataset.msgObject, '${id}')">
                     <div class="author" id="auth_${id}" onclick="event.stopPropagation(); openActions(this.parentElement.dataset.msgObject, '${id}')">${msg.author}</div>
                     ${replyHtml}
+                    ${gridHtml}
                     <div style="white-space: pre-wrap;">${msg.text}</div>
                     <div class="time-wrapper">
                         <div class="time">${msg.time}</div>
@@ -377,7 +456,6 @@
             
             const containerDiv = div.querySelector('.msg-container');
             containerDiv.dataset.msgObject = JSON.stringify(msg);
-
             container.appendChild(div);
 
             if (usersCache[msg.senderId]) { applyUserData(id, usersCache[msg.senderId]); } 
@@ -396,18 +474,23 @@
             }
         }
 
-        function handleSendClick() { if (editingMsgId) saveEdit(); else sendChatMessage(); }
+        async function handleSendClick() { if (editingMsgId) saveEdit(); else await sendChatMessage(); }
 
-        function sendChatMessage() {
+        async function sendChatMessage() {
             const input = document.getElementById('msgInput'); const text = input.value.trim();
-            if(!text) return;
+            if(!text && selectedFiles.length === 0) return;
+            
+            let photoUrls = "";
+            if (selectedFiles.length > 0) { photoUrls = await uploadImagesSequentially(); }
+
             const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             db.ref('Chats').push({ 
                 author: myName, role: myRole, text: text, time: timeStr, senderId: myPhone, timestamp: Date.now(), 
                 replyToText: replyingTo ? replyingTo.text : "", replyToAuthor: replyingTo ? replyingTo.author : "",
-                isRead: false 
+                imageUrl: photoUrls, isRead: false
             }).then(() => {
-                input.value = ''; input.style.height = '42px'; cancelReply(); scrollToBottom();
+                input.value = ''; input.style.height = '42px'; selectedFiles = []; updateImagePreview(); cancelReply(); scrollToBottom();
+                document.getElementById('sendBtn').disabled = false;
             });
         }
 
@@ -428,9 +511,7 @@
             let msg;
             try { msg = typeof msgRaw === 'string' ? JSON.parse(msgRaw) : msgRaw; } catch(e) { return; }
             selectedMsg = {...msg, id: id}; document.getElementById('overlay').style.display = 'block'; document.getElementById('actionSheet').style.display = 'flex';
-            backToMainActions(); 
-            const currentMyPhone = localStorage.getItem("USER_PHONE");
-            const isMine = msg.senderId === currentMyPhone;
+            backToMainActions(); const isMine = msg.senderId === myPhone;
             const targetRole = document.getElementById("msg_" + id).getAttribute('data-actual-role') || "Житель";
             document.getElementById('editBtn').style.display = isMine ? 'block' : 'none';
             document.getElementById('adminPinBtn').style.display = iAmPrivileged ? 'block' : 'none';
