@@ -49,6 +49,7 @@
         
         .profile-link { font-size: 24px; cursor: pointer; padding: 5px; }
         .clear-chat-icon { font-size: 22px; cursor: pointer; margin-right: 15px; padding: 5px; }
+        .global-clear-icon { font-size: 22px; cursor: pointer; margin-right: 15px; padding: 5px; display: none; }
 
         #pinnedLayout { 
             background: #FFF8E1; padding: 8px 15px; 
@@ -82,7 +83,6 @@
 
         .msg-container { max-width: 85%; padding: 10px 14px; border-radius: 16px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-size: 15px; transition: background 0.5s; cursor: pointer; word-wrap: break-word; }
         
-        /* ЦВЕТА ПУЗЫРЬКОВ КАК В TELEGRAM */
         .msg-sent .msg-container { align-self: flex-end; background: #EFFDDE; border-bottom-right-radius: 2px; }
         .msg-received .msg-container { align-self: flex-start; background: white; border-bottom-left-radius: 2px; }
         
@@ -98,13 +98,11 @@
         .role-mod { color: #D32F2F; }
         .role-user { color: #F57C00; }
 
-        /* СЕТКА ФОТО */
         .msg-grid { display: grid; gap: 4px; margin-bottom: 6px; border-radius: 8px; overflow: hidden; }
         .grid-1 { grid-template-columns: 1fr; }
         .grid-2 { grid-template-columns: 1fr 1fr; }
         .msg-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 4px; background: #f0f0f0; }
 
-        /* ГАЛОЧКИ */
         .time-wrapper { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin-top: 4px; }
         .time { font-size: 10px; color: #888; }
         .tick-icon { width: 14px; height: 14px; fill: #888; display: none; }
@@ -173,7 +171,6 @@
         .viewer-btn { color: white; font-size: 35px; cursor: pointer; text-shadow: 0 0 10px rgba(0,0,0,0.5); font-weight: bold; }
         .download-btn { color: white; font-size: 18px; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 15px; border-radius: 20px; align-self: center; margin-top: 5px; }
 
-        /* ОКНО ПРОСМОТРА РЕАКЦИЙ ДЛЯ АДМИНА */
         #reaction_details_overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0,0,0,0.8); display: none; z-index: 35000; align-items: center; justify-content: center; padding: 20px; }
         .reaction-card { background: white; border-radius: 20px; padding: 20px; width: 100%; max-width: 320px; display: flex; flex-direction: column; max-height: 70vh; }
         .reaction-list-container { overflow-y: auto; flex-grow: 1; margin: 15px 0; }
@@ -212,7 +209,8 @@
         <div class="header">
             <div class="back-btn" onclick="navTo('index.html')">←</div>
             <h1>Чат поселка</h1>
-            <div class="clear-chat-icon" onclick="openClearChatDialog()">🗑</div>
+            <div class="clear-chat-icon" onclick="clearMyChatLocally()">🗑</div>
+            <div id="globalClearBtn" class="global-clear-icon" onclick="clearAllChatGlobally()">🧨</div>
             <div class="profile-link" onclick="navTo('profile.html')">👤</div>
         </div>
 
@@ -268,20 +266,12 @@
             <div class="action-item" onclick="confirmBan('GLOBAL', -1)">Глобальный бан</div>
             <div class="action-item" style="color: gray;" onclick="backToMainActions()">⬅ Назад</div>
         </div>
-        <div id="durationMenu" style="display: none;">
-            <div class="action-item" onclick="confirmBan('CHAT_WRITE', 1)">На 1 час</div>
-            <div class="action-item" onclick="confirmBan('CHAT_WRITE', 6)">На 6 часов</div>
-            <div class="action-item" onclick="confirmBan('CHAT_WRITE', 12)">На 12 часов</div>
-            <div class="action-item" onclick="confirmBan('CHAT_WRITE', 24)">На 24 часа</div>
-            <div class="action-item" onclick="confirmBan('CHAT_WRITE', -1)">Навсегда</div>
-            <div class="action-item" style="color: gray;" onclick="showBanMenu()">⬅ Назад</div>
-        </div>
     </div>
 
     <script>
         const imgbbKey = "d67f49a6fbede7caebd4cbc993c22c1f";
         let selectedFiles = [];
-        let userNameCache = {}; // КЭШ ИМЕН
+        let userNameCache = {}; 
         let chatDeleteTime = 0;
 
         function handleFileSelect(input) {
@@ -360,30 +350,36 @@
         const iAmAdminFull = (myRole === "АДМИН" || myRole === "admin");
 
         if (myPhone) {
-            const presenceRef = db.ref('Users/' + myPhone + '/isOnline');
-            const lastSeenRef = db.ref('Users/' + myPhone + '/lastOnline');
-            const connectedRef = db.ref('.info/connected');
-            connectedRef.on('value', (snap) => {
-                if (snap.val() === true) {
-                    presenceRef.set(true);
-                    presenceRef.onDisconnect().set(false);
-                    lastSeenRef.onDisconnect().set(firebase.database.ServerValue.TIMESTAMP);
-                }
-            });
-            document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'hidden') {
-                    presenceRef.set(false);
-                    lastSeenRef.set(firebase.database.ServerValue.TIMESTAMP);
-                } else { presenceRef.set(true); }
-            });
-
-            // Подгружаем время удаления чата
             db.ref('Users/' + myPhone + '/chatDeleteTime').on('value', s => {
                 chatDeleteTime = s.val() || 0;
             });
+            // Показываем кнопку глобальной очистки только админу
+            if (iAmAdminFull) {
+                document.getElementById('globalClearBtn').style.display = 'block';
+            }
         }
 
-        let usersCache = {};
+        function clearMyChatLocally() {
+            if (confirm("Скрыть историю чата только для вас?")) {
+                const now = Date.now();
+                db.ref('Users/' + myPhone + '/chatDeleteTime').set(now).then(() => {
+                    chatDeleteTime = now;
+                    alert("История скрыта");
+                });
+            }
+        }
+
+        function clearAllChatGlobally() {
+            if (confirm("ВНИМАНИЕ: Вы собираетесь удалить ВСЕ сообщения чата для ВСЕХ пользователей. Продолжить?")) {
+                if (confirm("Это действие нельзя отменить. Удалить всё?")) {
+                    db.ref('Chats').remove();
+                    db.ref('PinnedMessages').remove();
+                    db.ref('ReactionDetails').remove();
+                    alert("Чат полностью очищен для всех");
+                }
+            }
+        }
+
         let lastReadTimestamp = parseInt(localStorage.getItem("CHAT_LAST_READ") || "0");
         let selectedMsg = null, replyingTo = null, editingMsgId = null, lastPinnedId = "", isFirstLoad = true, unreadMarkerShown = false;
         const container = document.getElementById('chatMessages');
@@ -410,51 +406,12 @@
             document.getElementById('fullscreen_viewer').style.display = 'none';
         }
 
-        // ЛОГИКА ОЧИСТКИ ЧАТА
-        function openClearChatDialog() {
-            if (iAmAdminFull) {
-                if (confirm("Вы Админ. Очистить чат ПОЛНОСТЬЮ ДЛЯ ВСЕХ? (Отмена - очистить только у себя)")) {
-                    if (confirm("ВНИМАНИЕ: Все сообщения будут удалены навсегда. Подтверждаете?")) {
-                        db.ref('Chats').remove();
-                        db.ref('PinnedMessages').remove();
-                        alert("Чат полностью очищен");
-                    }
-                } else {
-                    clearChatForMe();
-                }
-            } else {
-                if (confirm("Очистить историю чата у себя?")) {
-                    clearChatForMe();
-                }
-            }
-        }
-
-        function clearChatForMe() {
-            const now = Date.now();
-            db.ref('Users/' + myPhone + '/chatDeleteTime').set(now).then(() => {
-                chatDeleteTime = now;
-                alert("Чат очищен локально");
-            });
-        }
-
-        db.ref('BannedUsers/' + myPhone).on('value', snap => {
-            const row = document.getElementById('inputRow');
-            if (snap.exists()) {
-                const ban = snap.val();
-                if (ban.timestamp === -1 || ban.timestamp > Date.now()) {
-                    if (ban.type === 'GLOBAL') { navTo('login.html'); return; }
-                    row.innerHTML = `<div class="ban-text">Вы заблокированы ${ban.type==='CHAT_FULL'?'в чате':'до '+new Date(ban.timestamp).toLocaleString()}</div>`;
-                } else { db.ref('BannedUsers/' + myPhone).remove(); }
-            }
-        });
-
         db.ref('Chats').limitToLast(100).on('value', snap => {
             container.innerHTML = ''; unreadMarkerShown = false;
             const currentMyPhone = localStorage.getItem("USER_PHONE");
             snap.forEach(child => {
                 const msg = child.val(); msg.id = child.key;
                 
-                // Пропускаем удаленные локально сообщения
                 if (msg.timestamp <= chatDeleteTime) return;
 
                 if (msg.senderId && currentMyPhone && msg.senderId !== currentMyPhone) {
@@ -471,7 +428,6 @@
                 if (anchor) anchor.scrollIntoView({ block: "center" }); else scrollToBottom();
                 isFirstLoad = false;
             }
-            updateReadStatus();
         });
 
         function renderMessage(msg, id) {
@@ -523,41 +479,29 @@
             containerDiv.dataset.msgObject = JSON.stringify(msg);
             container.appendChild(div);
 
-            if (usersCache[msg.senderId]) { applyUserData(id, usersCache[msg.senderId]); } 
-            else { db.ref('Users/' + msg.senderId).once('value', s => { usersCache[msg.senderId] = s.val() || {}; applyUserData(id, usersCache[msg.senderId]); }); }
+            if (userNameCache[msg.senderId]) { applyUserData(id, userNameCache[msg.senderId]); } 
+            else { db.ref('Users/' + msg.senderId).once('value', s => { 
+                const u = s.val() || {};
+                userNameCache[msg.senderId] = u;
+                applyUserData(id, u); 
+            }); }
         }
 
         function showWhoReacted(msgId) {
             const listDiv = document.getElementById('reactionList');
             listDiv.innerHTML = 'Загрузка...';
             document.getElementById('reaction_details_overlay').style.display = 'flex';
-
             db.ref(`Chats/${msgId}/reactions`).once('value', snap => {
                 listDiv.innerHTML = '';
-                if(!snap.exists()) {
-                    listDiv.innerHTML = 'Нет данных';
-                    return;
-                }
-                
+                if(!snap.exists()) { listDiv.innerHTML = 'Нет данных'; return; }
                 snap.forEach(child => {
                     const phone = child.key;
                     const emoji = child.val();
                     const item = document.createElement('div');
                     item.className = 'reaction-user-item';
-                    
-                    const name = usersCache[phone] ? (usersCache[phone].name || phone) : phone;
+                    const name = userNameCache[phone] ? (userNameCache[phone].name || phone) : phone;
                     item.innerHTML = `<span>${name}</span><span style="font-size:20px;">${emoji}</span>`;
                     listDiv.appendChild(item);
-
-                    if(!usersCache[phone] || !usersCache[phone].name) {
-                        db.ref(`Users/${phone}/name`).once('value', s => {
-                            if(s.val()) {
-                                item.querySelector('span').innerText = s.val();
-                                if(!usersCache[phone]) usersCache[phone] = {};
-                                usersCache[phone].name = s.val();
-                            }
-                        });
-                    }
                 });
             });
         }
@@ -579,14 +523,11 @@
         async function sendChatMessage() {
             const input = document.getElementById('msgInput'); const text = input.value.trim();
             if(!text && selectedFiles.length === 0) return;
-            
             let photoUrls = "";
             if (selectedFiles.length > 0) { photoUrls = await uploadImagesSequentially(); }
-
             const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             db.ref('Chats').push({ 
                 author: myName, role: myRole, text: text, time: timeStr, senderId: myPhone, timestamp: Date.now(), 
-                replyToText: replyingTo ? replyingTo.text : "", replyToAuthor: replyingTo ? replyingTo.author : "",
                 imageUrl: photoUrls, isRead: false
             }).then(() => {
                 input.value = ''; input.style.height = '42px'; selectedFiles = []; updateImagePreview(); cancelReply(); scrollToBottom();
@@ -594,44 +535,33 @@
             });
         }
 
-        function updateReadStatus() { db.ref('Chats').limitToLast(1).once('value', s => { s.forEach(c => localStorage.setItem("CHAT_LAST_READ", c.val().timestamp)); }); }
         function scrollToBottom() { container.scrollTop = container.scrollHeight; }
-        container.onscroll = () => { document.getElementById('btnScrollDown').style.display = (container.scrollHeight - container.scrollTop > 800) ? 'flex' : 'none'; };
-
+        
         db.ref('PinnedMessages').on('value', snap => {
             const layout = document.getElementById('pinnedLayout');
             if(!snap.exists()) { layout.style.display = 'none'; return; }
             layout.style.display = 'flex'; let last = null; snap.forEach(c => last = c.val());
             let firstLine = last.text.split('\n')[0];
             document.getElementById('tvPinnedText').innerText = firstLine;
-            layout.onclick = () => { const t = document.getElementById("msg_" + last.originalId); if (t) { t.scrollIntoView({ behavior: "smooth", block: "center" }); t.classList.add('highlight-msg'); setTimeout(() => t.classList.remove('highlight-msg'), 1500); } };
         });
 
         function openActions(msgRaw, id) {
-            let msg;
-            try { msg = typeof msgRaw === 'string' ? JSON.parse(msgRaw) : msgRaw; } catch(e) { return; }
-            
+            let msg; try { msg = JSON.parse(msgRaw); } catch(e) { return; }
             selectedMsg = {...msg, id: id}; document.getElementById('overlay').style.display = 'block'; document.getElementById('actionSheet').style.display = 'flex';
-            backToMainActions(); const isMine = msg.senderId === myPhone;
+            const isMine = msg.senderId === myPhone;
             const targetRole = document.getElementById("msg_" + id).getAttribute('data-actual-role') || "Житель";
             document.getElementById('editBtn').style.display = isMine ? 'block' : 'none';
             document.getElementById('adminPinBtn').style.display = iAmPrivileged ? 'block' : 'none';
-            document.getElementById('adminUnpinBtn').style.display = iAmPrivileged ? 'block' : 'none';
             document.getElementById('deleteMsgBtn').style.display = (iAmPrivileged || isMine) ? 'block' : 'none';
-            if (iAmPrivileged && !isMine) {
-                const isTargetAdmin = (targetRole === 'АДМИН' || targetRole === 'admin');
-                document.getElementById('adminBanBtn').style.display = (myRole.includes('АДМИН') || !isTargetAdmin) ? 'block' : 'none';
-            }
+            
             const grid = document.getElementById('emojiGrid'); grid.innerHTML = '';
             const emojiList = ["👍", "❤️", "🔥", "😂", "😮", "😢", "🙏", "👏", "🎉", "✨", "👎", "😡", "💩", "👀", "💯", "✅", "❌", "🤝", "💪", "🙌", "🤔", "🥳", "😱", "😴", "🤡", "👻", "👽", "🤖", "🎃", "🌟", "💘", "💔", "💎", "💰", "⚽", "🚗", "🏠", "🎁", "🍻", "☕", "👋", "👌", "✌️", "🤞", "🤟", "🤘", "🤙", "🖕", "🤩", "😈"];
             
             emojiList.forEach(emoji => {
                 const s = document.createElement('span'); s.innerText = emoji; s.style.fontSize="24px"; s.style.cursor="pointer";
                 s.onclick = () => { 
-                    const msgId = selectedMsg.id;
-                    const reactionsRef = db.ref(`Chats/${msgId}/reactions/${myPhone}`);
-                    const countsRef = db.ref(`Chats/${msgId}/reactionsCounts`);
-
+                    const reactionsRef = db.ref(`Chats/${selectedMsg.id}/reactions/${myPhone}`);
+                    const countsRef = db.ref(`Chats/${selectedMsg.id}/reactionsCounts`);
                     reactionsRef.once('value', snap => {
                         const oldEmoji = snap.val();
                         if (oldEmoji === emoji) {
@@ -653,13 +583,9 @@
         function prepareReply() { replyingTo = selectedMsg; document.getElementById('replyPreview').style.display = 'flex'; document.getElementById('replyPreviewName').innerText = selectedMsg.author; document.getElementById('replyPreviewText').innerText = selectedMsg.text; closeActions(); }
         function writePrivate() { navTo(`private_chat.html?otherPhone=${selectedMsg.senderId}`); }
         function deleteMsg() { if(confirm("Удалить?")) { db.ref(`Chats/${selectedMsg.id}`).remove(); closeActions(); } }
-        function showBanMenu() { document.getElementById('mainActions').style.display = 'none'; document.getElementById('banMenu').style.display = 'block'; }
-        function backToMainActions() { document.getElementById('mainActions').style.display = 'block'; document.getElementById('banMenu').style.display = 'none'; }
-        function confirmBan(t, h) { const ts = h===-1?-1:Date.now()+(h*3600000); db.ref('BannedUsers/'+selectedMsg.senderId).set({type:t, timestamp:ts}).then(closeActions); }
-        function pinMsg() { db.ref(`PinnedMessages`).remove().then(() => { db.ref(`PinnedMessages/${selectedMsg.id}`).set({ text: selectedMsg.text, author: selectedMsg.author, originalId: selectedMsg.id, pinnedTime: Date.now() }); }); closeActions(); }
-        function unpinMsg() { db.ref(`PinnedMessages`).remove(); closeActions(); }
-        function prepareEdit() { editingMsgId = selectedMsg.id; const input = document.getElementById('msgInput'); input.value = selectedMsg.text; autoResize(input); document.getElementById('sendIcon').style.fill = "#4CAF50"; closeActions(); }
-        function saveEdit() { db.ref('Chats/' + editingMsgId).update({ text: document.getElementById('msgInput').value.trim() }); editingMsgId = null; const input = document.getElementById('msgInput'); input.value = ''; input.style.height = '42px'; document.getElementById('sendIcon').style.fill = "#F57C00"; }
+        function pinMsg() { db.ref(`PinnedMessages/${selectedMsg.id}`).set({ text: selectedMsg.text, author: selectedMsg.author, originalId: selectedMsg.id, pinnedTime: Date.now() }); closeActions(); }
+        function prepareEdit() { editingMsgId = selectedMsg.id; const input = document.getElementById('msgInput'); input.value = selectedMsg.text; autoResize(input); closeActions(); }
+        function saveEdit() { db.ref('Chats/' + editingMsgId).update({ text: document.getElementById('msgInput').value.trim() }); editingMsgId = null; document.getElementById('msgInput').value = ''; }
     </script>
 </body>
 </html>
