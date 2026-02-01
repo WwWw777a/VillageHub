@@ -26,7 +26,7 @@
         body, html { 
             margin: 0; padding: 0; 
             height: 100dvh; width: 100vw; 
-            background: #748391; /* ИЗМЕНЕНО: Серо-голубой фон как в Android */
+            background: #748391;
             font-family: -apple-system, sans-serif;
             overflow: hidden; 
             position: fixed; 
@@ -48,7 +48,7 @@
         .header h1 { font-size: 18px; margin: 0; flex-grow: 1; font-weight: bold; }
         
         .profile-link { font-size: 24px; cursor: pointer; padding: 5px; }
-        .clear-chat-icon { font-size: 22px; cursor: pointer; margin-right: 15px; padding: 5px; }
+        .clear-chat-icon { font-size: 22px; cursor: pointer; margin-right: 12px; padding: 5px; }
         .global-clear-icon { font-size: 22px; cursor: pointer; margin-right: 15px; padding: 5px; display: none; }
 
         #pinnedLayout { 
@@ -82,21 +82,14 @@
         }
 
         .msg-container { max-width: 85%; padding: 10px 14px; border-radius: 16px; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-size: 15px; transition: background 0.5s; cursor: pointer; word-wrap: break-word; }
-        
         .msg-sent .msg-container { align-self: flex-end; background: #EFFDDE; border-bottom-right-radius: 2px; }
         .msg-received .msg-container { align-self: flex-start; background: white; border-bottom-left-radius: 2px; }
         
         .highlight-msg { background: #FFF59D !important; border: 1px solid #FFD600; }
-        
         .author { font-size: 12px; font-weight: bold; margin-bottom: 4px; display: flex; flex-wrap: wrap; gap: 4px; cursor: pointer; }
         
         .status-admin { color: #F44336; font-weight: bold; }
         .status-mod { color: #2196F3; font-weight: bold; }
-        .status-user { color: inherit; font-weight: normal; }
-
-        .role-admin { color: #2E7D32; }
-        .role-mod { color: #D32F2F; }
-        .role-user { color: #F57C00; }
 
         .msg-grid { display: grid; gap: 4px; margin-bottom: 6px; border-radius: 8px; overflow: hidden; }
         .grid-1 { grid-template-columns: 1fr; }
@@ -209,8 +202,8 @@
         <div class="header">
             <div class="back-btn" onclick="navTo('index.html')">←</div>
             <h1>Чат поселка</h1>
-            <div class="clear-chat-icon" onclick="clearMyChatLocally()">🗑</div>
-            <div id="globalClearBtn" class="global-clear-icon" onclick="clearAllChatGlobally()">🧨</div>
+            <div class="clear-chat-icon" title="Очистить для себя" onclick="clearMyChatLocally()">🗑</div>
+            <div id="globalClearBtn" class="global-clear-icon" title="Удалить для всех" onclick="clearAllChatGlobally()">🧨</div>
             <div class="profile-link" onclick="navTo('profile.html')">👤</div>
         </div>
 
@@ -223,7 +216,6 @@
         </div>
 
         <div id="chatMessages"></div>
-
         <div id="btnScrollDown" onclick="scrollToBottom()"><span>⬇</span></div>
 
         <div class="bottom-area">
@@ -273,6 +265,53 @@
         let selectedFiles = [];
         let userNameCache = {}; 
         let chatDeleteTime = 0;
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
+            authDomain: "villagehub-d4d5e.firebaseapp.com",
+            databaseURL: "https://villagehub-d4d5e-default-rtdb.firebaseio.com",
+            projectId: "villagehub-d4d5e",
+            storageBucket: "villagehub-d4d5e.firebasestorage.app",
+            messagingSenderId: "131056250064",
+            appId: "1:131056250064:web:84c0c67819e9828ec642d5"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const myPhone = localStorage.getItem("USER_PHONE");
+        const myName = localStorage.getItem("USER_NAME") || "Пользователь";
+        const myRole = (localStorage.getItem("USER_ROLE") || "Житель");
+        const iAmPrivileged = (myRole === "АДМИН" || myRole === "admin" || myRole === "МОДЕРАТОР");
+        const iAmAdminFull = (myRole === "АДМИН" || myRole === "admin");
+
+        if (myPhone) {
+            db.ref('Users/' + myPhone + '/chatDeleteTime').on('value', s => {
+                chatDeleteTime = s.val() || 0;
+            });
+            if (iAmAdminFull) document.getElementById('globalClearBtn').style.display = 'block';
+        }
+
+        // ЛОКАЛЬНАЯ ОЧИСТКА
+        function clearMyChatLocally() {
+            if (confirm("Скрыть историю чата только для вас?")) {
+                const now = Date.now();
+                db.ref('Users/' + myPhone + '/chatDeleteTime').set(now).then(() => {
+                    chatDeleteTime = now;
+                });
+            }
+        }
+
+        // ГЛОБАЛЬНАЯ ОЧИСТКА
+        function clearAllChatGlobally() {
+            if (confirm("ВНИМАНИЕ: Вы удалите сообщения ДЛЯ ВСЕХ. Продолжить?")) {
+                if (confirm("Это действие нельзя отменить. Подтверждаете удаление?")) {
+                    db.ref('Chats').remove();
+                    db.ref('PinnedMessages').remove();
+                    db.ref('ReactionDetails').remove();
+                    alert("Чат полностью очищен для всех");
+                }
+            }
+        }
 
         function handleFileSelect(input) {
             const files = Array.from(input.files);
@@ -331,103 +370,18 @@
             if (window.navigator.standalone) { window.location.replace(url); } else { window.location.href = url; }
         }
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyByW29mBVBcj_WIC_KbeNR86ocBTaELZ3Y",
-            authDomain: "villagehub-d4d5e.firebaseapp.com",
-            databaseURL: "https://villagehub-d4d5e-default-rtdb.firebaseio.com",
-            projectId: "villagehub-d4d5e",
-            storageBucket: "villagehub-d4d5e.firebasestorage.app",
-            messagingSenderId: "131056250064",
-            appId: "1:131056250064:web:84c0c67819e9828ec642d5"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-
-        const myPhone = localStorage.getItem("USER_PHONE");
-        const myName = localStorage.getItem("USER_NAME") || "Пользователь";
-        const myRole = (localStorage.getItem("USER_ROLE") || "Житель");
-        const iAmPrivileged = (myRole === "АДМИН" || myRole === "admin" || myRole === "МОДЕРАТОР");
-        const iAmAdminFull = (myRole === "АДМИН" || myRole === "admin");
-
-        if (myPhone) {
-            db.ref('Users/' + myPhone + '/chatDeleteTime').on('value', s => {
-                chatDeleteTime = s.val() || 0;
-            });
-            // Показываем кнопку глобальной очистки только админу
-            if (iAmAdminFull) {
-                document.getElementById('globalClearBtn').style.display = 'block';
-            }
-        }
-
-        function clearMyChatLocally() {
-            if (confirm("Скрыть историю чата только для вас?")) {
-                const now = Date.now();
-                db.ref('Users/' + myPhone + '/chatDeleteTime').set(now).then(() => {
-                    chatDeleteTime = now;
-                    alert("История скрыта");
-                });
-            }
-        }
-
-        function clearAllChatGlobally() {
-            if (confirm("ВНИМАНИЕ: Вы собираетесь удалить ВСЕ сообщения чата для ВСЕХ пользователей. Продолжить?")) {
-                if (confirm("Это действие нельзя отменить. Удалить всё?")) {
-                    db.ref('Chats').remove();
-                    db.ref('PinnedMessages').remove();
-                    db.ref('ReactionDetails').remove();
-                    alert("Чат полностью очищен для всех");
-                }
-            }
-        }
-
-        let lastReadTimestamp = parseInt(localStorage.getItem("CHAT_LAST_READ") || "0");
-        let selectedMsg = null, replyingTo = null, editingMsgId = null, lastPinnedId = "", isFirstLoad = true, unreadMarkerShown = false;
-        const container = document.getElementById('chatMessages');
-
-        function openUserProfile(phone) {
-            db.ref('Users/' + phone).once('value', snap => {
-                const u = snap.val() || {};
-                const avSrc = u.avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || "?");
-                document.getElementById('full_avatar').src = avSrc;
-                document.getElementById('profile_name').innerText = u.name || "Пользователь";
-                document.getElementById('profile_phone').innerText = phone;
-                document.getElementById('profile_bio').innerText = u.bio || "О себе ничего не указано";
-                document.getElementById('user_profile_overlay').style.display = 'flex';
-            });
-        }
-
-        function openFullscreen(src) {
-            document.getElementById('fullscreen_img').src = src;
-            document.getElementById('download_link').href = src;
-            document.getElementById('fullscreen_viewer').style.display = 'flex';
-        }
-
-        function closeFullscreen() {
-            document.getElementById('fullscreen_viewer').style.display = 'none';
-        }
-
         db.ref('Chats').limitToLast(100).on('value', snap => {
-            container.innerHTML = ''; unreadMarkerShown = false;
+            container.innerHTML = ''; 
             const currentMyPhone = localStorage.getItem("USER_PHONE");
             snap.forEach(child => {
                 const msg = child.val(); msg.id = child.key;
-                
                 if (msg.timestamp <= chatDeleteTime) return;
-
-                if (msg.senderId && currentMyPhone && msg.senderId !== currentMyPhone) {
-                    if (msg.isRead !== true) { db.ref('Chats/' + msg.id).update({ isRead: true }); }
-                }
-                if (!unreadMarkerShown && lastReadTimestamp !== 0 && msg.timestamp > lastReadTimestamp && msg.senderId !== currentMyPhone) {
-                    container.innerHTML += `<div class="unread-separator" id="unread_anchor"><span>Непрочитанные сообщения</span></div>`;
-                    unreadMarkerShown = true;
+                if (msg.senderId && currentMyPhone && msg.senderId !== currentMyPhone && msg.isRead !== true) {
+                    db.ref('Chats/' + msg.id).update({ isRead: true });
                 }
                 renderMessage(msg, child.key);
             });
-            if (isFirstLoad) {
-                const anchor = document.getElementById('unread_anchor');
-                if (anchor) anchor.scrollIntoView({ block: "center" }); else scrollToBottom();
-                isFirstLoad = false;
-            }
+            scrollToBottom();
         });
 
         function renderMessage(msg, id) {
@@ -479,12 +433,12 @@
             containerDiv.dataset.msgObject = JSON.stringify(msg);
             container.appendChild(div);
 
-            if (userNameCache[msg.senderId]) { applyUserData(id, userNameCache[msg.senderId]); } 
-            else { db.ref('Users/' + msg.senderId).once('value', s => { 
+            if (userNameCache[msg.senderId]) applyUserData(id, userNameCache[msg.senderId]);
+            else db.ref('Users/' + msg.senderId).once('value', s => {
                 const u = s.val() || {};
                 userNameCache[msg.senderId] = u;
-                applyUserData(id, u); 
-            }); }
+                applyUserData(id, u);
+            });
         }
 
         function showWhoReacted(msgId) {
@@ -495,11 +449,10 @@
                 listDiv.innerHTML = '';
                 if(!snap.exists()) { listDiv.innerHTML = 'Нет данных'; return; }
                 snap.forEach(child => {
-                    const phone = child.key;
-                    const emoji = child.val();
+                    const phone = child.key; const emoji = child.val();
+                    const name = userNameCache[phone] ? (userNameCache[phone].name || phone) : phone;
                     const item = document.createElement('div');
                     item.className = 'reaction-user-item';
-                    const name = userNameCache[phone] ? (userNameCache[phone].name || phone) : phone;
                     item.innerHTML = `<span>${name}</span><span style="font-size:20px;">${emoji}</span>`;
                     listDiv.appendChild(item);
                 });
@@ -509,12 +462,10 @@
         function applyUserData(msgId, user) {
             const img = document.getElementById('av_' + msgId);
             const auth = document.getElementById('auth_' + msgId);
-            const msgBox = document.getElementById('msg_' + msgId);
             if (img && user.avatar) img.src = user.avatar;
-            if (msgBox) msgBox.setAttribute('data-actual-role', user.role || "Житель");
             if (auth && user.role) {
-                let statusStyle = user.role === "АДМИН" ? "status-admin" : (user.role === "МОДЕРАТОР" ? "status-mod" : "status-user");
-                auth.innerHTML = `${user.name || auth.innerText} <span class="${statusStyle}">(${user.role})</span>`;
+                let st = user.role === "АДМИН" ? "status-admin" : (user.role === "МОДЕРАТОР" ? "status-mod" : "");
+                auth.innerHTML = `${user.name || auth.innerText} <span class="${st}">(${user.role})</span>`;
             }
         }
 
@@ -524,11 +475,12 @@
             const input = document.getElementById('msgInput'); const text = input.value.trim();
             if(!text && selectedFiles.length === 0) return;
             let photoUrls = "";
-            if (selectedFiles.length > 0) { photoUrls = await uploadImagesSequentially(); }
+            if (selectedFiles.length > 0) photoUrls = await uploadImagesSequentially();
             const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             db.ref('Chats').push({ 
                 author: myName, role: myRole, text: text, time: timeStr, senderId: myPhone, timestamp: Date.now(), 
-                imageUrl: photoUrls, isRead: false
+                imageUrl: photoUrls, isRead: false,
+                replyToText: replyingTo ? replyingTo.text : "", replyToAuthor: replyingTo ? replyingTo.author : ""
             }).then(() => {
                 input.value = ''; input.style.height = '42px'; selectedFiles = []; updateImagePreview(); cancelReply(); scrollToBottom();
                 document.getElementById('sendBtn').disabled = false;
@@ -536,48 +488,38 @@
         }
 
         function scrollToBottom() { container.scrollTop = container.scrollHeight; }
-        
-        db.ref('PinnedMessages').on('value', snap => {
-            const layout = document.getElementById('pinnedLayout');
-            if(!snap.exists()) { layout.style.display = 'none'; return; }
-            layout.style.display = 'flex'; let last = null; snap.forEach(c => last = c.val());
-            let firstLine = last.text.split('\n')[0];
-            document.getElementById('tvPinnedText').innerText = firstLine;
-        });
+        function openFullscreen(src) { document.getElementById('fullscreen_img').src = src; document.getElementById('download_link').href = src; document.getElementById('fullscreen_viewer').style.display = 'flex'; }
+        function closeFullscreen() { document.getElementById('fullscreen_viewer').style.display = 'none'; }
 
         function openActions(msgRaw, id) {
             let msg; try { msg = JSON.parse(msgRaw); } catch(e) { return; }
             selectedMsg = {...msg, id: id}; document.getElementById('overlay').style.display = 'block'; document.getElementById('actionSheet').style.display = 'flex';
             const isMine = msg.senderId === myPhone;
-            const targetRole = document.getElementById("msg_" + id).getAttribute('data-actual-role') || "Житель";
             document.getElementById('editBtn').style.display = isMine ? 'block' : 'none';
             document.getElementById('adminPinBtn').style.display = iAmPrivileged ? 'block' : 'none';
             document.getElementById('deleteMsgBtn').style.display = (iAmPrivileged || isMine) ? 'block' : 'none';
-            
             const grid = document.getElementById('emojiGrid'); grid.innerHTML = '';
-            const emojiList = ["👍", "❤️", "🔥", "😂", "😮", "😢", "🙏", "👏", "🎉", "✨", "👎", "😡", "💩", "👀", "💯", "✅", "❌", "🤝", "💪", "🙌", "🤔", "🥳", "😱", "😴", "🤡", "👻", "👽", "🤖", "🎃", "🌟", "💘", "💔", "💎", "💰", "⚽", "🚗", "🏠", "🎁", "🍻", "☕", "👋", "👌", "✌️", "🤞", "🤟", "🤘", "🤙", "🖕", "🤩", "😈"];
-            
-            emojiList.forEach(emoji => {
+            const emojis = ["👍", "❤️", "🔥", "😂", "😮", "😢", "🙏", "👏", "🎉", "✨", "👎", "😡", "💩", "👀", "💯", "✅", "❌", "🤝", "💪", "🙌"];
+            emojis.forEach(emoji => {
                 const s = document.createElement('span'); s.innerText = emoji; s.style.fontSize="24px"; s.style.cursor="pointer";
-                s.onclick = () => { 
-                    const reactionsRef = db.ref(`Chats/${selectedMsg.id}/reactions/${myPhone}`);
-                    const countsRef = db.ref(`Chats/${selectedMsg.id}/reactionsCounts`);
-                    reactionsRef.once('value', snap => {
-                        const oldEmoji = snap.val();
-                        if (oldEmoji === emoji) {
-                            reactionsRef.remove();
-                            countsRef.child(emoji).transaction(c => (c || 1) - 1);
+                s.onclick = () => {
+                    db.ref(`Chats/${id}/reactions/${myPhone}`).once('value', sn => {
+                        const old = sn.val();
+                        if (old === emoji) {
+                            db.ref(`Chats/${id}/reactions/${myPhone}`).remove();
+                            db.ref(`Chats/${id}/reactionsCounts/${emoji}`).transaction(c => (c || 1) - 1);
                         } else {
-                            if (oldEmoji) countsRef.child(oldEmoji).transaction(c => (c || 1) - 1);
-                            reactionsRef.set(emoji);
-                            countsRef.child(emoji).transaction(c => (c || 0) + 1);
+                            if (old) db.ref(`Chats/${id}/reactionsCounts/${old}`).transaction(c => (c || 1) - 1);
+                            db.ref(`Chats/${id}/reactions/${myPhone}`).set(emoji);
+                            db.ref(`Chats/${id}/reactionsCounts/${emoji}`).transaction(c => (c || 0) + 1);
                         }
                     });
-                    closeActions(); 
+                    closeActions();
                 };
                 grid.appendChild(s);
             });
         }
+
         function closeActions() { document.getElementById('overlay').style.display = 'none'; document.getElementById('actionSheet').style.display = 'none'; }
         function cancelReply() { replyingTo = null; document.getElementById('replyPreview').style.display = 'none'; }
         function prepareReply() { replyingTo = selectedMsg; document.getElementById('replyPreview').style.display = 'flex'; document.getElementById('replyPreviewName').innerText = selectedMsg.author; document.getElementById('replyPreviewText').innerText = selectedMsg.text; closeActions(); }
