@@ -47,7 +47,6 @@
         .back-btn { font-size: 28px; cursor: pointer; color: #000; margin-right: 15px; padding: 5px; }
         .header h1 { font-size: 18px; margin: 0; flex-grow: 1; font-weight: bold; }
         
-        /* ЧЕЛОВЕЧЕК СПРАВА ВВЕРХУ */
         .profile-link { font-size: 24px; cursor: pointer; padding: 5px; }
 
         #pinnedLayout { 
@@ -58,7 +57,6 @@
         }
         .pinned-line { width: 4px; height: 24px; background: #2196F3; margin-right: 10px; border-radius: 2px; flex-shrink: 0; }
         
-        /* ИСПРАВЛЕНО: Стили для одной строки в закрепе */
         #tvPinnedText { 
             font-size: 13px; color: #333; 
             white-space: nowrap; overflow: hidden; 
@@ -73,7 +71,6 @@
             overscroll-behavior-y: contain;
         }
 
-        /* --- СТИЛИ АВАТАРОВ В СООБЩЕНИЯХ --- */
         .msg-wrapper { display: flex; align-items: flex-end; gap: 8px; width: 100%; margin-bottom: 4px; }
         .msg-sent .msg-wrapper { flex-direction: row-reverse; }
         .user-avatar { 
@@ -96,9 +93,14 @@
         .role-admin { color: #2E7D32; }
         .role-mod { color: #D32F2F; }
         .role-user { color: #F57C00; }
-        .time { font-size: 10px; color: #888; text-align: right; margin-top: 4px; }
-        
-        /* РАЗДЕЛИТЕЛЬ НОВЫХ СООБЩЕНИЙ */
+
+        /* ГАЛОЧКИ */
+        .time-wrapper { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin-top: 4px; }
+        .time { font-size: 10px; color: #888; }
+        .tick-icon { width: 14px; height: 14px; fill: #888; display: none; }
+        .msg-sent .tick-icon { display: block; }
+        .tick-read { fill: #2196F3 !important; }
+
         .unread-separator { 
             text-align: center; margin: 15px 0; position: relative; 
             color: var(--accent-blue); font-size: 12px; font-weight: bold; 
@@ -124,7 +126,6 @@
         #replyPreview { background: #f0f0f0; padding: 10px 15px; display: none; border-left: 4px solid #F57C00; align-items: center; }
         .input-row { display: flex; align-items: flex-end; padding: 10px 15px; gap: 10px; }
         
-        /* ИСПРАВЛЕННОЕ ПОЛЕ ВВОДА ДЛЯ ПЕРЕНОСА СТРОК */
         #msgInput { 
             flex-grow: 1; border: 1px solid #eee; background: #f9f9f9; 
             outline: none; font-size: 16px; padding: 10px 15px; 
@@ -142,7 +143,6 @@
         .emoji-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; padding: 15px; overflow-y: auto; border-bottom: 1px solid #eee; }
         .action-item { padding: 16px 20px; font-size: 17px; cursor: pointer; border-bottom: 1px solid #f2f2f2; }
 
-        /* СТИЛИ КАРТОЧКИ ПРОФИЛЯ */
         #user_profile_overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0,0,0,0.9); display: none; z-index: 30000; align-items: center; justify-content: center; padding: 20px; }
         .profile-card { background: white; border-radius: 30px; padding: 30px; width: 100%; max-width: 340px; text-align: center; position: relative; }
         #full_avatar { width: 150px; height: 150px; border-radius: 50%; object-fit: cover; border: 4px solid var(--accent-blue); margin-bottom: 15px; cursor: pointer; }
@@ -150,7 +150,6 @@
         .profile-bio { font-size: 14px; color: #666; margin: 10px 0 20px; background: #f9f9f9; padding: 10px; border-radius: 10px; text-align: left; max-height: 150px; overflow-y: auto; }
         .close-profile-btn { background: var(--accent-blue); color: white; border: none; padding: 14px; border-radius: 30px; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%; }
 
-        /* ПРОСМОТР ФОТО НА ВЕСЬ ЭКРАН */
         #fullscreen_viewer { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: black; display: none; z-index: 40000; align-items: center; justify-content: center; }
         #fullscreen_img { max-width: 100%; max-height: 100%; object-fit: contain; }
         .close-fullscreen { position: absolute; top: calc(20px + var(--safe-top)); right: 20px; color: white; font-size: 35px; cursor: pointer; z-index: 40001; text-shadow: 0 0 10px rgba(0,0,0,0.5); }
@@ -238,11 +237,10 @@
     </div>
 
     <script>
-        // АВТОМАТИЧЕСКОЕ РАСШИРЕНИЕ ПОЛЯ ПРИ ПЕЧАТИ
         function autoResize(textarea) {
             textarea.style.height = 'auto';
             textarea.style.height = (textarea.scrollHeight) + 'px';
-            if (textarea.value === "") textarea.style.height = '42px'; // Базовая высота
+            if (textarea.value === "") textarea.style.height = '42px';
         }
 
         function navTo(url) {
@@ -328,6 +326,12 @@
             container.innerHTML = ''; unreadMarkerShown = false;
             snap.forEach(child => {
                 const msg = child.val(); msg.id = child.key;
+
+                // ЛОГИКА ГАЛОЧЕК (ОБНОВЛЕНИЕ СТАТУСА ПРИ ПРОСМОТРЕ)
+                if (msg.senderId !== myPhone && msg.isRead !== true) {
+                    db.ref('Chats/' + msg.id).update({ isRead: true });
+                }
+
                 if (!unreadMarkerShown && lastReadTimestamp !== 0 && msg.timestamp > lastReadTimestamp && msg.senderId !== myPhone) {
                     container.innerHTML += `<div class="unread-separator" id="unread_anchor"><span>Непрочитанные сообщения</span></div>`;
                     unreadMarkerShown = true;
@@ -350,14 +354,19 @@
             let replyHtml = msg.replyToText ? `<div class="reply-box"><b>${msg.replyToAuthor}</b><br>${msg.replyToText}</div>` : '';
             const tempAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.author);
 
-            // ИСПОЛЬЗУЕМ <pre> ИЛИ white-space ПРЯМО В ТЕКСТЕ ДЛЯ ОТОБРАЖЕНИЯ ПЕРЕНОСОВ
+            // Иконка галочек (синяя если isRead === true)
+            const tickClass = msg.isRead === true ? 'tick-icon tick-read' : 'tick-icon';
+
             div.innerHTML = `
                 <img class="user-avatar" id="av_${id}" src="${tempAvatar}" onclick="openUserProfile('${msg.senderId}')">
                 <div class="msg-container" id="msg_${id}" onclick="openActions(this.dataset.msgObject, '${id}')">
                     <div class="author" id="auth_${id}" onclick="event.stopPropagation(); openActions(this.parentElement.dataset.msgObject, '${id}')">${msg.author}</div>
                     ${replyHtml}
                     <div style="white-space: pre-wrap;">${msg.text}</div>
-                    <div class="time">${msg.time}</div>
+                    <div class="time-wrapper">
+                        <div class="time">${msg.time}</div>
+                        <svg class="${tickClass}" viewBox="0 0 24 24"><path d="M23.5,7L12,18.5L5,11.5L6.41,10.09L12,15.67L22.09,5.58L23.5,7M18,7L12,13L9.41,10.41L8,11.83L12,15.83L19.41,8.41L18,7M1,11.83L5,15.83L6.41,14.41L2.41,10.41L1,11.83Z"/></svg>
+                    </div>
                 </div>`;
             
             const containerDiv = div.querySelector('.msg-container');
@@ -389,7 +398,8 @@
             const timeStr = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             db.ref('Chats').push({ 
                 author: myName, role: myRole, text: text, time: timeStr, senderId: myPhone, timestamp: Date.now(), 
-                replyToText: replyingTo ? replyingTo.text : "", replyToAuthor: replyingTo ? replyingTo.author : "" 
+                replyToText: replyingTo ? replyingTo.text : "", replyToAuthor: replyingTo ? replyingTo.author : "",
+                isRead: false // По умолчанию не прочитано
             }).then(() => {
                 input.value = ''; input.style.height = '42px'; cancelReply(); scrollToBottom();
             });
@@ -403,18 +413,14 @@
             const layout = document.getElementById('pinnedLayout');
             if(!snap.exists()) { layout.style.display = 'none'; return; }
             layout.style.display = 'flex'; let last = null; snap.forEach(c => last = c.val());
-            
-            // ИСПРАВЛЕНО: При отображении берем только первую строку сообщения
             let firstLine = last.text.split('\n')[0];
             document.getElementById('tvPinnedText').innerText = firstLine;
-            
             layout.onclick = () => { const t = document.getElementById("msg_" + last.originalId); if (t) { t.scrollIntoView({ behavior: "smooth", block: "center" }); t.classList.add('highlight-msg'); setTimeout(() => t.classList.remove('highlight-msg'), 1500); } };
         });
 
         function openActions(msgRaw, id) {
             let msg;
             try { msg = typeof msgRaw === 'string' ? JSON.parse(msgRaw) : msgRaw; } catch(e) { return; }
-            
             selectedMsg = {...msg, id: id}; document.getElementById('overlay').style.display = 'block'; document.getElementById('actionSheet').style.display = 'flex';
             backToMainActions(); const isMine = msg.senderId === myPhone;
             const targetRole = document.getElementById("msg_" + id).getAttribute('data-actual-role') || "Житель";
