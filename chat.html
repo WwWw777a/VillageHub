@@ -175,9 +175,23 @@
         .viewer-controls { position: absolute; top: calc(20px + var(--safe-top)); left: 0; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; z-index: 40001; }
         .viewer-btn { color: white; font-size: 35px; cursor: pointer; text-shadow: 0 0 10px rgba(0,0,0,0.5); font-weight: bold; }
         .download-btn { color: white; font-size: 18px; text-decoration: none; background: rgba(255,255,255,0.2); padding: 8px 15px; border-radius: 20px; align-self: center; margin-top: 5px; }
+
+        /* ОКНО ПРОСМОТРА РЕАКЦИЙ ДЛЯ АДМИНА */
+        #reaction_details_overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: rgba(0,0,0,0.8); display: none; z-index: 35000; align-items: center; justify-content: center; padding: 20px; }
+        .reaction-card { background: white; border-radius: 20px; padding: 20px; width: 100%; max-width: 320px; display: flex; flex-direction: column; max-height: 70vh; }
+        .reaction-list-container { overflow-y: auto; flex-grow: 1; margin: 15px 0; }
+        .reaction-user-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f2f2f2; }
     </style>
 </head>
 <body>
+
+    <div id="reaction_details_overlay" onclick="this.style.display='none'">
+        <div class="reaction-card" onclick="event.stopPropagation()">
+            <h3 style="margin-top:0; text-align:center;">Кто отреагировал</h3>
+            <div id="reactionList" class="reaction-list-container"></div>
+            <button class="close-profile-btn" onclick="document.getElementById('reaction_details_overlay').style.display='none'">ЗАКРЫТЬ</button>
+        </div>
+    </div>
 
     <div id="fullscreen_viewer">
         <div class="viewer-controls">
@@ -343,6 +357,7 @@
         const myName = localStorage.getItem("USER_NAME") || "Пользователь";
         const myRole = (localStorage.getItem("USER_ROLE") || "Житель");
         const iAmPrivileged = (myRole === "АДМИН" || myRole === "admin" || myRole === "МОДЕРАТОР");
+        const iAmAdminFull = (myRole === "АДМИН" || myRole === "admin");
 
         if (myPhone) {
             const presenceRef = db.ref('Users/' + myPhone + '/isOnline');
@@ -444,14 +459,14 @@
             // ЛОГИКА ОТОБРАЖЕНИЯ РЕАКЦИЙ
             let reactionsHtml = '';
             if (msg.reactionsCounts) {
-                reactionsHtml = '<div class="reactions-list">';
+                reactionsHtml = `<div class="reactions-list" onclick="event.stopPropagation(); if(iAmAdminFull) showWhoReacted('${id}')">`;
                 for (let emoji in msg.reactionsCounts) {
                     if (msg.reactionsCounts[emoji] > 0) {
                         reactionsHtml += `<span>${emoji} ${msg.reactionsCounts[emoji]}</span>`;
                     }
                 }
                 reactionsHtml += '</div>';
-                if (reactionsHtml === '<div class="reactions-list"></div>') reactionsHtml = '';
+                if (reactionsHtml.includes('><')) reactionsHtml = '';
             }
 
             div.innerHTML = `
@@ -474,6 +489,45 @@
 
             if (usersCache[msg.senderId]) { applyUserData(id, usersCache[msg.senderId]); } 
             else { db.ref('Users/' + msg.senderId).once('value', s => { usersCache[msg.senderId] = s.val() || {}; applyUserData(id, usersCache[msg.senderId]); }); }
+        }
+
+        // НОВАЯ ФУНКЦИЯ ДЛЯ АДМИНА: ПРОСМОТР КТО ПОСТАВИЛ
+        function showWhoReacted(msgId) {
+            const listDiv = document.getElementById('reactionList');
+            listDiv.innerHTML = 'Загрузка...';
+            document.getElementById('reaction_details_overlay').style.display = 'flex';
+
+            db.ref(`Chats/${msgId}/reactions`).once('value', snap => {
+                listDiv.innerHTML = '';
+                if(!snap.exists()) {
+                    listDiv.innerHTML = 'Нет данных';
+                    return;
+                }
+                
+                snap.forEach(child => {
+                    const phone = child.key;
+                    const emoji = child.val();
+                    const item = document.createElement('div');
+                    item.className = 'reaction-user-item';
+                    
+                    // Пытаемся найти имя в кэше или базе
+                    const name = usersCache[phone] ? (usersCache[phone].name || phone) : phone;
+                    
+                    item.innerHTML = `<span>${name}</span><span style="font-size:20px;">${emoji}</span>`;
+                    listDiv.appendChild(item);
+
+                    // Если имени нет в кэше, подгружаем его
+                    if(!usersCache[phone] || !usersCache[phone].name) {
+                        db.ref(`Users/${phone}/name`).once('value', s => {
+                            if(s.val()) {
+                                item.querySelector('span').innerText = s.val();
+                                if(!usersCache[phone]) usersCache[phone] = {};
+                                usersCache[phone].name = s.val();
+                            }
+                        });
+                    }
+                });
+            });
         }
 
         function applyUserData(msgId, user) {
