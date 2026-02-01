@@ -324,15 +324,22 @@
 
         db.ref('Chats').limitToLast(100).on('value', snap => {
             container.innerHTML = ''; unreadMarkerShown = false;
+            
+            // Получаем актуальный телефон прямо здесь
+            const currentMyPhone = localStorage.getItem("USER_PHONE");
+
             snap.forEach(child => {
                 const msg = child.val(); msg.id = child.key;
 
-                // ЛОГИКА ГАЛОЧЕК (ОБНОВЛЕНИЕ СТАТУСА ПРИ ПРОСМОТРЕ)
-                if (msg.senderId !== myPhone && msg.isRead !== true) {
-                    db.ref('Chats/' + msg.id).update({ isRead: true });
+                // ИСПРАВЛЕННАЯ ЛОГИКА ГАЛОЧЕК
+                // Если отправитель НЕ я, и сообщение НЕ прочитано
+                if (msg.senderId && currentMyPhone && msg.senderId !== currentMyPhone) {
+                    if (msg.isRead !== true) {
+                        db.ref('Chats/' + msg.id).update({ isRead: true });
+                    }
                 }
 
-                if (!unreadMarkerShown && lastReadTimestamp !== 0 && msg.timestamp > lastReadTimestamp && msg.senderId !== myPhone) {
+                if (!unreadMarkerShown && lastReadTimestamp !== 0 && msg.timestamp > lastReadTimestamp && msg.senderId !== currentMyPhone) {
                     container.innerHTML += `<div class="unread-separator" id="unread_anchor"><span>Непрочитанные сообщения</span></div>`;
                     unreadMarkerShown = true;
                 }
@@ -347,14 +354,14 @@
         });
 
         function renderMessage(msg, id) {
-            const isMine = msg.senderId === myPhone;
+            const currentMyPhone = localStorage.getItem("USER_PHONE");
+            const isMine = msg.senderId === currentMyPhone;
             const div = document.createElement('div');
             div.className = `msg-wrapper ${isMine ? 'msg-sent' : 'msg-received'}`;
 
             let replyHtml = msg.replyToText ? `<div class="reply-box"><b>${msg.replyToAuthor}</b><br>${msg.replyToText}</div>` : '';
             const tempAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.author);
 
-            // Иконка галочек (синяя если isRead === true)
             const tickClass = msg.isRead === true ? 'tick-icon tick-read' : 'tick-icon';
 
             div.innerHTML = `
@@ -399,7 +406,7 @@
             db.ref('Chats').push({ 
                 author: myName, role: myRole, text: text, time: timeStr, senderId: myPhone, timestamp: Date.now(), 
                 replyToText: replyingTo ? replyingTo.text : "", replyToAuthor: replyingTo ? replyingTo.author : "",
-                isRead: false // По умолчанию не прочитано
+                isRead: false 
             }).then(() => {
                 input.value = ''; input.style.height = '42px'; cancelReply(); scrollToBottom();
             });
@@ -422,7 +429,9 @@
             let msg;
             try { msg = typeof msgRaw === 'string' ? JSON.parse(msgRaw) : msgRaw; } catch(e) { return; }
             selectedMsg = {...msg, id: id}; document.getElementById('overlay').style.display = 'block'; document.getElementById('actionSheet').style.display = 'flex';
-            backToMainActions(); const isMine = msg.senderId === myPhone;
+            backToMainActions(); 
+            const currentMyPhone = localStorage.getItem("USER_PHONE");
+            const isMine = msg.senderId === currentMyPhone;
             const targetRole = document.getElementById("msg_" + id).getAttribute('data-actual-role') || "Житель";
             document.getElementById('editBtn').style.display = isMine ? 'block' : 'none';
             document.getElementById('adminPinBtn').style.display = iAmPrivileged ? 'block' : 'none';
