@@ -95,10 +95,10 @@
         .profile-name { font-size: 20px; font-weight: bold; margin-bottom: 5px; color: #000; }
         .profile-bio { font-size: 14px; color: #666; margin: 10px 0 20px; background: #f9f9f9; padding: 10px; border-radius: 10px; text-align: left; max-height: 150px; overflow-y: auto; }
 
-        /* ПРОСМОТР ФОТО НА ВЕСЬ ЭКРАН */
+        /* ПРОСМОТРА ФОТО НА ВЕСЬ ЭКРАН */
         #fullscreen_viewer { position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background: black; display: none; z-index: 40000; align-items: center; justify-content: center; }
         #fullscreen_img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .close-fullscreen { position: absolute; top: calc(20px + var(--safe-top)); right: 20px; color: white; font-size: 35px; cursor: pointer; z-index: 40001; }
+        .close-fullscreen { position: absolute; top: calc(20px + var(--safe-top)); right: 20px; color: white; font-size: 35px; cursor: pointer; z-index: 40001; text-shadow: 0 0 10px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
@@ -267,7 +267,8 @@
                 const ad = snap.val(); if(!ad) return;
                 const authorName = ad.author || "Житель"; sellerPhone = ad.phone;
                 
-                if (authorName === currentUserName || currentUserRole === "АДМИН") {
+                // РАЗРЕШЕНИЕ ДЛЯ АВТОРА, АДМИНА И МОДЕРАТОРА
+                if (authorName === currentUserName || currentUserRole === "АДМИН" || currentUserRole === "МОДЕРАТОР") {
                     const eBtn = document.getElementById('editBtn'); eBtn.style.display = 'flex';
                     eBtn.onclick = () => navTo(`add_ad.html?editId=${adId}`);
                 }
