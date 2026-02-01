@@ -441,6 +441,19 @@
             const tempAvatar = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.author);
             const tickClass = msg.isRead === true ? 'tick-icon tick-read' : 'tick-icon';
 
+            // ЛОГИКА ОТОБРАЖЕНИЯ РЕАКЦИЙ
+            let reactionsHtml = '';
+            if (msg.reactionsCounts) {
+                reactionsHtml = '<div class="reactions-list">';
+                for (let emoji in msg.reactionsCounts) {
+                    if (msg.reactionsCounts[emoji] > 0) {
+                        reactionsHtml += `<span>${emoji} ${msg.reactionsCounts[emoji]}</span>`;
+                    }
+                }
+                reactionsHtml += '</div>';
+                if (reactionsHtml === '<div class="reactions-list"></div>') reactionsHtml = '';
+            }
+
             div.innerHTML = `
                 <img class="user-avatar" id="av_${id}" src="${tempAvatar}" onclick="openUserProfile('${msg.senderId}')">
                 <div class="msg-container" id="msg_${id}" onclick="openActions(this.dataset.msgObject, '${id}')">
@@ -448,6 +461,7 @@
                     ${replyHtml}
                     ${gridHtml}
                     <div style="white-space: pre-wrap;">${msg.text}</div>
+                    ${reactionsHtml}
                     <div class="time-wrapper">
                         <div class="time">${msg.time}</div>
                         <svg class="${tickClass}" viewBox="0 0 24 24"><path d="M23.5,7L12,18.5L5,11.5L6.41,10.09L12,15.67L22.09,5.58L23.5,7M18,7L12,13L9.41,10.41L8,11.83L12,15.83L19.41,8.41L18,7M1,11.83L5,15.83L6.41,14.41L2.41,10.41L1,11.83Z"/></svg>
@@ -510,6 +524,7 @@
         function openActions(msgRaw, id) {
             let msg;
             try { msg = typeof msgRaw === 'string' ? JSON.parse(msgRaw) : msgRaw; } catch(e) { return; }
+            
             selectedMsg = {...msg, id: id}; document.getElementById('overlay').style.display = 'block'; document.getElementById('actionSheet').style.display = 'flex';
             backToMainActions(); const isMine = msg.senderId === myPhone;
             const targetRole = document.getElementById("msg_" + id).getAttribute('data-actual-role') || "Житель";
@@ -523,9 +538,34 @@
             }
             const grid = document.getElementById('emojiGrid'); grid.innerHTML = '';
             const emojiList = ["👍", "❤️", "🔥", "😂", "😮", "😢", "🙏", "👏", "🎉", "✨", "👎", "😡", "💩", "👀", "💯", "✅", "❌", "🤝", "💪", "🙌", "🤔", "🥳", "😱", "😴", "🤡", "👻", "👽", "🤖", "🎃", "🌟", "💘", "💔", "💎", "💰", "⚽", "🚗", "🏠", "🎁", "🍻", "☕", "👋", "👌", "✌️", "🤞", "🤟", "🤘", "🤙", "🖕", "🤩", "😈"];
+            
+            // ИСПРАВЛЕННАЯ ЛОГИКА РЕАКЦИЙ (КЛИК)
             emojiList.forEach(emoji => {
                 const s = document.createElement('span'); s.innerText = emoji; s.style.fontSize="24px"; s.style.cursor="pointer";
-                s.onclick = () => { db.ref(`Chats/${id}/reactionsCounts/${emoji}`).transaction(c => (c || 0) + 1); closeActions(); };
+                s.onclick = () => { 
+                    const msgId = selectedMsg.id;
+                    const reactionsRef = db.ref(`Chats/${msgId}/reactions/${myPhone}`);
+                    const countsRef = db.ref(`Chats/${msgId}/reactionsCounts`);
+
+                    reactionsRef.once('value', snap => {
+                        const oldEmoji = snap.val();
+                        
+                        if (oldEmoji === emoji) {
+                            // Если нажали на ту же - удаляем
+                            reactionsRef.remove();
+                            countsRef.child(emoji).transaction(c => (c || 1) - 1);
+                        } else {
+                            // Если была другая - уменьшаем счетчик старой
+                            if (oldEmoji) {
+                                countsRef.child(oldEmoji).transaction(c => (c || 1) - 1);
+                            }
+                            // Ставим новую и увеличиваем счетчик
+                            reactionsRef.set(emoji);
+                            countsRef.child(emoji).transaction(c => (c || 0) + 1);
+                        }
+                    });
+                    closeActions(); 
+                };
                 grid.appendChild(s);
             });
         }
